@@ -6,11 +6,12 @@
 -- and "Senbazuru.Render.Steps" draws a list of frames, each with a /step
 -- note/ saying what its figure carries besides the paper. This module joins
 -- the two: 'stepNotes' gives each state the run writes a note, and 'runPage'
--- draws them. The first is the channel later work fills (a caption, arrows
--- read from a move's record), so it is a function of its own that a test can
--- hold to the file a run writes; the second is the one composition that
--- @run -o x.svg@ calls and a golden test is to call (#643's S37), so the two
--- cannot draw the page two ways.
+-- draws them and fits them to a page with their captions
+-- ("Senbazuru.Diagram.Page"). The first is the channel later work fills
+-- (arrows read from a move's record, marks), so it is a function of its own
+-- that a test can hold to the file a run writes; the second is the one
+-- composition that @run -o x.svg@ calls and a golden test is to call (#643's
+-- S37), so the two cannot draw the page two ways.
 --
 -- It is a module of its own because of what it may import. It is the first
 -- @Render@ module to know about fold sequences at all, and from them it may
@@ -35,10 +36,26 @@
 --
 -- A figure's note belongs with the step that starts from its state, which is
 -- where a book prints an instruction and the arrow for it: next to the picture
--- it starts from. Today every note is 'silentNote', the paper and nothing
--- else, so the page is what @render --steps@ draws of the written file. The
--- arrows of an @anchor P@ step's figure stay 'NoArrows' when notes are filled
--- from records, since that move turns no paper.
+-- it starts from. Every note is 'silentNote' with a caption, so the page is
+-- what @render --steps@ draws of the written file with words under its
+-- figures. The arrows of an @anchor P@ step's figure stay 'NoArrows' when
+-- notes are filled from records, since that move turns no paper.
+--
+-- == A caption is its state's title
+--
+-- The caption under figure /j/ is state /j/ − 1's @frame_title@, which
+-- 'writtenStates' sets to the caption of the step that leaves the state: the
+-- next step that writes one, so a step of only @expect refused@ moves, which
+-- writes none, has its caption under no figure. The last state's is the
+-- source's @closing@ line, or, for a run stopped at @not modelled@, the
+-- caption of the step it stopped at. The rule lives there, once, and the file
+-- a run writes and the page it draws cannot disagree about it. It reads as an
+-- off-by-one and is not: state 0, the sheet, carries step 1's instruction,
+-- because that is the picture the reader folds step 1 from (PRDs\/06 §9).
+--
+-- A /sample/ pose, a figure M5 will draw between a step's start and its end
+-- to show a move under way, takes no caption (R-06-23). Written as a state, it
+-- must therefore carry no title, or it would print one here.
 --
 -- == A refused page names a step, never a figure
 --
@@ -59,43 +76,67 @@
 module Senbazuru.Render.Sequence
   ( stepNotes,
     runPage,
+    RunPageError (..),
   )
 where
 
 import Data.Bifunctor (first)
-import Senbazuru.Diagram (Diagram)
 import Senbazuru.Diagram.Layout (Grid)
+import Senbazuru.Diagram.Page (FittedPage, Height, Page, PageFitError, fitPage)
 import Senbazuru.Diagram.Style (Theme)
-import Senbazuru.Fold.Types (Frame)
+import Senbazuru.Explain (Explain (..))
+import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Render.Camera (View)
-import Senbazuru.Render.Steps (StepError (..), StepNote, silentNote, stepPageWith)
+import Senbazuru.Render.Steps (StepError (..), StepNote, noteCaption, silentNote, stepFigures)
 import Senbazuru.Sequence.Error (SequenceError (..))
 import Senbazuru.Sequence.Record (Run (..), StepOutcome (..), WrittenState (..), writtenStates)
 
 -- | Each state the run writes, as its file writes it, with the note its
--- figure is drawn with: 'silentNote', for now, on every one.
+-- figure is drawn with: 'silentNote', for now, with the state's title as its
+-- caption.
 --
 -- Not total, because writing the states is not: it shares
 -- 'writtenStates'' refusals, each a 'WriteRefused' naming the state.
 stepNotes :: Run -> Either SequenceError [(Frame, StepNote)]
 stepNotes run = notesFor <$> writtenStates run
 
--- | The run's page: 'stepPageWith' over 'stepNotes', with a figure the page
--- cannot draw refused as the step that ended at its state. 'Nothing' only for
--- a run whose states hold no geometry, which a run never writes.
+-- | Why a run's page could not be drawn.
+data RunPageError
+  = -- | The run's own refusal: a state that cannot be written, or a figure
+    -- the page cannot draw, named by the step that ended at its state.
+    RunRefused !SequenceError
+  | -- | The page, as given, has no room for its figures and their captions.
+    -- Not a fault of the run, which a larger page draws.
+    PageDoesNotFit !PageFitError
+  deriving stock (Eq, Show)
+
+-- | Each in its own words.
+instance Explain RunPageError where
+  explain = \case
+    RunRefused err -> explain err
+    PageDoesNotFit err -> explain err
+
+-- | The run's page: 'stepFigures' over 'stepNotes', fitted to the page with
+-- their captions ('fitPage'), and a figure the page cannot draw refused as the
+-- step that ended at its state. 'Nothing' only for a run whose states hold no
+-- geometry, which a run never writes.
 runPage ::
   Theme ->
   -- | How hard to look for a layer order, for the states that need one.
   Budget ->
   Grid ->
-  -- | Where to look from and which way up, as for 'stepPageWith'.
+  -- | Where to look from and which way up, as for 'stepFigures'.
   View ->
+  -- | Whether the page keeps its height or grows to fit its captions.
+  Height ->
+  Page ->
   Run ->
-  Either SequenceError (Maybe Diagram)
-runPage theme budget grid view run = do
-  states <- writtenStates run
-  first (refused states) (stepPageWith theme budget grid view (notesFor states))
+  Either RunPageError (Maybe FittedPage)
+runPage theme budget grid view height page run = do
+  states <- first RunRefused (writtenStates run)
+  figures <- first (RunRefused . refused states) (stepFigures theme budget view (notesFor states))
+  first PageDoesNotFit (fitPage theme grid height page figures)
   where
     -- The page counts places in the list it was given, which are the states'
     -- numbers, since 'notesFor' keeps every one in order.
@@ -118,6 +159,6 @@ runPage theme budget grid view run = do
       name : _ -> name
       [] -> Nothing
 
--- | Every state, in order, with a silent note.
+-- | Every state, in order, with a silent note captioned with its title.
 notesFor :: [WrittenState] -> [(Frame, StepNote)]
-notesFor states = [(stateFrame st, silentNote) | st <- states]
+notesFor states = [(stateFrame st, silentNote {noteCaption = frameTitle (stateFrame st)}) | st <- states]

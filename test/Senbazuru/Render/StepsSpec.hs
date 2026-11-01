@@ -8,10 +8,11 @@
 -- steady becomes a union of boxes measured in different projections.
 module Senbazuru.Render.StepsSpec (spec) where
 
-import Control.Monad (forM)
+import Control.Monad (forM, forM_)
 import Data.Map.Strict qualified as M
+import Data.Maybe (mapMaybe)
 import Senbazuru.Diagram (Diagram (..), Shape (..))
-import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
+import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
 import Senbazuru.Diagram.Style (defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
@@ -117,13 +118,14 @@ spec = do
       let arrowsWith note = fmap (fmap arrowsOf) (pageWith top [(fr, note) | fr <- frames])
       (arrowsWith inferNote, arrowsWith silentNote) `shouldBe` (Right (Just 1), Right (Just 0))
 
-    -- A1 of PRDs/06-prd-step-diagrams.md. It holds by construction while
-    -- stepPage is stepPageWith over noteFor of its Bool, so it is red only
-    -- when stepPage's page is not that one: drawn some other way, or with the
-    -- note for the other Bool. It cannot see a fault in noteFor itself, which
-    -- both of its sides use. What each note draws is the business of the
-    -- examples around it.
-    it "draws stepPage's page as stepPageWith with noteFor on every figure (A1)" $ do
+    -- A1 of PRDs/06-prd-step-diagrams.md, restated by S25 (C136). It holds
+    -- by construction while stepPage is gridOf over stepFigures with noteFor
+    -- of its Bool, so it is red only when stepPage's page is not that one:
+    -- drawn some other way, laid out some other way, or with the note for
+    -- the other Bool. It cannot see a fault in noteFor itself, which both of
+    -- its sides use. What each note draws is the business of the examples
+    -- around it.
+    it "draws stepPage's page as gridOf over stepFigures with noteFor on every figure (A1)" $ do
       quarter <- quarterFrames "examples/quarter-fold-steps.fold"
       bird <- allFrames <$> (loadFoldFile "examples/bird-base-sequence.fold" >>= right)
       let pages :: [(String, [Frame])]
@@ -132,9 +134,36 @@ spec = do
         | (name, frames) <- pages,
           arrows <- [False, True],
           stepPage defaultTheme defaultBudget grid defaultView arrows frames
-            /= stepPageWith defaultTheme defaultBudget grid defaultView [(fr, noteFor arrows) | fr <- frames]
+            /= fmap (gridOf grid . map fst) (stepFigures defaultTheme defaultBudget defaultView [(fr, noteFor arrows) | fr <- frames])
         ]
         `shouldBe` []
+
+    -- render --steps never draws a frame's title (D7, 06 §9), because a file
+    -- cannot say whether its titles name the state they sit on, as this
+    -- example's "Step 2: folded in half" does, or give the next instruction,
+    -- as a run's do. Its frames are titled, which the first line checks, so
+    -- the rest can fail: red if noteFor's notes took a frame's title as their
+    -- caption, and, through labelsOf, which sees a caption's lines, if
+    -- stepPage laid captions out.
+    it "draws only the figures' numbers on a file whose frames are titled" $ do
+      frames <- quarterFrames "examples/quarter-fold-steps.fold"
+      map frameTitle frames `shouldSatisfy` notElem Nothing
+      forM_ [False, True] $ \arrows -> do
+        figures <- right (stepFigures defaultTheme defaultBudget defaultView [(fr, noteFor arrows) | fr <- frames])
+        (arrows, map snd figures) `shouldBe` (arrows, [Nothing, Nothing, Nothing])
+        drawn <- right (stepPage defaultTheme defaultBudget grid defaultView arrows frames)
+        (arrows, fmap labelsOf drawn) `shouldBe` (arrows, Just ["1", "2", "3"])
+
+    -- The caption is the note's to give, and comes back with its own figure:
+    -- a frame with no geometry is skipped with its note, so its caption is
+    -- on no figure, and every other caption stays with its frame. Red if
+    -- captions were matched to figures by place after the skip, or dropped.
+    it "hands each figure back with its own note's caption" $ do
+      (a, b, c) <- quarterThree
+      let captioned t = silentNote {noteCaption = Just t}
+      figures <- right (stepFigures defaultTheme defaultBudget top [(emptyFrame, captioned "skipped"), (a, captioned "first"), (b, silentNote), (c, captioned "third")])
+      map snd figures `shouldBe` [Just "first", Nothing, Just "third"]
+      (noteCaption inferNote, noteCaption silentNote) `shouldBe` (Nothing, Nothing)
 
     -- What stepPage's Bool asks for. Red if noteFor gave inferNote whatever
     -- its Bool, which A1 cannot see since both of its sides pick their notes
@@ -199,17 +228,23 @@ spec = do
 
   turning
 
+-- | Every label's text, a caption's lines among them, which are 'Label's
+-- moved by an 'Offset'.
 labelsOf :: Diagram -> [String]
-labelsOf d = [show' t | Label _ _ _ t <- diagramShapes d]
+labelsOf d = mapMaybe text (diagramShapes d)
   where
-    show' = filter (/= '"') . show
+    text = \case
+      Label _ _ _ t -> Just (filter (/= '"') (show t))
+      Offset _ shape -> text shape
+      _ -> Nothing
 
 arrowsOf :: Diagram -> Int
 arrowsOf d = length [() | Arrow _ <- diagramShapes d]
 
--- | A page of notes, drawn as 'page' draws its frames.
+-- | A page of notes, drawn as 'page' draws its frames: their figures laid
+-- out by 'gridOf', as 'stepPage' lays its out.
 pageWith :: View -> [(Frame, StepNote)] -> Either StepError (Maybe Diagram)
-pageWith = stepPageWith defaultTheme defaultBudget grid
+pageWith view notes = gridOf grid . map fst <$> stepFigures defaultTheme defaultBudget view notes
 
 -- | Looking straight down, as test/golden/quarter-fold-step-1.svg does.
 top :: View

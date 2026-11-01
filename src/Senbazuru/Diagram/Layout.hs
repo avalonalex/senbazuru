@@ -81,7 +81,11 @@ module Senbazuru.Diagram.Layout
     -- * Captions
     PageScale,
     pageScale,
+    pageScaleValue,
     gridOfCaptioned,
+    CaptionedRows (..),
+    captionedRows,
+    hasCaptions,
     wrapCaption,
   )
 where
@@ -163,8 +167,10 @@ gridOf grid figures = arrange grid evenRows figures
 -- "Senbazuru.Diagram.Page"'s @pageTransform@ reports it. Positive and finite,
 -- which 'pageScale' checks once, so that the layout never divides a band by
 -- zero or by something that is not a number.
+--
+-- Ordered as the numbers are: a smaller scale draws the figures smaller.
 newtype PageScale = PageScale Double
-  deriving stock (Eq, Show)
+  deriving stock (Eq, Ord, Show)
 
 -- | A scale, if it is one: positive and finite. A page that leaves no room
 -- for its drawing has a scale of zero or less, and is no page to set type on.
@@ -173,6 +179,10 @@ pageScale s
   -- A NaN fails the comparison, and so is refused with the rest.
   | s > 0 && not (isInfinite s) = Just (PageScale s)
   | otherwise = Nothing
+
+-- | Page units per model unit, as a number.
+pageScaleValue :: PageScale -> Double
+pageScaleValue (PageScale s) = s
 
 -- | 'gridOf', with a caption under each figure that has one, in the theme's
 -- ink and label size, for a page drawn at the given scale.
@@ -184,39 +194,30 @@ pageScale s
 -- @a + (L - 1) p + d@ page units in place of the gutter, @L@ being the most
 -- lines any caption in the row wraps to, and 1 for a row with none; @p@ is
 -- 1.2 times the type size, @a@ is 18 and @d@ is 14 (PRDs\/06, R-06-19).
+-- 'captionedRows' measures the same rows, and this lays them out.
 --
 -- A page none of whose captions has a word is 'gridOf''s page, unchanged.
 gridOfCaptioned :: Theme -> Grid -> PageScale -> [(Diagram, Maybe Text)] -> Maybe Diagram
-gridOfCaptioned theme grid (PageScale scale) captioned
-  | all (null . captionWords . snd) captioned = gridOf grid figures
-  | otherwise = arrange grid bandedRows figures
+gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedRows theme grid atScale captioned of
+  Nothing -> gridOf grid figures
+  Just rows -> arrange grid (bandedRows rows) figures
   where
     figures = map fst captioned
-    columns = columnsOf grid
     rowCount = rowCountOf grid (length figures)
     size = themeLabelSize theme
     pitch = 1.2 * size
 
-    bandedRows shared =
+    bandedRows rows shared =
       Rows
         { rowDrop = below,
           pageBottom = \top -> top - below rowCount,
-          underneath = map linesAt wrapped
+          underneath = map linesAt (rowsCaptionLines rows)
         }
       where
-        V2 w h = boxSize shared
+        V2 _ h = boxSize shared
 
-        -- Each figure's caption as lines, wrapped to the shared box's width
-        -- on the page.
-        wrapped = [maybe [] (wrapCaption size (w * scale)) caption | (_, caption) <- captioned]
-
-        -- Row r's band, in model units: page units over the scale, for the
-        -- most lines any caption in the row has, and 1 for a row with none.
-        bands =
-          [ (captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap) / scale
-            | r <- [0 .. rowCount - 1],
-              let lineCount = maximum (1 : [length ls | (i, ls) <- zip [0 ..] wrapped, i `div` columns == r])
-          ]
+        -- Each band in model units: its page units over the scale.
+        bands = [b / scale | b <- rowsBands rows]
 
         -- How far below the first row's top row r's top lies: every row above
         -- it, and the band below each.
@@ -229,6 +230,69 @@ gridOfCaptioned theme grid (PageScale scale) captioned
           [ Offset (V2 0 (captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
             | (k, line) <- zip [0 :: Int ..] ls
           ]
+
+-- | A captioned page's rows, measured at a scale, as 'gridOfCaptioned' lays
+-- them out there.
+--
+-- A page has to be fitted before it is laid out: how large it can draw its
+-- figures depends on how tall its bands are, and how tall they are depends
+-- on how many lines its captions wrap to at that size
+-- ("Senbazuru.Diagram.Page"'s @fitPage@). The fit needs the numbers, and
+-- this is where both it and 'gridOfCaptioned' get them, so the two cannot
+-- disagree about a band.
+data CaptionedRows = CaptionedRows
+  { -- | The figures' rows stacked with nothing between them, in model units:
+    -- the row count times the height of the box each figure is centred in.
+    rowsFigureHeight :: !Double,
+    -- | The band below each row, top to bottom, in page units.
+    rowsBands :: ![Double],
+    -- | Each figure's caption, in order, as the lines it wraps to.
+    rowsCaptionLines :: ![[Text]]
+  }
+  deriving stock (Eq, Show)
+
+-- | How a page's captioned rows measure at the given scale ('CaptionedRows').
+--
+-- 'Nothing' for a page with no figure, which has no rows, and for one none of
+-- whose captions has a word, which 'gridOfCaptioned' lays out as 'gridOf'
+-- does, with no band to measure.
+captionedRows :: Theme -> Grid -> PageScale -> [(Diagram, Maybe Text)] -> Maybe CaptionedRows
+captionedRows theme grid (PageScale scale) captioned = do
+  shared <- sharedBox (map fst captioned)
+  if hasCaptions captioned
+    then Just (measured shared)
+    else Nothing
+  where
+    columns = columnsOf grid
+    rowCount = rowCountOf grid (length captioned)
+    size = themeLabelSize theme
+    pitch = 1.2 * size
+
+    measured shared =
+      CaptionedRows
+        { rowsFigureHeight = fromIntegral rowCount * h,
+          rowsBands = bands,
+          rowsCaptionLines = wrapped
+        }
+      where
+        V2 w h = boxSize shared
+
+        -- Each figure's caption as lines, wrapped to the shared box's width
+        -- on the page.
+        wrapped = [maybe [] (wrapCaption size (w * scale)) caption | (_, caption) <- captioned]
+
+        -- Row r's band, in page units, for the most lines any caption in the
+        -- row has, and 1 for a row with none.
+        bands =
+          [ captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap
+            | r <- [0 .. rowCount - 1],
+              let lineCount = maximum (1 : [length ls | (i, ls) <- zip [0 ..] wrapped, i `div` columns == r])
+          ]
+
+-- | Whether any figure has a caption with a word in it: the pages
+-- 'gridOfCaptioned' gives bands to, and lays out other than 'gridOf' does.
+hasCaptions :: [(Diagram, Maybe Text)] -> Bool
+hasCaptions = not . all (null . captionWords . snd)
 
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at
@@ -304,12 +368,10 @@ data Rows = Rows
 -- | The figures in rows, each centred in a cell of the shared box, numbered,
 -- and with what the rows put under it.
 arrange :: Grid -> (Box -> Rows) -> [Diagram] -> Maybe Diagram
-arrange grid rowsFor figures = case map diagramExtent figures of
-  [] -> Nothing
-  (e : es) -> Just (diagramWithExtent (page shared rows) (shapes shared rows))
-    where
-      shared = foldl' unionBox e es
-      rows = rowsFor shared
+arrange grid rowsFor figures = do
+  shared <- sharedBox figures
+  let rows = rowsFor shared
+  pure (diagramWithExtent (page shared rows) (shapes shared rows))
   where
     columns = columnsOf grid
     used = min columns (length figures)
@@ -363,6 +425,13 @@ arrange grid rowsFor figures = case map diagramExtent figures of
       where
         Box (V2 x0 _) (V2 _ y1) = shared
         V2 w _ = boxSize shared
+
+-- | The box every figure is centred in: the union of their extents, so that
+-- every figure is drawn at one scale. 'Nothing' for no figures.
+sharedBox :: [Diagram] -> Maybe Box
+sharedBox figures = case map diagramExtent figures of
+  [] -> Nothing
+  e : es -> Just (foldl' unionBox e es)
 
 unionBox :: Box -> Box -> Box
 unionBox (Box (V2 ax ay) (V2 bx by)) (Box (V2 cx cy) (V2 dx dy)) =
