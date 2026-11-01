@@ -315,10 +315,20 @@ formatNumber x
       | otherwise = s
 
 -- | Escape the five characters that cannot appear literally in XML text or in
--- a double-quoted attribute value.
+-- a double-quoted attribute value, and replace with U+FFFD, the replacement
+-- character, each character XML 1.0 cannot carry at all.
 --
 -- Titles and descriptions come straight out of user-supplied FOLD files, so an
 -- unescaped @&@ in an author's name is enough to produce a malformed document.
+--
+-- Escaping is not enough for every character. XML 1.0 has no way to write the
+-- control characters below U+0020 other than tab, newline and carriage
+-- return, nor U+FFFE or U+FFFF ('xmlChar'), and a character reference does not
+-- help, because @&#7;@ must name a character the document could hold too. A
+-- @frame_title@ can hold one, and so can a caption a fold sequence's source
+-- writes with @\\u{7}@. A document holding one is not XML: a strict reader
+-- refuses the whole page. Replacing the character keeps the rest of the text
+-- and leaves a visible mark where it was, rather than dropping it unseen.
 escapeXml :: Text -> Text
 escapeXml = T.concatMap $ \case
   '&' -> "&amp;"
@@ -326,4 +336,20 @@ escapeXml = T.concatMap $ \case
   '>' -> "&gt;"
   '"' -> "&quot;"
   '\'' -> "&apos;"
-  c -> T.singleton c
+  c
+    | xmlChar c -> T.singleton c
+    | otherwise -> "\xFFFD"
+
+-- | Whether XML 1.0 can carry a character: its @Char@ production
+-- (<https://www.w3.org/TR/xml/#charsets>), written as the specification
+-- writes it. 'Text' cannot hold the surrogates it leaves out, U+D800 to
+-- U+DFFF, so of its gaps only the controls and U+FFFE and U+FFFF can reach
+-- 'escapeXml'.
+xmlChar :: Char -> Bool
+xmlChar c =
+  c == '\x9'
+    || c == '\xA'
+    || c == '\xD'
+    || ('\x20' <= c && c <= '\xD7FF')
+    || ('\xE000' <= c && c <= '\xFFFD')
+    || ('\x10000' <= c && c <= '\x10FFFF')

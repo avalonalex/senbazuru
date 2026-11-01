@@ -1863,7 +1863,9 @@ stack run -- run blintz.foldseq > blintz.fold
   of 0.55 of the type size a character, since nothing here measures the
   font; it is never cut short. A word longer than
   a line keeps a line of its own and runs past it, and a font wider than the
-  estimate can run past it too.
+  estimate can run past it too. A character XML cannot hold, such as a
+  control character written with `\u{…}`, is drawn as U+FFFD, the
+  replacement character, as it is in any title an SVG carries.
 
   The page takes `render`'s page flags, with `render`'s defaults:
   `--columns N`, figures across the page (3); `--view NAME`, where to look
