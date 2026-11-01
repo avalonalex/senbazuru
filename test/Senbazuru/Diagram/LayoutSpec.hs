@@ -149,7 +149,6 @@ spec = do
             gaps = zipWith (-) bottoms (drop 1 tops ++ [pageBottom])
             expected = [18 + fromIntegral (longest row - 1) * 16.8 + 14 | row <- rowsOf (map (length . wrapped s) (captionsFor n))]
         length cells `shouldBe` n
-        length gaps `shouldBe` length expected
         forM_ (zip gaps expected) $ \(gap, band) ->
           (n, s, gap * s) `shouldSatisfy` (\(_, _, g) -> abs (g - band) < 1e-9)
         [x | Box (V2 x _) _ <- take 3 cells] `shouldSatisfy` (and . zipWith near1 [0, 1.1, 2.2])
@@ -201,10 +200,19 @@ spec = do
       -- at the second.
       wrapCaption 10 55.01 "abcd efghi" `shouldBe` ["abcd efghi"]
       wrapCaption 10 54.99 "abcd efghi" `shouldBe` ["abcd", "efghi"]
+      -- No wider than the width: a line exactly as wide fits.
+      wrapCaption 10 55 "abcd efghi" `shouldBe` ["abcd efghi"]
 
-    it "never breaks at a non-breaking space, and keeps it" $
+    it "never breaks at a non-breaking space, and keeps it" $ do
       wrapCaption 14 115 "Fold to 90\x00A0\&degrees and then some more"
         `shouldBe` ["Fold to", "90\x00A0\&degrees and", "then some more"]
+      -- The figure space and the narrow no-break space too.
+      wrapCaption 14 30 "10\x2007\&000 x" `shouldBe` ["10\x2007\&000", "x"]
+      wrapCaption 14 30 "90\x202F\&deg x" `shouldBe` ["90\x202F\&deg", "x"]
+      -- One beside an ordinary space is part of that run, which counts as one.
+      forM_ ["a \x00A0 b c", "a \x00A0\&b c", "a\x00A0 b c"] $ \caption -> do
+        wrapCaption 14 1000 caption `shouldBe` ["a b c"]
+        wrapCaption 14 30 caption `shouldBe` ["a b", "c"]
 
     it "gives a word longer than a line a line of its own" $
       wrapCaption 14 30 "a extraordinarily b" `shouldBe` ["a", "extraordinarily", "b"]

@@ -252,10 +252,12 @@ captionWords = maybe [] wordsOf
 -- Not 'T.words', which breaks at every character 'isSpace' admits, a
 -- non-breaking space among them, so a caption that joins 90 to degrees with
 -- one would be split exactly where its author asked it not to be, and the
--- space lost when the words are joined again. A non-breaking space stays inside its word, and
--- a word of nothing but such spaces is no word.
+-- space lost when the words are joined again. A non-breaking space between
+-- two characters of a word stays inside it. One beside a break is part of
+-- that run of spaces, which counts as one, so a word never starts or ends
+-- with one, and a word of nothing but such spaces is no word.
 wordsOf :: Text -> [Text]
-wordsOf = filter (not . T.all isSpace) . T.split breaks
+wordsOf = filter (not . T.null) . map T.strip . T.split breaks
   where
     breaks c = isSpace c && c `notElem` ['\x00A0', '\x2007', '\x202F']
 
