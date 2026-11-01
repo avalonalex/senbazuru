@@ -306,6 +306,16 @@ spec = do
       and [near 0 (abs (signedArea (clipConvex p q))) | (p : rest) <- tails pieces, q <- rest]
         `shouldBe` True
 
+  describe "insideRing" $
+    -- 05 L5's rows, on issue #579's L: the notch, the square the L's inside
+    -- corner cuts away, is off the L, and the arm, past the line of an edge
+    -- meeting at that corner, is on it. The notch row turns red if the test
+    -- were a bounding box, which holds the notch, and the arm row if it were
+    -- a half-plane test, which calls the arm outside.
+    it "puts the L's notch outside it and its arm inside" $ do
+      insideRing 1e-9 lShape (V2 0.15 0.75) `shouldBe` False
+      insideRing 1e-9 lShape (V2 0.45 0.75) `shouldBe` True
+
   describe "ears" $ do
     -- Issue #579's L: its six corners average to (0.3, 0.5), its own inside
     -- corner, which is on the outline and so no point inside it. Its ears are
