@@ -386,9 +386,12 @@ growing = describe "the moves across two frames" $ do
       other -> expectationFailure ("expected one motion, got " <> show other)
 
   -- An edge whose angle either frame leaves unrecorded did not change, as
-  -- 'motionsBetween' reads a frame that records none: the same pair, with each
-  -- frame's angles taken away in turn. Red if a missing angle were read as 0,
-  -- which lists the old diagonal's halves.
+  -- 'motionsBetween' reads a frame that records none: the diagonal pattern as
+  -- the file records it, its diagonal at 180 rather than the 0 the test above
+  -- gives it, against the same later frame, with each frame's angles taken
+  -- away in turn. Red if a missing angle were read as 0, which lists the old
+  -- diagonal's halves: a missing 0 against their 180, or the file's 180
+  -- against a missing 0. With the diagonal at 0, the second would stay green.
   it "lists no crease where a frame records no angles" $ do
     cp <- diagonalPattern
     creased <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Mountain)] cp)
@@ -411,6 +414,7 @@ growing = describe "the moves across two frames" $ do
     forM_ [(creasedTwice, [[], [(V3 (2 / 7) (3 / 7) 0, V3 (5 / 7) (3 / 7) 0)]]), (turnedEachStep, [[], [(V3 0.5 0.5 0, V3 0.5 (2 / 7) 0)]])] $ \(source, expected) -> do
       run <- right (checkSequence source >>= runSequence defaultRunSettings M.empty . elaborate)
       states <- right (writtenStates run)
+      length states `shouldBe` length expected + 1
       forM_ (zip3 [1 ..] (consecutive (map stateFrame states)) expected) $ \(k, (b, a), want) -> do
         fromStates <- right (motionsAcross b a)
         fromRecords <- case [r | r <- runRecords run, recordStep r == k] of

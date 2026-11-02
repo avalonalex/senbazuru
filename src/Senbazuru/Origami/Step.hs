@@ -96,7 +96,7 @@
 -- folded. So a pair is never refused for differing. A pair 'motionsBetween'
 -- refuses for faces written another way round is answered instead where both
 -- frames' material points can be read, and otherwise refused as 'placeOn'
--- refuses, for the missing points.
+-- refuses, for the points it cannot read.
 --
 -- The faces and their groups are the later frame's, since only it has the
 -- faces creasing cut, and a frame recording none gives no motion, as
