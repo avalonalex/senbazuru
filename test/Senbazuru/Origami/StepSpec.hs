@@ -373,8 +373,8 @@ growing = describe "the moves across two frames" $ do
   -- by the new crease, is the later frame's edges 4 and 5, and changed from 0
   -- to the fold's angle; the new diagonal is edges 6 and 7, at rest, and one
   -- of them lies on the moving faces' rings. Red if angles were compared
-  -- edge by id, which lists nothing, or if a new edge counted as changed,
-  -- which lists edge 7 as well.
+  -- edge by id, which lists edge 4 alone, since the earlier frame has no edge
+  -- 5, or if a new edge counted as changed, which lists edge 7 as well.
   it "lists the earlier creases whose angle changed, and never a new one" $ do
     cp <- diagonalPattern
     creased <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Mountain)] cp)
@@ -384,6 +384,17 @@ growing = describe "the moves across two frames" $ do
         (motionFaces m, motionCreases m) `shouldBe` ([FaceId 1, FaceId 2], [EdgeId 4, EdgeId 5])
         farFrom [motionFrom m, motionTo m] [V3 (2 / 3) (2 / 3) 0, V3 (1 / 3) (1 / 3) 0] `shouldBe` []
       other -> expectationFailure ("expected one motion, got " <> show other)
+
+  -- An edge whose angle either frame leaves unrecorded did not change, as
+  -- 'motionsBetween' reads a frame that records none: the same pair, with each
+  -- frame's angles taken away in turn. Red if a missing angle were read as 0,
+  -- which lists the old diagonal's halves.
+  it "lists no crease where a frame records no angles" $ do
+    cp <- diagonalPattern
+    creased <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Mountain)] cp)
+    later <- right (foldFrameWith creased) >>= \f -> materialFrame <$> right (surfaceFromFolded f)
+    map motionCreases <$> motionsAcross cp {edgesFoldAngle = []} later `shouldBe` Right [[]]
+    map motionCreases <$> motionsAcross cp later {edgesFoldAngle = []} `shouldBe` Right [[]]
 
   -- Each step of two runs whose crease patterns grow: the motion found
   -- between the state before the step and the state it writes, against the

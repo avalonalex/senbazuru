@@ -84,15 +84,19 @@
 --
 -- == The moves between two such frames
 --
--- 'motionsAcross' is what a page calls for the moves between two frames,
--- whether or not the crease pattern grew between them, and it alone decides
--- which they are. Two frames with the same vertices, edges and faces go to
--- 'motionsBetween', unchanged, and need no material points. Any other pair is
--- placed: the later frame's vertices put where the earlier frame has its paper
--- ('placeOn'), and each vertex that moved from there to where the later frame
--- has it is paper that folded. So a pair is never refused for differing, and a
--- pair 'motionsBetween' refuses for faces written another way round is
--- answered instead.
+-- 'motionsAcross' finds the moves between two frames, whether or not the
+-- crease pattern grew between them, and it alone decides which they are. A
+-- page of steps is to ask it from S28 (#642); until then
+-- "Senbazuru.Render.Steps" and @render --frame k --arrows@ ask
+-- 'motionsBetween', which refuses a pair whose pattern grew. Two frames with
+-- the same vertices, edges and faces go to 'motionsBetween', unchanged, and
+-- need no material points. Any other pair is placed: the later frame's
+-- vertices put where the earlier frame has its paper ('placeOn'), and each
+-- vertex that moved from there to where the later frame has it is paper that
+-- folded. So a pair is never refused for differing. A pair 'motionsBetween'
+-- refuses for faces written another way round is answered instead where both
+-- frames' material points can be read, and otherwise refused as 'placeOn'
+-- refuses, for the missing points.
 --
 -- The faces and their groups are the later frame's, since only it has the
 -- faces creasing cut, and a frame recording none gives no motion, as
@@ -160,10 +164,9 @@ data Motion = Motion
 
 -- | What moves between one frame and the next.
 --
--- The two frames must describe the same paper: the same vertices, edges and
--- faces, differing only in where they are. That is what consecutive frames of a
--- diagram are, and a pair that disagrees about the graph is not a step but two
--- different models.
+-- The two frames must describe the same paper with the same vertices, edges
+-- and faces, differing only in where they are, as consecutive frames of a
+-- diagram do when no move made a crease between them.
 --
 -- A pair that differs only by a turn of the whole model, a presentation
 -- change, has no motion: the paper did not fold ('wholeModelMotion').
@@ -196,9 +199,9 @@ wholeModelMotion before after = do
 -- faces.
 --
 -- Compared for equality and not merely for length. Two frames with the same
--- number of faces joined up differently are two models, and matching face i to
--- face i across them would take the centre of one flap and the centre of an
--- unrelated one as the two ends of a motion.
+-- number of faces joined up differently cannot be matched face i to face i:
+-- that would take the centre of one flap and the centre of an unrelated one as
+-- the two ends of a motion.
 sameModel :: Frame -> Frame -> Either FoldError ()
 sameModel before after = do
   sameLength "vertices_coords" (length (verticesCoords before)) (length (verticesCoords after))
@@ -329,8 +332,9 @@ grownBetween before after = do
 -- edge they lie along, as the sheet has them: the first earlier edge, by id,
 -- whose segment on the sheet holds both of the later edge's ends within a hair.
 -- An edge lying along none is a crease the later frame adds, which is new and
--- never one that changed; and an edge with no angle recorded on either side
--- did not change either, as 'motionsBetween' reads a frame that records none.
+-- never one that changed; and an edge whose angle either frame leaves
+-- unrecorded did not change either, as 'motionsBetween' reads a frame that
+-- records none.
 changedAlong :: Frame -> Frame -> Placed -> [(EdgeId, EdgeKey)]
 changedAlong before after p =
   [ (EdgeId e, edgeKey u v)
