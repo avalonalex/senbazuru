@@ -250,8 +250,9 @@ shapeToSvg toPage (Arrow a) =
 -- turned by the signs of the page's scales, flipping y on every page that
 -- flips it, and never scaled: next to an Offset's y-down nudge that reads as a
 -- sign error, and it is not one. Mapping the axis through the transform and
--- using its length would size the loop by the model, so a loop on a sheet 400
--- units across would be a speck.
+-- using its length would size the loop by the page's scale: the same loop
+-- would come out 400 times larger on a sheet one unit across than on one 400
+-- across.
 shapeToSvg toPage (Symbol st size anchor (TurnOverLoop axis))
   | isNaN size || isInfinite size || size <= 0 = mempty
   | otherwise =
