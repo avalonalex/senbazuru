@@ -140,10 +140,12 @@ data FlatError
 -- three constructors into their own error type, because the useful message
 -- names what the model being unflat /prevented/ — working out which layer is
 -- on top, or reading a line drawn on the model — and this module does not know
--- which was being attempted. "Senbazuru.Origami.Visible" does not convert at
--- all: it returns @Either FlatError@ unchanged, and its caller
--- "Senbazuru.Render.CreasePattern" matches 'PaperInTheAir' and 'ConcaveFace'
--- to pick a /fallback drawing/ rather than to refuse. For that third caller
+-- which was being attempted. "Senbazuru.Origami.Visible" does not convert:
+-- 'Senbazuru.Origami.Visible.visibleForm' returns @Either FlatError@
+-- unchanged, and its caller "Senbazuru.Render.CreasePattern" matches
+-- 'PaperInTheAir' and 'ConcaveFace' to pick a /fallback drawing/ rather than to
+-- refuse; its @fanCounts@ wraps one in @CoverFlat@, whose words are this
+-- instance's. For that third caller
 -- being unflat is not a failure, so it never becomes words.
 --
 -- So this is not quite a common stem: only 'ConcaveFace' is the two printed

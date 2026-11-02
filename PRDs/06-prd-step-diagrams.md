@@ -1073,8 +1073,9 @@ is 31 where no point holds more than 24 sheets
 ([layer-numbers](../docs/notes/layer-numbers.md)). On the helmet's state 2 it
 would give vertices 1 and 3 counts of 3 and 2, where their fan counts are 1 and
 0 (A18).
-05's L9 is to count faces at a point for the same reason, but it is M4 work:
-neither it nor its `CoverError` exists yet.
+05's L9 is to count faces at a point for the same reason, but it is M4 work.
+L16 built the `CoverError` the two share, with `fanCounts`
+([C141](decisions.md#changes-since-draft-v2)).
 
 The counts, from a scratch prototype in Python run on 2026-10-23. For each face
 at a vertex it tested 40 points of that face 1e-4 from the vertex, across the
@@ -1086,6 +1087,10 @@ corner, against every face nearer the viewer:
 | Square base, `examples/square-base.fold` folded | 8 | 9 | 0: 4 · 1: 2 · 2: 2 · 3: 1 |
 | Bird base, `bird-base-sequence.fold` `file_frames[15]` | 16 | 13 | 0: 7 · 2: 4 · 3: 2 |
 | Crane, `examples/crane.fold` folded | 72 | 58 | 0: 17 · 1–6: 27 · 7–15: 14 |
+
+`fanCounts`, which asks about directions out of the vertex rather than points
+beside it, gives all four rows ([C141](decisions.md#changes-since-draft-v2)).
+They are seen from +z; the crane from −z is 0: 16 · 1–6: 29 · 7–15: 13.
 
 **The cap.** Uncapped, the crane's deepest vertex, under 15 sheets, would move
 22.5 page units. At 6 the largest move is 9 page units, 6.4 along each page axis.
