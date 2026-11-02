@@ -11,7 +11,7 @@
 -- take the run's own records, and hold each sense to the way its own checked
 -- turn moved the paper. So do the tests of a surface as the reader sees it
 -- ('displayedFrame'), which hold each record's surfaces, under the record's
--- own displays, to the states the run writes.
+-- own displays, to the states the run writes on either side of its step.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
 import Control.Monad (forM_)
@@ -161,14 +161,24 @@ spec = describe "a move record" $ do
   -- (06 R-06-16), against the states the run writes. 'writtenStates' shows its
   -- states by 'displayedFrame' too, so these hold the pairing, each surface
   -- with its own side's display; the arithmetic inside 'displayedFrame' is held
-  -- by RunSpec's tests that apply a display by hand to the written frames.
+  -- by RunSpec's tests that compare the written states with literal
+  -- coordinates, a rotate's corners, or with another run's ('sameModel'
+  -- across a re-anchoring). Every record held here is alone in its step and
+  -- creases nothing, so its before is the state written before it; a move
+  -- that creases adds its new crease to its before.
   describe "a surface as the reader sees it" $ do
-    -- Red if a record's after were shown under its display before, or its
-    -- before under its display after: every blintz record turns paper.
-    it "shows each blintz record's after exactly as the state its step writes" $ do
+    -- Nothing turns the blintz on the page or re-anchors it, so every display
+    -- here is the identity and this cannot tell one display from another. It
+    -- holds that a record's before and after are the surfaces its step starts
+    -- and ends on: red if the two were swapped, since every blintz record
+    -- turns paper. The two tests below hold which display goes with which.
+    it "shows each blintz record's before and after exactly as the states either side of its step" $ do
       blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
       states <- right (writtenStates blintzRun)
       map recordStep (runRecords blintzRun) `shouldBe` [1 .. 5]
+      [(displayBefore r, displayAfter r) | r <- runRecords blintzRun] `shouldBe` replicate 5 (identity, identity)
+      [verticesCoords (displayedFrame (recordBefore r) (displayBefore r)) | r <- runRecords blintzRun]
+        `shouldBe` map (verticesCoords . stateFrame) (take 5 states)
       [verticesCoords (displayedFrame (recordAfter r) (displayAfter r)) | r <- runRecords blintzRun]
         `shouldBe` map (verticesCoords . stateFrame) (drop 1 states)
 
@@ -189,15 +199,19 @@ spec = describe "a move record" $ do
           verticesCoords (displayedFrame (recordAfter turn) (displayAfter turn)) `shouldBe` verticesCoords (stateFrame state2)
         _ -> expectationFailure "expected one turn-over and at least three states"
 
-    -- The quarter fold re-anchored onto the corner its first fold turns, then
-    -- an eighth turn, a turn-over and three eighths back: placements and
-    -- presentations that are neither the identity nor their own inverse.
-    -- Red if 'displayAfter' composed them the other way round.
-    it "shows every record's after as its step's state, placed then presented" $ do
+    -- The quarter fold re-anchored onto the corner its first fold turns, so
+    -- placed from step 2 by a half turn about the line x = 1/2, then turned an
+    -- eighth, over top to bottom, and back three eighths. None of the three
+    -- presentations commutes with the half turn, so placed then presented
+    -- differs from presented then placed at steps 3 to 5. Red if
+    -- 'displayAfter' composed them the other way round.
+    it "shows every record's before and after as the states either side of its step, placed then presented" $ do
       run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
       states <- right (writtenStates run)
       let byStep = M.fromList [(k, verticesCoords (stateFrame st)) | st <- states, Just k <- [stateStep st]]
       map recordStep (runRecords run) `shouldBe` [1 .. 5]
+      [verticesCoords (displayedFrame (recordBefore r) (displayBefore r)) | r <- runRecords run]
+        `shouldBe` map (verticesCoords . stateFrame) (take 5 states)
       [(recordStep r, Just (verticesCoords (displayedFrame (recordAfter r) (displayAfter r)))) | r <- runRecords run]
         `shouldBe` [(recordStep r, M.lookup (recordStep r) byStep) | r <- runRecords run]
   where
@@ -242,9 +256,10 @@ openingWithAMountain = sequenceOf (header "A square" sheetSquare Nothing) $ do
     move (FoldAndUnfold MountainFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing)
     move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf West) (EdgeOf East) Nothing) FlapOfFirstArgument Nothing)
 
--- | The quarter fold anchored at (3/4, 3/4), on the paper its first fold
--- turns, then turned on the page by an eighth, over top to bottom, and back
--- by three eighths.
+-- | The quarter fold anchored at (3/4, 3/4), in the quarter its second fold
+-- turns, so that the run re-anchors onto (1/4, 1/4) and places the model by a
+-- half turn about x = 1/2; then turned on the page by an eighth, over top to
+-- bottom, and back by three eighths.
 oddEighths :: Sequence
 oddEighths = sequenceOf (header "A quarter fold, turned on the page" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (3 / 4)))) $ do
   step_ "Fold the left half behind." (fold behind (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
