@@ -100,6 +100,22 @@
 -- coordinates are in 'recordBefore'. It becomes a @Maybe@ again with the
 -- first move that holds nothing still.
 --
+-- == What a page reads as the move's kind
+--
+-- A page is to draw a valley arrow, a mountain arrow or an unfold arrow, and
+-- 'MoveKind' cannot say which: its 'Turn' is a fold and an unfold alike, and a
+-- 'Precrease' carries no sense, since the crease it leaves is drawn flat. So a
+-- record also gives the move's /sense/ ('recordSense'), valley or mountain as
+-- the author wrote it, which is to say as the reader sees it, and whether it
+-- turned an earlier step back ('recordUnfolds'). The sense is the written one
+-- on purpose, not the /raw sense/ creasing is handed, which is negated when
+-- the model is shown turned over (docs\/glossary.md, \"Sense\"): an arrow is
+-- drawn on the model as the reader sees it, so a valley fold made after a
+-- turn-over is a valley arrow, though the crease it leaves is lettered @M@ on
+-- the paper. A renderer may take no 'Sequence.*' module but this one and the
+-- errors', so the types of the sense and of the two presentation moves,
+-- 'Sense', 'PageAxis' and 'Turning', are re-exported here.
+--
 -- == The mistake to avoid
 --
 -- 'recordAfter' is the paper at the end of the move, but it is not where a
@@ -135,11 +151,18 @@ module Senbazuru.Sequence.Record
     recordMoving,
     recordStationary,
     recordResolved,
+    recordSense,
+    recordUnfolds,
     recordCost,
     recordAngles,
     ResolvedReference (..),
     RouteEvidence (..),
     StepCost (..),
+
+    -- * The move's words a page reads, from "Senbazuru.Sequence.Syntax"
+    Sense (..),
+    PageAxis (..),
+    Turning (..),
 
     -- * Making one
     hingeTurn,
@@ -187,7 +210,7 @@ import Senbazuru.Sequence.Elaborate (Origin (..))
 import Senbazuru.Sequence.Error (MoveFailure (..), SequenceError (..), WriteProblem (..))
 import Senbazuru.Sequence.Pretty (prettyMove)
 import Senbazuru.Sequence.SheetLengths (inSheetLengths)
-import Senbazuru.Sequence.Syntax (Name (..), PageAxis, RefusalKind (..), Span, Turning)
+import Senbazuru.Sequence.Syntax (Move (..), Name (..), PageAxis (..), RefusalKind (..), Sense (..), Span, Turning (..))
 
 -- | A point of paper, where it lay on the flat sheet before any folding.
 newtype MaterialPoint = MaterialPoint V2
@@ -264,7 +287,8 @@ data MoveKind
   | -- | A pre-crease (owner decision 14): the paper is folded along a line
     -- and laid flat again, so it ends where it began, creased along the
     -- line. Its record keeps the fold's evidence, which was checked over its
-    -- whole path, and carries no sense, since a crease it draws has none.
+    -- whole path. The kind carries no sense, since a crease it draws has
+    -- none; the sense the author wrote is the record's 'recordSense'.
     Precrease
   | -- | A change of presentation (decisions D5): the whole model is shown
     -- turned, and no paper moves. Its two surfaces are one; its presentation
@@ -432,6 +456,22 @@ recordStationary = theStationary
 -- fold's line and moving paper, or the step an @unfold@ turns back.
 recordResolved :: MoveRecord -> [ResolvedReference]
 recordResolved = theResolved
+
+-- | The move's sense as the author wrote it, valley ('ValleyFold') for @in
+-- front@ and mountain ('MountainFold') for @behind@, which is how the reader
+-- sees it: a fold's, or a pre-crease's. 'Nothing' for a move written with
+-- none, an @unfold@, a change of presentation or an @anchor@. Not the raw
+-- sense the crease is lettered by; the header says why.
+recordSense :: MoveRecord -> Maybe Sense
+recordSense record = case originWritten (theOrigin record) of
+  Fold sense _ _ _ _ -> Just sense
+  FoldAndUnfold sense _ _ _ -> Just sense
+  _ -> Nothing
+
+-- | Whether the move turned an earlier step back: an @unfold@, whose record
+-- names the step it turns back ('ResolvedTurnedBack').
+recordUnfolds :: MoveRecord -> Bool
+recordUnfolds record = not (null [() | ResolvedTurnedBack {} <- theResolved record])
 
 -- | Every crease's angle before the move and after it, in degrees as FOLD
 -- writes them, one for each edge of 'recordBefore'. Read from the two

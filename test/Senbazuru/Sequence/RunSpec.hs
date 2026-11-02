@@ -28,7 +28,7 @@ import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (CandidateLine (..), FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), Unsolved (..), refusalKindOf)
 import Senbazuru.Sequence.Parse (parseSequence)
-import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), ResolvedReference (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordResolved, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
+import Senbazuru.Sequence.Record (ExpectedRefusal (..), MaterialPoint (..), MaterialSegment (..), MoveKind (..), Presenting (..), ResolvedReference (..), RouteEvidence (..), Run (..), RunStop (..), StepCost (..), WrittenState (..), displayBefore, recordAfter, recordAnchor, recordAngles, recordBefore, recordCost, recordEvidence, recordHinge, recordKind, recordMoving, recordNewCreases, recordPlacement, recordPresentation, recordResolved, recordSense, recordStationary, recordStep, renderRunReport, runRefusal, writtenStates)
 import Senbazuru.Sequence.Run
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Header (..), Layers (..), Line (..), Located (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Side (..), Span (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
@@ -414,6 +414,18 @@ turningOver = describe "a turn-over" $ do
         [letter | (_, _, letter) <- recordNewCreases folded] `shouldBe` [Mountain]
         [a | (_, edges') <- recordHinge folded, EdgeId e <- edges', a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` (\angles -> not (null angles) && all (== -180) angles)
       other -> expectationFailure ("expected one record at step 2, got " <> show (length other))
+
+  -- The same run as the page reads it: the fold's sense is valley, as the
+  -- reader folded it, though its crease is lettered M and its turn is -180
+  -- on the paper as folded. Turns red if recordSense gave the raw sense,
+  -- the written one negated for the side turned up, which is what creasing
+  -- is handed and what lettered the crease.
+  it "gives a later in front its written sense, valley, though its crease is a mountain" $ do
+    run <- right . onSquare ColouredUp $ do
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Fold the bottom half up in front." (fold inFront (LineOnto (edge South) (edge North) Nothing))
+    map recordSense (runRecords run) `shouldBe` [Nothing, Just ValleyFold]
+    [letter | r <- runRecords run, (_, _, letter) <- recordNewCreases r] `shouldBe` [Mountain]
 
   -- The crane's first three steps, its diagonals, a turn-over and its
   -- midlines, on a plain square: two pre-creases, the turn, two more.
