@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
-import Senbazuru.Diagram.Style (Notation (..), Theme (..), arrowFor, defaultTheme)
+import Senbazuru.Diagram.Style (ArrowKind (..), Notation (..), Theme (..), arrowFor, defaultTheme, withKind)
 import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames, soleFrame)
@@ -110,16 +110,40 @@ renderFoldedWith theme basis path = do
 -- | One arrow across a square model of the given size, so that two sizes can be
 -- compared for anything that ought not to depend on the model's scale.
 arrowDiagram :: Double -> Diagram
-arrowDiagram size =
-  diagramWithExtent
-    (Box (V2 0 0) (V2 size size))
-    [ Arrow
-        ( arrowFor
-            defaultTheme
-            (V2 (0.25 * size) (0.5 * size))
-            (V2 (0.75 * size) (0.5 * size))
-        )
-    ]
+arrowDiagram = arrowDiagramWith SolidHead
+
+-- | The same, ending in the given head.
+arrowDiagramWith :: ArrowHead -> Double -> Diagram
+arrowDiagramWith h size =
+  diagramWithExtent (Box (V2 0 0) (V2 size size)) [Arrow (arrowPathWith h size)]
+
+arrowPathWith :: ArrowHead -> Double -> ArrowPath
+arrowPathWith h size =
+  withHead h (arrowFor defaultTheme (V2 (0.25 * size) (0.5 * size)) (V2 (0.75 * size) (0.5 * size)))
+
+withHead :: ArrowHead -> ArrowPath -> ArrowPath
+withHead h a = a {arrowHead = h}
+
+-- | The last path of a page, which for one arrow is its head.
+headLine :: Text -> Text
+headLine = maybe "" fst . unsnocLines
+  where
+    unsnocLines out = case reverse (filter (T.isInfixOf "<path") (T.lines out)) of
+      l : rest -> Just (l, rest)
+      [] -> Nothing
+
+-- | Each path's points, as its @d@ attribute lists them, letters dropped.
+pathPointsOf :: Text -> [[V2]]
+pathPointsOf out = [pairs (numbers l) | l <- T.lines out, "<path" `T.isInfixOf` l]
+  where
+    numbers l = case T.splitOn "d=\"" l of
+      [_, rest] -> [read (T.unpack w) :: Double | w <- T.words (T.takeWhile (/= '"') rest), T.all (`elem` ("-.0123456789" :: String)) w]
+      _ -> []
+    pairs (x : y : rest) = V2 x y : pairs rest
+    pairs _ = []
+
+cross :: V2 -> V2 -> Double
+cross (V2 ax ay) (V2 bx by) = ax * by - ay * bx
 
 -- | Render one frame of a sequence with the arrows for the step it begins.
 renderStep :: Int -> FilePath -> IO Text
@@ -344,12 +368,79 @@ spec = do
       T.count "<path" out `shouldBe` 2
       T.count "fill=\"#1a1a1a\"" out `shouldBe` 1
 
-    it "keeps the arrowhead the same size however big the model is" $ do
-      -- The two-unit rule, in the one shape that needs both units at once. A
-      -- head measured in model units would be a speck on a large sheet and
-      -- would swallow a small one.
-      let headOf = filter (T.isInfixOf "fill=") . T.lines . renderSvg testPage
-      headOf (arrowDiagram 1) `shouldBe` headOf (arrowDiagram 400)
+    -- 06's A4. The two-unit rule, in the one shape that needs both units at
+    -- once: a head measured in model units would be a speck on a large sheet
+    -- and would swallow a small one. Whole pages, since a hollow head has no
+    -- fill to pick its line out by. Red if any head, or any part of one, were
+    -- sized in model units.
+    it "draws every head the same on the page however big the model is" $
+      forM_ [minBound .. maxBound] $ \h ->
+        (h, renderSvg testPage (arrowDiagramWith h 1)) `shouldBe` (h, renderSvg testPage (arrowDiagramWith h 400))
+
+    -- A hollow head is stroked like the curve and filled with nothing: the
+    -- group's fill="none" holds. A width no theme uses, so that the head
+    -- cannot be taking its width from anywhere but the arrow. Red if one were
+    -- filled in any colour, or drawn in the curve's dash.
+    it "draws a hollow head as an outline, in the curve's ink and width" $
+      forM_ [HollowHalfHead, HollowDoubleHead] $ \h -> do
+        let dashed = (arrowPathWith h 1) {arrowStroke = Stroke (Colour "#123456") 2.5 (Dash [3, 2])}
+            out = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow dashed])
+        (h, T.isInfixOf "fill=" (headLine out)) `shouldBe` (h, False)
+        (h, length (filter (T.isInfixOf "<path") (T.lines out))) `shouldBe` (h, 2)
+        (h, headLine out) `shouldSatisfy` (\(_, l) -> all (`T.isInfixOf` l) ["stroke=\"#123456\"", "stroke-width=\"2.5\"", " Z\""])
+        (h, T.isInfixOf "stroke-dasharray" (headLine out)) `shouldBe` (h, False)
+
+    -- A head clamped to a short arrow is the full head scaled down, its
+    -- outline with it: this arrow's head is clamped to 3.68 of the theme's
+    -- 11, so its outline is 1.8 x 3.68 / 11 wide. Red if a clamped hollow
+    -- head kept the curve's 1.8, which fills a whole head of that size in and
+    -- draws an unfold as a valley.
+    it "draws a clamped hollow head with its outline scaled down with it" $
+      forM_ [HollowHalfHead, HollowDoubleHead] $ \h -> do
+        let out = renderSvg defaultPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow (withHead h (arrowFor defaultTheme (V2 0.5 0.5) (V2 0.52 0.5)))])
+        (h, T.isInfixOf "stroke-width=\"0.602\"" (headLine out)) `shouldBe` (h, True)
+        (h, T.count "stroke-width=\"1.8\"" out) `shouldBe` (h, 1)
+
+    -- The heads' geometry, measured on the page from the path data rather than
+    -- pinned as bytes: the half head runs from the end of the curve to the tip
+    -- and out to one barb, square to the head's axis, on the side the arrow
+    -- bows to; the double head is the whole outline, its back edge centred on
+    -- the end of the curve. Drawn each way and bowed to each side of its
+    -- travel: 'across' turns round with a reversed arrow, so only an arrow
+    -- bowed the other way needs its barb on the other side of 'across'. Red
+    -- if the barb went to a fixed side of 'across', inside the curve, or
+    -- anywhere but 0.4 of a head-length from the base, or the head were not 11
+    -- long.
+    it "puts the hollow heads where a book does, the barb outside the curve" $
+      forM_ [(bulge, ends) | bulge <- [themeArrowBow defaultTheme, negate (themeArrowBow defaultTheme)], ends <- [(V2 0.25 0.5, V2 0.75 0.5), (V2 0.75 0.5, V2 0.25 0.5)]] $ \(bulge, (from, to)) -> do
+        let page h = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow (withHead h (arrowFor defaultTheme {themeArrowBow = bulge} from to))])
+        case (pathPointsOf (page HollowHalfHead), pathPointsOf (page HollowDoubleHead)) of
+          ([[start, via, end], [base, tip, barb]], [[_, _, end'], [tip', left, right]]) -> do
+            let axis = tip ^-^ base
+                bow = signum (cross (end ^-^ start) (via ^-^ start))
+            norm (base ^-^ end) `shouldSatisfy` (< 1e-3)
+            norm axis `shouldSatisfy` (\l -> abs (l - 11) < 1e-3)
+            norm (barb ^-^ base) `shouldSatisfy` (\l -> abs (l - 4.4) < 1e-3)
+            dot (barb ^-^ base) axis `shouldSatisfy` (\d -> abs d < 1e-2)
+            signum (cross (end ^-^ start) (barb ^-^ start)) `shouldBe` bow
+            tip' `shouldBe` tip
+            norm (0.5 *^ (left ^+^ right) ^-^ end') `shouldSatisfy` (< 1e-3)
+            norm (left ^-^ right) `shouldSatisfy` (\l -> abs (l - 8.8) < 1e-3)
+          other -> expectationFailure ("expected a curve and a head of three points each, got " <> show other)
+
+    -- A straight arrow has no outside, and its barb's side would come from
+    -- rounding, so eight identical arrows in a row came out on both sides.
+    -- They go where every arrow 'arrowFor' bows goes, left of travel. Red if
+    -- the side were read from the sign of a dot product that is zero but for
+    -- rounding.
+    it "puts a straight arrow's barb on its left, wherever it sits" $ do
+      let straight i = withKind MountainArrow (arrowFor defaultTheme {themeArrowBow = 0} (V2 (0.1 * i) 0.3) (V2 (0.1 * i + 0.2 * cos (pi / 6)) (0.3 + 0.2 * sin (pi / 6))))
+          heads = [h | (n, h) <- zip [0 :: Int ..] (pathPointsOf (renderSvg defaultPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) (map (Arrow . straight) [0 .. 7])))), odd n]
+          -- Page y grows downwards, so left of travel is a negative cross.
+          side ps = case ps of
+            [base, tip, barb] -> signum (cross (tip ^-^ base) (barb ^-^ base))
+            _ -> 0
+      map side heads `shouldBe` replicate 8 (-1)
 
     it "shrinks the head rather than drawing the arrow backwards" $ do
       -- The head is a fixed size in page units, and a small flap on a large

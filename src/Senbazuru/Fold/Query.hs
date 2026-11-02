@@ -227,6 +227,34 @@ data FoldError
   | -- | Two parallel arrays that must agree in length do not. Carries the name
     -- and length of each.
     ArrayLengthMismatch Text Int Text Int
+  | -- | Where a frame's paper lay on the unfolded sheet is not known: it has
+    -- no @senbazuru:material_coords@, and it is not a crease pattern lying
+    -- exactly at @z = 0@, whose own x, y would be that. A pattern flat at
+    -- some other height is flat (see 'frameKind') but is not read this way.
+    MaterialCoordinatesMissing
+  | -- | Its @senbazuru:material_coords@ is not a list of points.
+    MaterialCoordinatesUnreadable
+  | -- | Its @senbazuru:material_coords@ does not have one point for each
+    -- vertex. Carries the number of vertices, then of points.
+    MaterialCoordinatesCount Int Int
+  | -- | A point of its @senbazuru:material_coords@ is not two finite numbers.
+    -- Carries the vertex.
+    MaterialPointInvalid VertexId
+  | -- | A vertex lies at a position that is not a finite number. Carries the
+    -- vertex.
+    VertexNotFinite VertexId
+  | -- | The later of two frames does not begin with the earlier one's
+    -- vertices, each at the same material point: the /prefix rule/ a crease
+    -- pattern that only grows keeps (PRDs\/decisions.md, D6). Carries the
+    -- first of the earlier frame's vertices it does not repeat.
+    VerticesNotAPrefix VertexId
+  | -- | A vertex the later of two frames adds lies on no edge and in no face
+    -- of the earlier one, so there is no paper there to place it on. Carries
+    -- the vertex.
+    AddedVertexOffPaper VertexId
+  | -- | The same complaint, about the later of two frames compared: a
+    -- refusal names the earlier frame, and this says which it is about.
+    InNextFrame FoldError
   deriving stock (Eq, Show)
 
 instance Explain FoldError where
@@ -407,6 +435,32 @@ instance Explain FoldError where
         <> " has "
         <> tshow nb
         <> "; FOLD requires parallel arrays to line up"
+    MaterialCoordinatesMissing ->
+      "where its paper lay on the unfolded sheet is not known: it has no"
+        <> " senbazuru:material_coords, and it is not a crease pattern lying at z = 0"
+    MaterialCoordinatesUnreadable ->
+      "its senbazuru:material_coords is not a list of points"
+    MaterialCoordinatesCount vertices points ->
+      "its senbazuru:material_coords has "
+        <> tshow points
+        <> " point(s), but it has "
+        <> tshow vertices
+        <> " vertices, one point for each"
+    MaterialPointInvalid (VertexId v) ->
+      "vertex " <> tshow v <> "'s point in senbazuru:material_coords is not two finite numbers"
+    VertexNotFinite (VertexId v) ->
+      "vertex " <> tshow v <> " lies at a position that is not a finite number"
+    VerticesNotAPrefix (VertexId v) ->
+      "the frame after it does not keep its vertices: it has no vertex "
+        <> tshow v
+        <> " where the earlier frame has one on the sheet, so the second"
+        <> " frame did not only add creases to the first"
+    AddedVertexOffPaper (VertexId v) ->
+      "the frame after it adds vertex "
+        <> tshow v
+        <> " where the earlier frame has no paper: it is on no edge and in no face of it"
+    InNextFrame err ->
+      "the frame after it: " <> explain err
     where
       -- Spelled out for the empty case, which would otherwise read "valid ids are
       -- 0..-1" -- a backwards interval, which is not a range and not a hint.

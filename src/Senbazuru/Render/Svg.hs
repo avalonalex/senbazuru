@@ -62,7 +62,8 @@ import Data.Text.Lazy.Builder (Builder)
 import Data.Text.Lazy.Builder qualified as TB
 import Numeric (showFFloat)
 import Senbazuru.Diagram
-  ( ArrowPath (..),
+  ( ArrowHead (..),
+    ArrowPath (..),
     Colour (..),
     Dash (..),
     Diagram (..),
@@ -74,6 +75,7 @@ import Senbazuru.Geometry
   ( Transform,
     V2 (..),
     applyTransform,
+    dot,
     movedBy,
     norm,
     normalize,
@@ -135,8 +137,9 @@ renderSvg page d =
 -- a polygon is unstroked (SVG's initial @stroke@ is @none@, and the group does
 -- not change it) and a polyline is unfilled.
 --
--- An 'Arrow' is two elements rather than one, because its head is filled and its
--- curve is stroked.
+-- An 'Arrow' is two elements rather than one: a solid head is filled and its
+-- curve is stroked, and a hollow head is stroked without the dash the curve
+-- may have, since a head drawn in dashes would not read as one.
 --
 -- An 'Offset' emits no element of its own. It moves the /transform/ rather than
 -- the points, which is what makes its displacement a page-unit one: the shape
@@ -182,9 +185,21 @@ shapeToSvg toPage (Arrow a) =
     -- short motion on a large sheet can be shorter than one: unclamped, the
     -- curve is pulled back past its own start and drawn backwards underneath a
     -- head that swallows it.
-    headLength = min (arrowHead a) (0.5 * norm (tip ^-^ from))
+    headLength = min (arrowHeadLength a) (0.5 * norm (tip ^-^ from))
     base = tip ^-^ (headLength *^ along)
     half = 0.4 * headLength
+
+    -- The barb of a one-sided head goes out on the side the arrow bows to,
+    -- the outside of the curve. 'across' is square to the curve at the tip,
+    -- and the control point lies on the tangent there, so the chord says
+    -- which way along 'across' that side is. A straight arrow, its control
+    -- point on the chord, has no outside, and the sign of a dot product that
+    -- is zero but for rounding would put its barb on either side depending on
+    -- where it sits; so it takes the side 'arrowFor' bows to, left of travel.
+    -- Rounding leaves at most about 3e-13 of the chord's length here, and a
+    -- bow of a thousandth of the chord already gives 4e-3.
+    bowSide = if dot across (tip ^-^ from) > 1e-9 * norm (tip ^-^ from) then 1 else -1
+    barb = base ^+^ ((bowSide * half) *^ across)
 
     curve =
       "    <path"
@@ -194,14 +209,41 @@ shapeToSvg toPage (Arrow a) =
         <> dashAttr (strokeDash (arrowStroke a))
         <> "/>\n"
 
-    head' =
+    head' = case arrowHead a of
+      SolidHead ->
+        "    <path"
+          <> attr
+            "d"
+            ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
+            )
+          <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+          <> "/>\n"
+      -- Half of the double head's outline, from the end of the curve, which
+      -- stops at the base, through the tip and out to the barb: a barb drawn
+      -- from the tip alone would leave the last head-length of the shaft
+      -- undrawn.
+      HollowHalfHead -> hollow (pathData [base, tip, barb] <> " Z")
+      -- Closed, so its back edge runs across the end of the curve.
+      HollowDoubleHead -> hollow (pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z")
+
+    -- No fill attribute, so the group's fill="none" holds and the head stays
+    -- open.
+    hollow d =
       "    <path"
-        <> attr
-          "d"
-          ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
-          )
-        <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+        <> attr "d" d
+        <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
+        <> attrNum "stroke-width" hollowWidth
         <> "/>\n"
+
+    -- A clamped hollow head is the full-size head scaled down, its outline
+    -- with it. Stroked at the curve's width, the outline of a whole head
+    -- under about 3.3 page units long, or of a half head under about 5.6,
+    -- covers its own inside, and an unfold's head would read as a valley's
+    -- solid one: the default theme's 11 and 1.8 on an arrow under about 6.6
+    -- page units, which a step page draws.
+    hollowWidth
+      | headLength < arrowHeadLength a = strokeWidth (arrowStroke a) * headLength / arrowHeadLength a
+      | otherwise = strokeWidth (arrowStroke a)
 shapeToSvg toPage (Fill (Colour c) rings)
   -- Two points enclose no area, so a ring of them would paint nothing.
   -- 'frameFaces' rejects such a face outright; this guard is for diagrams built

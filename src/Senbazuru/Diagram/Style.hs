@@ -76,6 +76,8 @@ module Senbazuru.Diagram.Style
     Notation (..),
     strokeFor,
     arrowFor,
+    ArrowKind (..),
+    withKind,
     buriedEdge,
     layerStep,
 
@@ -87,7 +89,7 @@ module Senbazuru.Diagram.Style
   )
 where
 
-import Senbazuru.Diagram (ArrowPath (..), Colour (..), Dash (..), Stroke (..), solid)
+import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Colour (..), Dash (..), Stroke (..), solid)
 import Senbazuru.Fold.Types (Assignment (..))
 import Senbazuru.Geometry (V2 (..), norm, normalize, perpendicular, (*^), (^+^), (^-^))
 
@@ -368,7 +370,8 @@ arrowFor theme from to =
       arrowFrom = from,
       arrowVia = midpoint ^+^ (offset *^ sideways),
       arrowTo = to,
-      arrowHead = themeArrowHead theme
+      arrowHead = SolidHead,
+      arrowHeadLength = themeArrowHead theme
     }
   where
     midpoint = 0.5 *^ (from ^+^ to)
@@ -382,3 +385,25 @@ arrowFor theme from to =
     offset = 2 * themeArrowBow theme * norm span'
 
     sideways = maybe (V2 0 0) perpendicular (normalize span')
+
+-- | What a fold arrow says the paper does: folded towards the reader (a valley
+-- fold), folded away (a mountain fold), or opened out again.
+--
+-- A kind is stated as the move was written, from the reader's side, and drawn
+-- as seen. A valley fold seen from behind the paper is a mountain fold, so a
+-- page drawn from the opposite side swaps valley and mountain before it hands
+-- a kind to 'withKind', which draws the kind it is given; an unfold is an
+-- unfold from either side.
+data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow
+  deriving stock (Eq, Show, Enum, Bounded)
+
+-- | The arrow with the head a book gives its kind: solid for a valley fold,
+-- hollow with one barb for a mountain fold, hollow with two for an unfold.
+-- Only the head changes; the curve, its ink and the head's length are the
+-- arrow's own.
+withKind :: ArrowKind -> ArrowPath -> ArrowPath
+withKind kind a = a {arrowHead = headFor kind}
+  where
+    headFor ValleyArrow = SolidHead
+    headFor MountainArrow = HollowHalfHead
+    headFor UnfoldArrow = HollowDoubleHead
