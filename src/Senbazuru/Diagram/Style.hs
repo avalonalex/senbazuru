@@ -386,13 +386,13 @@ arrowFor theme from to =
 
     sideways = maybe (V2 0 0) perpendicular (normalize span')
 
--- | What a fold arrow says the paper does, as the figure it is drawn on shows
--- it: folded towards the reader (a valley fold), folded away (a mountain fold),
--- or opened out again.
+-- | What a fold arrow says the paper does: folded towards the reader (a valley
+-- fold), folded away (a mountain fold), or opened out again.
 --
--- As the figure shows it, which is not always as the move was written. A
--- valley fold seen from behind the paper is a mountain fold, so a page drawn
--- from the opposite side swaps the two before it picks a kind; an unfold is an
+-- A kind is stated as the move was written, from the reader's side, and drawn
+-- as seen. A valley fold seen from behind the paper is a mountain fold, so a
+-- page drawn from the opposite side swaps valley and mountain before it hands
+-- a kind to 'withKind', which draws the kind it is given; an unfold is an
 -- unfold from either side.
 data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow
   deriving stock (Eq, Show, Enum, Bounded)

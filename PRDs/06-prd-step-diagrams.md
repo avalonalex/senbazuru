@@ -604,16 +604,21 @@ outline from `base` through `tip` to the barb and back, in `Svg.hs`'s names
 head-length back from the tip, to the tip, out to the barb's end, 0.4 of a
 head-length to one side of `base`, and back to `base`. The barb is on the side
 the arrow bows to, the outside of the curve, and the outline is closed, half of
-the unfold's head: the owner's choice on 2026-11-01 between that and this
-section's first sketch, an open line with the barb at `base + half·across`,
-which is inside the curve ([C140](decisions.md#changes-since-draft-v2)). It
+the unfold's head: the owner's choice on 2026-11-01 from four renderings, the
+barb outside or inside the curve and the outline open or closed. This section's
+first sketch was an open line with the barb at `base + half·across`, which is
+inside the curve ([C140](decisions.md#changes-since-draft-v2)). A straight
+arrow has no outside, and its barb goes on its left, the side `arrowFor` bows
+to. It
 starts at `base` because the curve stops there
 ([`:226`](../src/Senbazuru/Render/Svg.hs#L226),
 [`:231`](../src/Senbazuru/Render/Svg.hs#L231)), where the filled head takes
 over, and a barb from `tip` alone would leave the shaft's last head-length
 undrawn. `HollowDoubleHead` is a stroked closed triangle. Neither hollow head
 sets `fill`, so the group's `fill="none"` holds, and neither takes the curve's
-dash.
+dash. A clamped hollow head is the full head scaled down, its outline with it:
+stroked at the curve's width, a whole head under about 3.3 page units long
+fills its own inside and reads as a valley's.
 
 ```haskell
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant

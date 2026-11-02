@@ -191,9 +191,14 @@ shapeToSvg toPage (Arrow a) =
 
     -- The barb of a one-sided head goes out on the side the arrow bows to,
     -- the outside of the curve. 'across' is square to the curve at the tip,
-    -- and the control point lies on the tangent there, so the chord alone
-    -- says which way along 'across' that side is.
-    bowSide = if dot across (tip ^-^ from) < 0 then -1 else 1
+    -- and the control point lies on the tangent there, so the chord says
+    -- which way along 'across' that side is. A straight arrow, its control
+    -- point on the chord, has no outside, and the sign of a dot product that
+    -- is zero but for rounding would put its barb on either side depending on
+    -- where it sits; so it takes the side 'arrowFor' bows to, left of travel.
+    -- Rounding leaves at most about 3e-13 of the chord's length here, and a
+    -- bow of a thousandth of the chord already gives 4e-3.
+    bowSide = if dot across (tip ^-^ from) > 1e-9 * norm (tip ^-^ from) then 1 else -1
     barb = base ^+^ ((bowSide * half) *^ across)
 
     curve =
@@ -227,8 +232,18 @@ shapeToSvg toPage (Arrow a) =
       "    <path"
         <> attr "d" d
         <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
-        <> attrNum "stroke-width" (strokeWidth (arrowStroke a))
+        <> attrNum "stroke-width" hollowWidth
         <> "/>\n"
+
+    -- A clamped hollow head is the full-size head scaled down, its outline
+    -- with it. Stroked at the curve's width, the outline of a whole head
+    -- under about 3.3 page units long, or of a half head under about 5.6,
+    -- covers its own inside, and an unfold's head would read as a valley's
+    -- solid one: the default theme's 11 and 1.8 on an arrow under about 6.6
+    -- page units, which a step page draws.
+    hollowWidth
+      | headLength < arrowHeadLength a = strokeWidth (arrowStroke a) * headLength / arrowHeadLength a
+      | otherwise = strokeWidth (arrowStroke a)
 shapeToSvg toPage (Fill (Colour c) rings)
   -- Two points enclose no area, so a ring of them would paint nothing.
   -- 'frameFaces' rejects such a face outright; this guard is for diagrams built

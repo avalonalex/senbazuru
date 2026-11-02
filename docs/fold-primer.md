@@ -33,11 +33,14 @@ Two things about mountain and valley are worth internalising early:
   centreline. It was chosen because it is instantly distinguishable from a plain
   dashed line even in cheap printing.
 
-Arrows carry the rest of the meaning — a solid arrowhead for a normal fold, a
-hollow one for "fold then unfold", a looped arrow for turning the model over.
-Senbazuru draws the first of those, worked out by comparing one frame of a file
-with the next (`--arrows`). The other two mark steps whose paper does not
-visibly go anywhere, and it draws nothing for those rather than guessing.
+Arrows carry the rest of the meaning. The head says what kind of fold it is:
+solid for a [valley fold](glossary.md#origami), half a hollow head for a
+mountain fold, and a whole hollow head for unfolding, so "fold then unfold" is
+an arrow out and a hollow-headed arrow back. A looped arrow means turning the
+model over. Senbazuru draws fold arrows, worked out by comparing one frame of a
+file with the next (`--arrows`), and today gives every one a solid head.
+A fold and unfold, and a turn-over, mark steps whose paper does not visibly
+go anywhere, and it draws nothing for those rather than guessing.
 
 ## 2. Crease pattern vs. folded form
 
