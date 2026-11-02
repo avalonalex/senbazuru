@@ -248,7 +248,11 @@ then.
   HollowDoubleHead`) and a body (`PlainBody | CleftTail`). `arrowFor`, the only
   construction site ([`Style.hs:364-372`](../src/Senbazuru/Diagram/Style.hs#L364-L372)),
   sets `SolidHead`/`PlainBody`, for which `Render.Svg` emits today's two paths.
-  `Diagram` imports no FOLD type.
+  `Diagram` imports no FOLD type. The heads are built by S11 of
+  [#639](https://github.com/avalonalex/senbazuru/issues/639)
+  ([C140](decisions.md#changes-since-draft-v2)), with `withKind` (§1) the one
+  other place an arrow's head is set; the body waits with `PushArrow` for
+  [#648](https://github.com/avalonalex/senbazuru/issues/648).
 - **R-06-6.** `Shape` gains `Symbol`: a glyph whose geometry is in page units at one
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
   moves only the anchor.
@@ -482,8 +486,8 @@ then.
 
 ```haskell
 -- Senbazuru.Diagram.Style: kind to ink, the one file to open when marks look wrong
-data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | PushArrow  -- as seen from the reader's side
-withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head and body only
+data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648)
+withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head and body only; built, setting the head
 foldLineStroke :: Theme -> ArrowKind -> Stroke                          -- valley or mountain dash
 
 -- Senbazuru.Render.Steps
@@ -591,18 +595,25 @@ in: the parser refuses `sink` as a move the language cannot express yet
 and `CleftTail` have no producer at M3, and S11
 ([#639](https://github.com/avalonalex/senbazuru/issues/639)) defers them, with
 push and sink, to [#648](https://github.com/avalonalex/senbazuru/issues/648) in
-its C row. Emission, **SKETCH**, with `headLength` clamped as at
+its C row ([C140](decisions.md#changes-since-draft-v2)). Emission, as built,
+with `headLength` clamped as at
 [`Svg.hs:225`](../src/Senbazuru/Render/Svg.hs#L225): `SolidHead` is today's
-filled triangle path byte for byte; `HollowHalfHead` is one stroked open line
-from `base` through `tip` to `base + half·across`, in `Svg.hs`'s names
+filled triangle path byte for byte; `HollowHalfHead` is one stroked closed
+outline from `base` through `tip` to the barb and back, in `Svg.hs`'s names
 ([`:217-227`](../src/Senbazuru/Render/Svg.hs#L217-L227)): from the point one
-head-length back from the tip, to the tip, and back to the barb's end, 0.4 of a
-head-length to one side of `base`. It starts at `base` because the curve stops
-there ([`:226`](../src/Senbazuru/Render/Svg.hs#L226),
+head-length back from the tip, to the tip, out to the barb's end, 0.4 of a
+head-length to one side of `base`, and back to `base`. The barb is on the side
+the arrow bows to, the outside of the curve, and the outline is closed, half of
+the unfold's head: the owner's choice on 2026-11-01 between that and this
+section's first sketch, an open line with the barb at `base + half·across`,
+which is inside the curve ([C140](decisions.md#changes-since-draft-v2)). It
+starts at `base` because the curve stops there
+([`:226`](../src/Senbazuru/Render/Svg.hs#L226),
 [`:231`](../src/Senbazuru/Render/Svg.hs#L231)), where the filled head takes
 over, and a barb from `tip` alone would leave the shaft's last head-length
 undrawn. `HollowDoubleHead` is a stroked closed triangle. Neither hollow head
-sets `fill`, so the group's `fill="none"` holds.
+sets `fill`, so the group's `fill="none"` holds, and neither takes the curve's
+dash.
 
 ```haskell
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
@@ -1143,7 +1154,7 @@ decisions 67 to 69).
 | A1 | `stepPage t b g v x fs == fmap (gridOf g . map fst) (stepFigures t b v (map (\f -> (f, noteFor x)) fs))` (restated by S25, [C136](decisions.md#changes-since-draft-v2)) for both `x` on the quarter fixture, `bird-base-sequence.fold` and `StepsSpec`'s sheets, a wiring check that holds by construction while `stepPage` is `gridOf` over `stepFigures` with `noteFor` of its `Bool` (R-06-2). Beside it, on the quarter fixture under `top`, `inferNote` draws one `Arrow` on its first fold and `silentNote` none, `stepPage` draws its two arrows with `True` and none with `False`, and a frame skipped for having no geometry takes its note with it ([C131](decisions.md#changes-since-draft-v2)) | `stepPage` draws its page some other way, or with the other `Bool`'s note; `noteFor` ignores its `Bool`, which both sides of the equality use; a note draws what the other should; notes are matched by place to the frames left after skipping. A default leaking into `inferNote` or `silentNote`, e.g. `InferFoldLines`, shows on none of these fixtures, whose crease graphs never grow, so the PR adding a field draws both notes on a pair where that field would draw |
 | A2 | On the committed branch, `git diff --name-only --diff-filter=MD origin/main...HEAD -- test/golden/` prints nothing and the same command with `--diff-filter=A` lists exactly the new goldens below ([D16](decisions.md#d16-testing-and-acceptance); [09 §1.2](09-testing-and-acceptance.md#12-tracked-goldens-stay-byte-identical)). Both print nothing today (run 2026-09-15) | `SolidHead` emission reorders an attribute; a gutter appears without a caption; a golden is added that this table does not list |
 | A3 | `quarter-fold-steps.svg` and the pinned `bird-base-sequence-arrows.svg` stay byte-identical, with the by-hand `cmp` of `render --steps --arrows` on both multi-frame files in `examples/`, as [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages) sets out | presentation classification ([05](05-prd-library-additions.md)) fires on a real fold |
-| A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268) | a hollow head or loop is sized in model units |
+| A4 | Each head, body and glyph emits equal page bytes at model sizes 1 and 400, extending [`SvgSpec.hs:263-268`](../test/Senbazuru/Render/SvgSpec.hs#L263-L268), which compared only the lines holding `fill=`; restated by S11 to compare whole pages, since a hollow head has no such line ([C140](decisions.md#changes-since-draft-v2)) | a hollow head or loop is sized in model units |
 | A5 | `seenFrom` gives §4's table for the five named views and two gallery bases, and a roll of 1 radian changes nothing | `z > 0` is read as the reader's side |
 | A6 | Under `View (Just bottomUp) 0` the same notes draw `HollowHalfHead` where `top` draws `SolidHead`, with dashes swapped too | inversion reaches heads but not dashes |
 | A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
