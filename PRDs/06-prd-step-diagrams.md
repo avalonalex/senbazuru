@@ -238,7 +238,11 @@ then.
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) says. S22 settled the
   paper's as `PageRefused`, named by the step that ended at the state
   ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s falls to
-  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)), and `SurfaceError`'s to S5.
+  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)). S5 settled
+  `SurfaceError`'s: `placeOn` maps each by name to a `FoldError`, four of them
+  new, so it reaches a page as any `FoldError` does, and a refusal about the
+  later of two frames comes inside `InNextFrame`
+  ([C139](decisions.md#changes-since-draft-v2)).
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
   pair only. `stepFigures` never transforms a coordinate: frames arrive presented.
 
@@ -321,7 +325,9 @@ then.
 **Growing graphs**
 
 - **R-06-14.** For `InferArrows` and `InferArrowsAs`, `stepFigures` calls
-  `motionsBetween` when the graphs are equal and `motionsAcross` otherwise.
+  `motionsAcross` alone, which returns `motionsBetween` when the graphs are equal
+  (R-05-16): only `motionsAcross` decides whether two graphs are equal
+  ([C139](decisions.md#changes-since-draft-v2)).
 - **R-06-15.** Fold-here lines go on the figure before the move, at `before`
   positions, styled by the note's kind as seen, never by the crease's assignment.
 
@@ -750,7 +756,7 @@ A run's frames gain creases between figures. `motionsAcross` matches vertices by
 changes) and `creasesToCome` returns new creases at `before` positions; both are
 in [05](05-prd-library-additions.md) and decided in
 [D6](decisions.md#d6-crease-graphs-grow-between-frames). `motionsBetween` stays
-in use whenever graphs are equal (R-06-14), which keeps the 14 arrow-bearing
+in use, inside `motionsAcross`, whenever graphs are equal (R-06-14), which keeps the 14 arrow-bearing
 goldens structurally unchanged: all pass `motionsBetween` today. One behaviour
 changes from refusal to drawing: `render --steps --arrows` on a growing file
 with `senbazuru:material_coords`, refused today with `FramesDiffer`.
