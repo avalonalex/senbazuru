@@ -340,7 +340,9 @@ then.
 - **R-06-16.** For each moving record of a step, in order, `Render.Sequence`
   gives that record's arrows, with the kind of its move as written, from
   `motionsBetween` over its before surface under `displayBefore` and its after
-  surface under `displayAfter`. Those are the record's presentation composed
+  surface under `displayAfter`, each made a frame by `Sequence.Record`'s
+  `displayedFrame`, the function `writtenStates` shows its states by
+  ([C143](decisions.md#changes-since-draft-v2)). Those are the record's presentation composed
   with its anchor placement, before and after the move, which the record keeps
   as separate fields and applies to its unpresented surfaces
   ([D14](decisions.md#d14-material-consumption); [01
@@ -1237,7 +1239,7 @@ since #512 and is grouped above; test 2's page comes at M4
 
 | On | For |
 | --- | --- |
-| M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; which turn a `turn over` or `rotate` record was, `Presenting` ([C82](decisions.md#changes-since-draft-v2); below the table), though not its axis point, which comes from S18b ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
+| M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)), and `displayedFrame` showing a surface under one as a frame (S18a, [C143](decisions.md#changes-since-draft-v2)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; which turn a `turn over` or `rotate` record was, `Presenting` ([C82](decisions.md#changes-since-draft-v2); below the table), though not its axis point, which comes from S18b ([#640](https://github.com/avalonalex/senbazuru/issues/640)) |
 | [05](05-prd-library-additions.md) L16 | `fanCounts`, and stretches that keep the face edge they lie on, at M3 (§10) |
 | [05](05-prd-library-additions.md) | `motionsAcross`, `creasesToCome`, `fitRigid` and `Step` classification with the `Origami.Step` header rewrite ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 13, written out in [01 §4.13](01-architecture.md#413-srcsenbazuruorigamistephs30-34)) |
 | M0 ([10 §1](10-roadmap-risks-questions.md#1-milestones)) | Amended done-when of [#36](https://github.com/avalonalex/senbazuru/issues/36) (reflection as turn-over cannot be met) and #94 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7; [§10](decisions.md#10-corrections) items 2 and 3). Met 2026-10-27 by S0b's comments on [#36](https://github.com/avalonalex/senbazuru/issues/36#issuecomment-6458546164) and [#94](https://github.com/avalonalex/senbazuru/issues/94#issuecomment-6458546438) ([#635](https://github.com/avalonalex/senbazuru/issues/635)) |
