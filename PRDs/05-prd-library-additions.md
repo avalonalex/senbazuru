@@ -7,7 +7,7 @@ since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
 ([C139](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
 their face edge (R-05-52, `EdgeSpan`), in #667
 ([C137](decisions.md#changes-since-draft-v2)), and its fan counts (R-05-50,
-R-05-51, `fanCounts`, `CoverError`), in #PRNUM
+R-05-51, `fanCounts`, `CoverError`), in #671
 ([C141](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
