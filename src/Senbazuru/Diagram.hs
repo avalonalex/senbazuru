@@ -159,7 +159,8 @@ data ArrowHead
   = -- | A filled triangle.
     SolidHead
   | -- | The outline of half a head: the end of the curve, the tip, and one
-    -- barb on the side the arrow bows to, the outside of the curve.
+    -- barb on the side the arrow bows to, the outside of the curve, or, for
+    -- a straight arrow, on its left.
     HollowHalfHead
   | -- | The outline of a whole head, its back edge across the end of the
     -- curve.
