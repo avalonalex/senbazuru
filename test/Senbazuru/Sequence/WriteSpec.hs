@@ -39,7 +39,7 @@ import Test.Glb (Glb (..), parseGlb)
 import Test.Glb qualified as Glb
 import Test.Golden (goldenBytes, goldenText)
 import Test.Hspec
-import Test.SequenceExamples (blintz, quarterFold)
+import Test.SequenceExamples (blintz, creasedTwice, quarterFold)
 
 spec :: Spec
 spec = describe "writing a run as a sequence file" $ do
@@ -52,7 +52,7 @@ spec = describe "writing a run as a sequence file" $ do
       written sequence' = ran sequence' >>= writeSequence noFileHeader
       -- A run, and the states its file holds.
       grown = do
-        run <- right (ran growing)
+        run <- right (ran creasedTwice)
         file <- right (writeSequence noFileHeader run)
         pure (run, otherFrames file)
   quarter <- runIO (right (written quarterFold))
@@ -304,11 +304,6 @@ spec = describe "writing a run as a sequence file" $ do
       _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
       _ <- step "quarter" "Fold the top half down in front, onto the bottom." second
       pure ()
-    -- A line through two points says nothing of which side moves, so the
-    -- pre-crease names the paper it moves (otherwise SeedMissing).
-    growing = sequenceOf (header "A square creased twice" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
-      step_ "Crease the diagonal from the bottom-left corner to the top-right." (move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest))))
-      step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
     pairs states = zip states (drop 1 states)
     testTwoFirstStep = sequenceOf (header "A square folded in half" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
       _ <- step "half" "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))

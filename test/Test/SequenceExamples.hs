@@ -8,21 +8,24 @@
 -- and run. Three copies would be three chances for those tests to be about
 -- three slightly different sequences.
 --
--- Two sequences live here, both taken from the language's design so that a
--- test's output can be laid beside it: the 'blintz', from
+-- Two sequences live here taken from the language's design, so that a test's
+-- output can be laid beside it: the 'blintz', from
 -- @PRDs\/03-prd-embedded-dsl.md@, and the 'quarterFold', from
--- @PRDs\/04-prd-sequence-source-and-cli.md@.
+-- @PRDs\/04-prd-sequence-source-and-cli.md@. A third, 'creasedTwice', is a
+-- run whose crease pattern grows at both of its steps, which the writer's spec
+-- and the step's spec both read.
 module Test.SequenceExamples
   ( blintz,
     blintzCaptions,
     quarterFold,
+    creasedTwice,
   )
 where
 
 import Control.Monad (forM_)
 import Data.Text (Text)
 import Senbazuru.Sequence.Build
-import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Header (..), Line (..), Sequence)
+import Senbazuru.Sequence.Syntax (Compass (..), Corner (..), Header (..), Layers (..), Line (..), Move (..), Point (..), Sense (..), Sequence)
 
 -- | A /blintz/ folds the four corners of a square to its centre. This one then
 -- reopens the first corner, so that the sequence has a move that refers back
@@ -81,3 +84,13 @@ quarterFold = sequenceOf top $ do
       (header "A square folded into quarters" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (1 / 4))))
         { hClosing = Just "Folded into quarters."
         }
+
+-- | A plain square creased along its diagonal and then folded in half
+-- behind, anchored at (3/4, 1/4) so that neither step moves the anchor's
+-- paper. Each step adds creases, so no two of its three states have the same
+-- crease pattern. A line through two points says nothing of which side
+-- moves, so the pre-crease names the paper it moves.
+creasedTwice :: Sequence
+creasedTwice = sequenceOf (header "A square creased twice" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
+  step_ "Crease the diagonal from the bottom-left corner to the top-right." (move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest))))
+  step_ "Fold the left half behind, onto the right." (fold behind (LineOnto (edge West) (edge East) Nothing))
