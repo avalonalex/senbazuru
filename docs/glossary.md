@@ -43,6 +43,7 @@ For the ideas rather than the definitions, start with
 | **Valley arrow** | A fold arrow with a solid head: the paper is folded towards the reader. Every arrow senbazuru draws today has a solid head whatever its fold, since nothing yet works out an arrow's kind. `ValleyArrow` in `Senbazuru.Diagram.Style`. Seen from behind the paper, a valley fold is a mountain fold, so a page drawn from that side swaps the two. |
 | **Mountain arrow** | A fold arrow whose head is half a hollow head, its one barb on the outside of the curve: the paper is folded away from the reader. `MountainArrow`; nothing draws one yet. |
 | **Unfold arrow** | A fold arrow with a hollow head: paper opened out again, the same from either side of the paper. `UnfoldArrow`; nothing draws one yet. |
+| **Turn-over loop** | The mark that says to turn the model over: an arrow whose stem crosses the turn's axis, loops once and goes on across, drawn on the figure before the turn. `TurnOverLoop` in `Senbazuru.Diagram`; nothing draws one yet. |
 | **Layer order** | Which face is on top of which, wherever a folded model overlaps itself. Stored as `faceOrders`, or worked out by `Senbazuru.Origami.Stacking` when the file has none. A model usually has several valid ones — the crane has five. See [notes/taco-taco.md](notes/taco-taco.md) and [notes/several-stackings.md](notes/several-stackings.md). |
 | **Taco** | Two faces joined along an edge of a folded form that lie on the *same* side of it: the paper folded back on itself. Nothing may lie between them that runs across their fold line. |
 | **Tortilla** | Two faces joined along an edge that lie on *opposite* sides of it: the paper continuing flat across the line. Nothing may pass through it. |
@@ -161,7 +162,8 @@ needs each word exists.
 | --- | --- |
 | **Model space** | Coordinates as the FOLD file gives them. Mathematical convention: `y` increases upwards. |
 | **Page space** | SVG user units. Screen convention: `y` increases *downwards*. Every model-to-page transform flips `y`. |
-| **Two-unit rule** | Shape coordinates are in model units and are scaled to the page; stroke widths, dash lengths, arrowheads, type sizes and layer offsets are in page units and are not. See `Senbazuru.Diagram`. |
+| **Two-unit rule** | Shape coordinates are in model units and are scaled to the page; stroke widths, dash lengths, arrowheads, type sizes, glyph sizes and layer offsets are in page units and are not. See `Senbazuru.Diagram`. |
+| **Symbol** | A mark of a fixed size on the page at one point of the model, such as the turn-over loop (`Senbazuru.Diagram.Symbol`). Only its point is the model's: like a label's, it alone counts in a drawing's extent and moves when figures are laid out, and the mark around it is in page units. |
 | **Extent** | The model-space region a page should show. Stored on a `Diagram` rather than derived, so every step of a sequence draws at one scale. |
 | **Golden test** | A test pinning exact expected output in a committed file. Read the diff before accepting one. |
 | **glTF / GLB** | The 3D file format `export` writes: glTF 2.0, in its self-contained binary container (`.glb`). A JSON description of meshes and materials, plus a binary buffer of positions and triangle indices. Y is up, where FOLD's is z. |

@@ -763,8 +763,11 @@ and the same two sentences replace §4.16's.
 
 ### 4.19 `AGENTS.md:192-195` and `:372-376`
 
-This lands in the M3 PR adding `Fanned`
-([06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds), R-06-28).
+This lands in three M3 parts: `Symbol` with S13 of
+[#639](https://github.com/avalonalex/senbazuru/issues/639), which names it in the
+first sentence ([C145](decisions.md#changes-since-draft-v2)); `Fanned` with S14
+([06 §10](06-prd-step-diagrams.md#10-layers-fanned-from-their-folds), R-06-28);
+and the painting gotcha with S38 ([#644](https://github.com/avalonalex/senbazuru/issues/644)).
 
 Current (`AGENTS.md:192-195`): "`Arrow`, `Label` and `Offset` need both and are
 finished by the backend after projection." Replacement:

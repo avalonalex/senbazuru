@@ -192,7 +192,7 @@ has the rest.
 
 **Two unit systems, never mixed.** Shape *coordinates* are in model units;
 stroke *widths, dash lengths and displacements* are in page units and are never
-scaled. `Arrow`, `Label` and `Offset` need both and are finished by the backend
+scaled. `Arrow`, `Label`, `Offset` and `Symbol` need both and are finished by the backend
 after projection. Header of `Senbazuru.Diagram`; #63 tracks making it a type
 error. Sequences add *sheet lengths*, the units an author names paper in (the
 sheet box's longer side is 1), and *physical lengths*, which arrive with the
