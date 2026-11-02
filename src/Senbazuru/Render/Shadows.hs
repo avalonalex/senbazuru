@@ -55,7 +55,7 @@ import Senbazuru.Geometry.Polygon (clipConvex, isConvex, signedArea, subtractCon
 import Senbazuru.Geometry.V3 (V3 (..), modelHair, polygonNormal)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flat (yardsticks)
-import Senbazuru.Origami.Visible (Region (..), VisibleEdge (..), VisibleForm (..))
+import Senbazuru.Origami.Visible (Region (..), SheetEdge (..), VisibleEdge (..), VisibleForm (..))
 import Senbazuru.Render.Camera (Basis, basisForward, basisRight, basisUp, project)
 
 -- | A face's shadow. The ring is turned anticlockwise, and 'shadowFront' says
@@ -172,7 +172,10 @@ liftForm basis originalId seen =
   seen
     { formRegions = [r {regionFace = originalId (regionFace r), regionPieces = map (map liftPoint) (regionPieces r)} | r <- formRegions seen],
       formEdges = map liftEdge (formEdges seen),
-      formSheetEdges = [(fmap originalId owner, liftEdge edge) | (owner, edge) <- formSheetEdges seen]
+      -- The edge a stretch lies along keeps its vertex ids and its fractions:
+      -- the lifted frame numbers its vertices as the input did, and a linear
+      -- map takes a fraction of an edge to the same fraction of its image.
+      formSheetEdges = [e {sheetEdgeFace = originalId <$> sheetEdgeFace e, sheetEdgeLine = liftEdge (sheetEdgeLine e)} | e <- formSheetEdges seen]
     }
   where
     liftPoint (V3 x y _) = x *^ basisRight basis ^+^ y *^ basisUp basis

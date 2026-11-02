@@ -2,7 +2,9 @@
 
 Written 2026-09-15 against `568dcb6`, when nothing here was implemented. Built
 since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
-`flapStationaryFace`, in #344; and L5's `insideRing`, in #491. `flapPoseAt` and
+`flapStationaryFace`, in #344; L5's `insideRing`, in #491; and L16's
+stretches that keep their face edge (R-05-52, `EdgeSpan`), in #667
+([C137](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
 that commit, except those added on 2026-10-27, in the **Milestone** lines,
@@ -1383,7 +1385,11 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
   So 06 R-06-27 moves a stretch with its face without matching edges by tolerance.
   `formSheetEdges` has a second producer, `Render.Shadows.liftForm`
   ([`Shadows.hs:175`](../src/Senbazuru/Render/Shadows.hs#L175)), which must pass
-  the new fields through.
+  the new fields through. Built by S10 of [#637](https://github.com/avalonalex/senbazuru/issues/637)
+  ([C137](decisions.md#changes-since-draft-v2)): each element of `formSheetEdges` is a `SheetEdge`, whose
+  `sheetEdgeSpan` is an `EdgeSpan`, the edge's two vertex ids as
+  `edges_vertices` lists them and the two fractions, or `Nothing` where the sheet
+  named has no edge along the stretch.
 
 **Acceptance.**
 
@@ -1395,7 +1401,11 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 
 **Outputs unchanged.** `nearness` and `visibleForm` keep their answers
 (`orderedCover` is L9's, at M4); `formSheetEdges`' stretches gain fields and
-keep their ends, through `liftForm` too.
+keep their ends, through `liftForm` too, but for a face with two edges along one
+line, a straight corner, which tracing leaves where one crease ends on another:
+its stretch is now one per edge, since an `EdgeSpan` names one edge, and the
+offset view, which draws `formSheetEdges`, draws two abutting strokes there. No
+golden has one ([C137](decisions.md#changes-since-draft-v2)).
 
 **Milestone.** M3, before L9, which shares its point cover at M4.
 

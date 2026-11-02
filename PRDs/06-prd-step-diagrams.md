@@ -1302,11 +1302,12 @@ half turn, would have drawn a mark the author did not write.
   written (in `Render.Svg` until S25a,
   [C135](decisions.md#changes-since-draft-v2)); the guard is **UNVERIFIED**, and
   the M3 PR tries it on that 29-figure page.
-- **What `Origami.Visible` keeps.** A stretch carries only its two ends and the
-  strongest assignment of the creases along it, so moving it as its face moves
-  needs the face edge it lies on, which 05 L16 adds. Where a top face's fold lies
-  along a buried sheet's border, as 15 of the crane's 99 folds do, the stretch is
-  drawn at border weight while that border fans away.
+- **What `Origami.Visible` keeps.** Each stretch of `formSheetEdges` names the
+  face edge it lies on and how far along it, by fractions (05 R-05-52,
+  [C137](decisions.md#changes-since-draft-v2)), so R-06-27 moves it with its face without matching edges by
+  tolerance. Where a top face's fold lies along a buried sheet's border, as 15
+  of the crane's 99 folds do, the stretch names the fold and is drawn at border
+  weight while that border fans away.
 - **Hidden lines shown.** Visibility is judged on the model as it lies. Once
   faces move by different amounts, a stretch's end that met another face's edge
   leaves it, and the full-weight line runs over paper painted in front of it: on

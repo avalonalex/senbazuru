@@ -1,6 +1,7 @@
 -- | Small spatial fixtures whose visible areas can be calculated by hand.
 module Senbazuru.Render.ProjectedSpec (spec) where
 
+import Control.Monad (forM_)
 import Data.Either (isLeft)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
@@ -10,6 +11,7 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (signedArea)
 import Senbazuru.Geometry.V3 (V3 (..))
+import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Visible
 import Senbazuru.Render.Camera
 import Senbazuru.Render.Projected
@@ -18,6 +20,23 @@ import Test.QuickCheck
 
 spec :: Spec
 spec = describe "projected open-fold visibility" $ do
+  -- R-05-52 through the lift: a stretch keeps the edge it lies along and its
+  -- fractions, and they still find its ends once the form is put on the
+  -- camera plane, since projection is linear. Red if liftForm dropped the
+  -- spans.
+  it "keeps the edge each stretch lies along, and its fractions, through the lift" $
+    forM_ [(topDown, panels [rectangle 0 10 0 1 const, rectangle 0 1 0 1 (\_ _ -> 2)]), (isometric, panels [rectangle 0 1 0 1 (\_ _ -> 0), rectangle 0 1 0 1 (\_ _ -> 1)])] $ \(basis, fr) -> do
+      seen <- visible basis fr []
+      let onPlane (V3 x y z) = let v = V3 x y z in (dot v (basisRight basis) *^ basisRight basis) ^+^ (dot v (basisUp basis) *^ basisUp basis)
+          at = M.fromList (zip (map VertexId [0 ..]) [onPlane (V3 x y z) | [x, y, z] <- verticesCoords fr])
+          pointOf sp t = case (M.lookup (spanFrom sp) at, M.lookup (spanTo sp) at) of
+            (Just p, Just q) -> p ^+^ (t *^ (q ^-^ p))
+            _ -> V3 (0 / 0) 0 0
+          spans = [(e, sp) | e <- formSheetEdges seen, Just sp <- [sheetEdgeSpan e]]
+      spans `shouldSatisfy` (not . null)
+      forM_ spans $ \(e, sp) -> do
+        norm (pointOf sp (spanStart sp) ^-^ visibleFrom (sheetEdgeLine e)) `shouldSatisfy` (< 1e-9)
+        norm (pointOf sp (spanEnd sp) ^-^ visibleTo (sheetEdgeLine e)) `shouldSatisfy` (< 1e-9)
   it "orders sloping faces over their overlap, not by their centres" $ do
     let fr = panels [rectangle 0 10 0 1 const, rectangle 0 1 0 1 (\_ _ -> 2)]
     seen <- visible topDown fr []
