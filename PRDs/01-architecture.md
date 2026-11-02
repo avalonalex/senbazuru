@@ -265,10 +265,11 @@ exception. The new arrows do not widen it:
   [06](06-prd-step-diagrams.md)). The record's `MoveKind`
   ([`Record.hs:260`](../src/Senbazuru/Sequence/Record.hs#L260)) does not hold
   that kind: `Turn` covers a fold and its unfold alike, and `Precrease` carries
-  no sense. The sense as written survives only in the move `recordOrigin` keeps,
-  and `Sequence.Record` exports no `Sense`, `PageAxis` or `Turning`; how a
-  renderer reads them is for S17
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) to decide.
+  no sense. S17 ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C138](decisions.md#changes-since-draft-v2))
+  settled how a renderer reads it: `Sequence.Record` gives `recordSense`, the
+  sense as written, which is as the reader sees it, and `recordUnfolds`, and
+  re-exports `Sense`, `PageAxis` and `Turning`, so a renderer needs no other
+  `Sequence.*` module.
 
 `Render.Gltf` still consumes `Origami.Surface`
 ([architecture.md:262-268](../docs/architecture.md)).

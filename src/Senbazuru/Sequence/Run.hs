@@ -211,7 +211,7 @@ import Senbazuru.Origami.Surface (Surface, surfaceFrame, surfaceFromFolded)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
 import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
-import Senbazuru.Sequence.Record
+import Senbazuru.Sequence.Record hiding (PageAxis (..), Sense (..), Turning (..))
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.SheetLengths (inSheetLengths)
 import Senbazuru.Sequence.Syntax (Amount (..), Header (..), Layers (..), Line (..), Located (..), Name, PageAxis (..), Point, Sense (..), SheetSource (..), Side (..), Start (..), Turning (..))
