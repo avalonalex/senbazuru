@@ -471,16 +471,17 @@ spec = do
       it "counts 0 at a vertex where no face has a corner" $ \_ ->
         fanCounts True bareSquare [] `shouldBe` Right [(VertexId i, 0) | i <- [0 .. 3]]
 
-      -- The crane from each side. Binned 0, 1–6 and 7–15, these are the counts
-      -- 06 §10 gives from the prototype that worked out the helmet's; the
-      -- counts within each bin are this code's own, pinned so that a change
-      -- shows. This is also what holds the merging of sides to a hair rather
-      -- than to exact equality. Two sides are compared by how far the far end
-      -- of the longer lies from the line of the shorter, which magnifies
-      -- rounding by the ratio of their lengths: at vertex 1, its coordinates
-      -- rounded by about 8e-14, a side 0.5 long lies 8.6e-13 off one 0.04 long.
-      -- Merged only within 1e-13, the two come apart and vertex 1 is refused,
-      -- faces 1 and 49 over one wedge with no order between them.
+      -- The crane from each side. From +z, binned 0, 1–6 and 7–15, these are
+      -- the counts 06 §10's table gives from the prototype that worked out the
+      -- helmet's; the counts within each bin, and every count from −z, are
+      -- this code's own, pinned so that a change shows. This is also what holds
+      -- the merging of sides to a hair rather than to exact equality. Two
+      -- sides are compared by how far the far end of the longer lies from the
+      -- line of the shorter, which magnifies rounding by the ratio of their
+      -- lengths: at vertex 1, its coordinates rounded by about 8e-14, a side
+      -- 0.5 long lies 8.6e-13 off one 0.04 long. Merged only within 1e-13, the
+      -- two come apart and vertex 1 is refused, faces 1 and 49 over one wedge
+      -- with no order between them.
       it "counts the crane's sheets from either side" $ \_ -> do
         (_, crane) <- framed True "crane"
         fmap histogram (counts True crane)
