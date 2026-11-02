@@ -9,9 +9,10 @@ edges. The number it needs is a fact about one *vertex* seen from one side, its
 viewer over that corner, the least of them.
 
 The tempting number is the [layer number](layer-numbers.md) the offset view
-already has, how many sheets deep a face is. It is the wrong one, because it is
-about a whole face and is decided anywhere on it. A face half under one flap is
-one sheet deep everywhere, including at corners the flap is nowhere near.
+already has, read from the other side: the longest chain of sheets *over* a
+face rather than under it. It is the wrong one, because it is about a whole face
+and is decided anywhere on it. A flap covering half of a face's corner makes the
+face as deep as the flap, though the other half of that corner is bare.
 
 The helmet base after its second step shows it. Its state 2, seen from above,
 as `helmet.foldseq`'s run writes it (`file_frames[2]`):
@@ -19,12 +20,16 @@ as `helmet.foldseq`'s run writes it (`file_frames[2]`):
 | Vertex | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Fan count | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 |
-| Least layer number of a face cornered there | 0 | 3 | 0 | 2 | 0 | 0 | 0 | 1 | 1 |
+| Least layer number, read from below, of a face cornered there | 0 | 3 | 0 | 2 | 0 | 0 | 0 | 1 | 1 |
 
-Vertex 1 is a corner of face 0 alone, three layers deep because of the chain
-below it elsewhere, yet only one sheet lies over that corner. Vertex 3 has
-nothing over it at all. Moved by layer numbers, the fan would pull those two
-corners away from paper that lies flat on them.
+Three vertices lie at (1, 0). Vertex 0 is a corner of a flap of two sheets,
+faces 1 and 5; vertex 1 is a corner of face 0, the bottom sheet; and vertex 3 a
+corner of face 4, the sheet lying on it. The flap's fold runs out of that point
+along x + y = 1 and covers only the half of each corner between that line and
+the bottom edge. Over that half, face 0 has three sheets on it and face 4 has
+two, which are their layer numbers read from below. Over the other half only
+face 4 lies on face 0, and nothing lies on face 4. Moved by layer numbers, the
+fan would pull vertices 1 and 3 away from paper that lies flat on them.
 
 So `Senbazuru.Origami.Visible.fanCounts` asks about directions out of the
 vertex, not about faces. The sides through the vertex cut the directions into
@@ -36,4 +41,5 @@ faces or neither. Its header has the rest.
 The first row is pinned by `stack test --ta '--match "the layers over each
 vertex"'`. The second row is the least, over the faces with a corner at each
 vertex, of `Senbazuru.Origami.Layers.layerDepths (V3 0 0 (-1))`, computed on
-2026-11-01.
+2026-11-01. Its argument points towards the viewer, here one below the paper,
+so each face's number is the longest chain of sheets above it.

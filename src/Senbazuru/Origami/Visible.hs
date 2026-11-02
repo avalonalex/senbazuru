@@ -140,16 +140,25 @@
 --
 -- The sides of the ranges are merged when they lie within a hair of one
 -- another, for the reason the edges are gathered into tracks: folded paper
--- brings edges onto one line in all but the last bits, and comparing directions
--- exactly cuts slivers of wedge under no face at all. Without the merge the
--- helmet base's later states are refused.
+-- brings edges onto one line in all but the last bits. Compared exactly, two
+-- sides that are one line cut a sliver of wedge between them, and the sliver
+-- lies under some of the faces along that line and not the others. It can leave
+-- out a face that is really over a corner, or hold two faces that never overlap
+-- and so have no order. Without the merge the helmet base's run is refused at
+-- its states 1 and 2, two faces with no order between them over a sliver at its
+-- centre, and its last state, seen from above, is counted wrong without a word:
+-- 1 sheet at vertex 1 rather than 3, and none at vertex 7 rather than 1.
 --
 -- The faces over one wedge are in one stack, so every pair of them must have an
 -- order and the orders must not run in a circle, which is the layer solver's
 -- @Acyclic@ rule. A pair with no order is 'UnorderedCover', since a missing
 -- order read as \"neither is nearer\" would undercount, and a circle is
--- 'CyclicCover'. A twist's three flaps lying in a circle are no obstacle, for
--- the reason the regions give: no wedge lies under all three.
+-- 'CyclicCover'. Every wedge at the vertex is checked, not only the wedges of a
+-- corner, so two faces overlapping there with no order are refused even where
+-- neither lies over a corner and no count would change: the rule is about the
+-- paper at the vertex, and a reader can check it without working out which
+-- wedges belong to which corner. A twist's three flaps lying in a circle are no
+-- obstacle, for the reason the regions give: no wedge lies under all three.
 --
 -- == What this does not do
 --
@@ -187,7 +196,7 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', minimumBy, sort)
 import Data.Map.Strict qualified as M
-import Data.Maybe (catMaybes)
+import Data.Maybe (mapMaybe)
 import Data.Ord (comparing)
 import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError (..))
@@ -860,13 +869,14 @@ fanCounts fromAbove fr orders = do
   traverse (countAt sheet nearer) (IM.toList (sheetPositions sheet))
 
 -- | The count at one vertex: the least cover over the faces with a corner
--- there, or 0 where none has one.
+-- there, or 0 where none has one, once the faces over every wedge there are
+-- found to be one stack.
 countAt :: Sheet -> (FaceId -> FaceId -> Bool) -> (Int, V2) -> Either CoverError (VertexId, Int)
 countAt sheet nearer (i, p) = do
-  covers <- traverse coverOf cornered
+  mapM_ (inOneStack nearer p . facesOver) wedges
   pure
     ( VertexId i,
-      case catMaybes covers of
+      case mapMaybe coverOf cornered of
         [] -> 0
         c : cs -> foldl' min c cs
     )
@@ -881,17 +891,13 @@ countAt sheet nearer (i, p) = do
 
     -- The fewest faces nearer than this one over any wedge of its corner. A
     -- ring too small to have a corner covers nothing and has no say.
-    coverOf f = case lookup f over of
-      Nothing -> Right Nothing
-      Just cone -> do
-        counts <- traverse (nearerOver f) [facesOver d | d <- wedges, inCone cone d]
-        pure . Just $ case counts of
-          [] -> 0
-          c : cs -> foldl' min c cs
+    coverOf f = do
+      cone <- lookup f over
+      pure $ case [nearerOver f (facesOver d) | d <- wedges, inCone cone d] of
+        [] -> 0
+        c : cs -> foldl' min c cs
 
-    nearerOver f faces = do
-      inOneStack nearer p faces
-      pure (length [g | g <- faces, g /= f, nearer g f])
+    nearerOver f faces = length [g | g <- faces, g /= f, nearer g f]
 
 -- | That the faces over one wedge are one stack: every pair ordered, and the
 -- orders running in no circle. With every pair ordered, a circle through any

@@ -471,11 +471,16 @@ spec = do
       it "counts 0 at a vertex where no face has a corner" $ \_ ->
         fanCounts True bareSquare [] `shouldBe` Right [(VertexId i, 0) | i <- [0 .. 3]]
 
-      -- The crane, worked out by the same prototype as the helmet, from each
-      -- side. Its folded coordinates carry about 8e-14 of rounding, so this is
-      -- what holds the merging of sides to a hair rather than to exact
-      -- equality: compared within 1e-13 of each other, two sides come apart and
-      -- vertex 49 is refused.
+      -- The crane from each side. Binned 0, 1–6 and 7–15, these are the counts
+      -- 06 §10 gives from the prototype that worked out the helmet's; the
+      -- counts within each bin are this code's own, pinned so that a change
+      -- shows. This is also what holds the merging of sides to a hair rather
+      -- than to exact equality. Two sides are compared by how far the far end
+      -- of the longer lies from the line of the shorter, which magnifies
+      -- rounding by the ratio of their lengths: at vertex 1, its coordinates
+      -- rounded by about 8e-14, a side 0.5 long lies 8.6e-13 off one 0.04 long.
+      -- Merged only within 1e-13, the two come apart and vertex 1 is refused,
+      -- faces 1 and 49 over one wedge with no order between them.
       it "counts the crane's sheets from either side" $ \_ -> do
         (_, crane) <- framed True "crane"
         fmap histogram (counts True crane)
@@ -494,6 +499,27 @@ spec = do
           length dropped `shouldBe` length (faceOrders st3) - 1
           fanCounts True st3 dropped `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 4) (M.findWithDefault (V2 9 9) (VertexId 0) at))
           fanCounts False st3 dropped `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 4) (M.findWithDefault (V2 9 9) (VertexId 0) at))
+
+        -- Two strips crossing with no order between them, and a square under
+        -- both whose corner lies inside the crossing. Neither strip has a
+        -- corner there, so the unordered pair never includes the face being
+        -- counted. Red if only pairs with that face were checked, which counts
+        -- the square's corner 2 from above and every vertex 0 from below.
+        it "refuses an unordered pair over another face's corner" $ \_ ->
+          forM_ [True, False] $ \side ->
+            fanCounts side crossedStrips (faceOrders crossedStrips)
+              `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 1) (V2 0.5 0.5))
+
+        -- Two strips overlapping with no order between them at a square's
+        -- corner, on the side away from the square: neither lies over a
+        -- corner there, so no count would change. Refused all the same, since
+        -- the faces over every wedge at a vertex are one stack; with the order
+        -- given, every vertex counts 0. Red if only the wedges of a corner were
+        -- checked.
+        it "refuses an unordered pair over a wedge no corner lies in" $ \_ ->
+          forM_ [True, False] $ \side -> do
+            fanCounts side stripsBesideACorner [] `shouldBe` Left (UnorderedCover (FaceId 1) (FaceId 2) (V2 0 0))
+            counts side stripsBesideACorner {faceOrders = [FaceOrder (FaceId 1) (FaceId 2) Above]} `shouldBe` Right (replicate 12 0)
 
         -- Three triangles on top of one another, each over the next and the
         -- last over the first. Seen from below the circle runs the other way.
@@ -546,6 +572,32 @@ squareOnSquare os =
       edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]],
       edgesAssignment = replicate 8 Border,
       faceOrders = os
+    }
+
+-- | A horizontal strip, face 0, and a vertical strip, face 1, crossing over the
+-- unit square with no order between them, and a unit square, face 2, under
+-- both, its corner (0.5, 0.5) inside the crossing.
+crossedStrips :: Frame
+crossedStrips =
+  emptyFrame
+    { verticesCoords = [[-1, 0], [2, 0], [2, 1], [-1, 1], [0, -1], [1, -1], [1, 2], [0, 2], [0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5]],
+      facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7], map VertexId [8, 9, 10, 11]],
+      edgesVertices = [(VertexId (4 * k + a), VertexId (4 * k + b)) | k <- [0, 1, 2], (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0)]],
+      edgesAssignment = replicate 12 Border,
+      faceOrders = [FaceOrder (FaceId 0) (FaceId 2) Above, FaceOrder (FaceId 1) (FaceId 2) Above]
+    }
+
+-- | A unit square, face 0, its corner at the origin, and two strips, faces 1
+-- and 2, one along each side of that corner on the far side from the square,
+-- overlapping each other just below and left of it. No face but the square
+-- has a corner at the origin, and its corner is the quarter the strips leave.
+stripsBesideACorner :: Frame
+stripsBesideACorner =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [-3, -1], [2, -1], [2, 0], [-3, 0], [-1, -3], [0, -3], [0, 2], [-1, 2]],
+      facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7], map VertexId [8, 9, 10, 11]],
+      edgesVertices = [(VertexId (4 * k + a), VertexId (4 * k + b)) | k <- [0, 1, 2], (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0)]],
+      edgesAssignment = replicate 12 Border
     }
 
 -- | A unit square with no faces.
