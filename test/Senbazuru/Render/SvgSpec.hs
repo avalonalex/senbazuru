@@ -133,10 +133,10 @@ headLine = maybe "" fst . unsnocLines
       [] -> Nothing
 
 -- | A turn-over loop of the default theme's ink, 40 page units long, at the
--- middle of a square model of the given size, its axis given at that size.
+-- middle of a square model of the given size, its axis as given.
 loopPage :: Page -> Double -> V2 -> Text
-loopPage page size (V2 ax ay) =
-  renderSvg page (diagramWithExtent (Box (V2 0 0) (V2 size size)) [Symbol (solid (Colour "#1a1a1a") 1.8) 40 (V2 (0.5 * size) (0.5 * size)) (TurnOverLoop (V2 (ax * size) (ay * size)))])
+loopPage page size axis =
+  renderSvg page (diagramWithExtent (Box (V2 0 0) (V2 size size)) [Symbol (solid (Colour "#1a1a1a") 1.8) 40 (V2 (0.5 * size) (0.5 * size)) (TurnOverLoop axis)])
 
 -- | Each path's points, as its @d@ attribute lists them, letters dropped.
 pathPointsOf :: Text -> [[V2]]
@@ -448,14 +448,16 @@ spec = do
             _ -> 0
       map side heads `shouldBe` replicate 8 (-1)
 
-    -- 06's A4 for the loop: the same whole page at model sizes 1 and 400,
-    -- each axis given at the model's own scale, so neither the model's size
-    -- nor the axis vector's length can show. Red if the loop's size came from
-    -- the page transform, as it would if its axis were mapped through the
-    -- transform and its length kept.
+    -- 06's A4 for the loop: the same whole page at model sizes 1 and 400.
+    -- Only the axis's direction counts, so at size 400 the axis is given both
+    -- as it is and 400 times longer, and both pages equal size 1's. Red if
+    -- the loop's size came from the page transform: from its scale, or from
+    -- the axis mapped through it with its length kept, which the axis as it
+    -- is catches, being 400 times shorter on that page. Red too if the size
+    -- came from the axis's own length, which the longer axis catches.
     it "draws a turn-over loop the same on the page however big the model is" $
       forM_ [V2 0 1, V2 1 1, V2 0.3 0.7] $ \axis ->
-        (axis, loopPage testPage 1 axis) `shouldBe` (axis, loopPage testPage 400 axis)
+        (axis, loopPage testPage 400 axis, loopPage testPage 400 (400 *^ axis)) `shouldBe` (axis, loopPage testPage 1 axis, loopPage testPage 1 axis)
 
     -- The loop lies across its axis as the page shows it. TurnOverLoop (V2 1 1)
     -- names an axis running up and to the right, y up as the model's is, so
@@ -476,13 +478,14 @@ spec = do
         other -> expectationFailure ("expected a stem and a head, got " <> show other)
 
     -- On a page whose margins are wider than half of it, the drawing comes out
-    -- turned round, a half turn, and the loop turns with it: an axis up the
-    -- model is down that page. Red if the axis's y were always negated, rather
-    -- than turned by the signs of the page's scales.
+    -- turned round, a half turn, and the loop turns with it: an axis up and to
+    -- the right on the model is down and to the left on that page. Red if the
+    -- axis's y were always negated, or its x never, rather than both turned by
+    -- the signs of the page's scales.
     it "turns the loop with a drawing the page turns round" $
-      case pathPointsOf (loopPage testPage {pageMargin = 150} 1 (V2 0 1)) of
+      case pathPointsOf (loopPage testPage {pageMargin = 150} 1 (V2 1 1)) of
         [tail' : _ : _ : _ : _ : _ : top : _, tip : _] ->
-          let V2 _ ty = top ^-^ (0.5 *^ (tail' ^+^ tip)) in ty `shouldSatisfy` (> 0)
+          let V2 tx ty = top ^-^ (0.5 *^ (tail' ^+^ tip)) in (tx < 0, ty > 0) `shouldBe` (True, True)
         other -> expectationFailure ("expected a stem and a head, got " <> show other)
 
     -- Only the axis's direction counts: a huge vector keeps it, and a vector
