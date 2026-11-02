@@ -39,10 +39,11 @@
 -- keeps its model coordinates, and the nudge is added after they have been
 -- scaled.
 --
--- 'Arrow' and 'Label' need both units too: an arrow's curve is in model units
--- and its head's size in page units, and a label is a model-space point with a
--- page-unit type size. All three are finished by the backend /after/
--- projection, which is the only place both units are in scope. That is what
+-- 'Arrow', 'Label' and 'Symbol' need both units too: an arrow's curve is in
+-- model units and its head's size in page units, a label is a model-space
+-- point with a page-unit type size, and a symbol is a page-unit mark at one
+-- model-space point. All four are finished by the backend /after/ projection,
+-- which is the only place both units are in scope. That is what
 -- lets "Senbazuru.Diagram.Layout" combine figures by shifting their
 -- coordinates without recomputing how anything is inked.
 module Senbazuru.Diagram
@@ -55,6 +56,7 @@ module Senbazuru.Diagram
     Shape (..),
     ArrowPath (..),
     ArrowHead (..),
+    Glyph (..),
     mapShapePoints,
     shapePoints,
     shapesBounds,
@@ -242,6 +244,27 @@ data Shape
     -- shape inside and leaves the nudge alone, exactly as it leaves a stroke
     -- width alone.
     Offset !V2 !Shape
+  | -- | A mark of a fixed size on the page at one model-space point: its
+    -- stroke, its size in __page units__, the point, and which mark.
+    --
+    -- The fourth shape to need both units, and the one whose page-unit part
+    -- is its whole geometry. A turn-over loop sized to the model would change
+    -- its printed size with the number of columns a page has; what it has to
+    -- be is the same size in print whatever the model measures, so only the
+    -- point it stands at is the model's.
+    Symbol !Stroke !Double !V2 !Glyph
+  deriving stock (Eq, Show)
+
+-- | The marks a 'Symbol' draws. A newtype while it has one, which the slices
+-- adding the edge-on, rotate and repeat marks make a data type again.
+newtype Glyph
+  = -- | The loop that says \"turn the model over\": an arrow whose stem
+    -- crosses the turn's axis at the symbol's point, loops once, and goes on
+    -- across. The vector is the axis's direction as the page shows it, in
+    -- model axes, so @y@ up; only its direction counts, and the loop rises on
+    -- the side it points to. Whoever places the loop points that side into
+    -- its figure, so the loop never lies across a neighbour.
+    TurnOverLoop V2
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
@@ -259,6 +282,9 @@ shapePoints = \case
   -- that grew to admit it would rescale the whole drawing because two layers
   -- were stepped apart.
   Offset _ s -> shapePoints s
+  -- The point alone: the mark around it is in page units, as an Offset's
+  -- nudge is, and a page that grew to admit it would rescale the drawing.
+  Symbol _ _ p _ -> [p]
 
 -- | Move every model-space point of a shape.
 --
@@ -279,6 +305,10 @@ mapShapePoints f = \case
           arrowTo = f (arrowTo a)
         }
   Offset v s -> Offset v (mapShapePoints f s)
+  -- The point moves, and a turn-over loop's axis does not, which is right only
+  -- because the one caller, laying figures out on a page, only shifts them; a
+  -- caller that turned a figure would have to turn the axis too.
+  Symbol s size p glyph -> Symbol s size (f p) glyph
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.

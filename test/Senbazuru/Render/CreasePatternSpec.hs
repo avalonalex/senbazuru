@@ -104,6 +104,7 @@ shapeKinds theme notation fr =
       Fill _ _ -> "fill"
       Polyline _ _ -> "line"
       Arrow _ -> "arrow"
+      Symbol {} -> "symbol"
       Label {} -> "label"
       -- Reported as whatever it wraps. Where a shape sits is a separate
       -- question from what it is, and the tests below that care ask about the
@@ -391,7 +392,8 @@ spec = do
     let square = diagramWithExtent (Box (V2 0 0) (V2 1 1)) []
         motion a b = Motion {motionFaces = [], motionCreases = [], motionFrom = a, motionTo = b}
         arrowsIn = length . filter isArrow . diagramShapes
-        isArrow = \case Arrow _ -> True; _ -> False
+        -- A turn-over loop is an arrow to look at and not one here (06 R-06-7).
+        isArrow = \case Arrow _ -> True; Symbol {} -> False; _ -> False
 
     it "adds one arrow per motion, after everything else" $ do
       let d = withArrows defaultTheme topDown [motion (V3 0.25 0.5 0) (V3 0.75 0.5 0)] square

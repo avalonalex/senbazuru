@@ -236,6 +236,8 @@ labelsOf d = mapMaybe text (diagramShapes d)
     text = \case
       Label _ _ _ t -> Just (filter (/= '"') (show t))
       Offset _ shape -> text shape
+      -- A mark has no words (06 R-06-7).
+      Symbol {} -> Nothing
       _ -> Nothing
 
 arrowsOf :: Diagram -> Int
