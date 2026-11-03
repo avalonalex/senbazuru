@@ -13,7 +13,7 @@ import Senbazuru.Fold.Query (Face (..))
 import Senbazuru.Fold.Types
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Stacking (solveStacking)
-import Senbazuru.Render.Camera (topDown, turnedBy)
+import Senbazuru.Render.Camera (bottomUp, topDown, turnedBy)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Parse (parseSequence)
@@ -30,25 +30,30 @@ spec = do
     -- to (1/2, 0) and its right edge from (1, 1/2) to (1, 1); both stretches
     -- end at face 1's edge, halfway along, where they move 0.75.
     --
-    -- Fanned, the bottom end moves left and down by 0.75 / √2 each way while
-    -- face 1 stays put, so it leaves face 1's left edge by 0.75 / √2 and the
-    -- edge's faint continuation shows. The right end moves into face 1, which
+    -- Drawn at 100 page units per sheet length, the bottom end moves left and
+    -- down by c = 0.75 / √2 each way while face 1 stays put. The edge from it
+    -- to the fanned corner (1, 0) runs 50 − c across and c down, and reaches
+    -- face 1's left side after c across, so the line stops c √(1 + (c / (50 −
+    -- c))²) short, a hair more than c. The right end moves into face 1, which
     -- paints over it. Red if the gap were taken from the true end, which
-    -- gives 0 for both, or if the faces painted earlier counted as covering.
-    it "finds where a stretch end comes apart from the paper it met" $ do
+    -- gives 0 for both, or if only faces painted earlier counted as covering,
+    -- which finds no end at all.
+    it "finds where a line stops short of the paper it met" $ do
       fig <- either (fail . show) pure (figureOf topDown cornerCovered)
       let ends = metEnds fig
+          c = 0.75 / sqrt 2
       map metCovers ends `shouldBe` [[FaceId 1], [FaceId 1]]
       map metSheet ends `shouldBe` [FaceId 0, FaceId 0]
       sort (map (gapAt fig 100) ends) `shouldSatisfy` \case
-        [covered, gap] -> covered == 0 && abs (gap - 0.75 / sqrt 2) < 1e-9
+        [covered, gap] -> covered == 0 && abs (gap - c * sqrt (1 + (c / (50 - c)) ^ (2 :: Int))) < 1e-9
         _ -> False
 
     -- The square's visible boundary runs from (0, 0), which does not move,
     -- through (1/2, 0) and (1, 1/2), which move 0.75, to (1, 1) and (0, 1),
     -- which do not. Face 1 is on top and does not move at all. Red if a
-    -- corner of the visible paper inside the face, (1/2, 1/2), were moved,
-    -- or if a face whose paper does not move were reported.
+    -- corner were measured along a side it does not lie on, which moves (0, 0)
+    -- by corner (1, 0)'s 1.5, or if a face whose paper does not move were
+    -- reported.
     it "measures how far the visible paper moves" $ do
       fig <- either (fail . show) pure (figureOf topDown cornerCovered)
       case movedPaper fig of
@@ -61,9 +66,9 @@ spec = do
   beforeAll loadCrane $ do
     describe "the folded crane" $ do
       -- 06 Risks quotes the prototype: on the crane drawn 56.6 page units
-      -- per sheet length, face 61 turns inside out; at 33.8, faces 24, 56 and
-      -- 61 do and face 27 crosses itself. These are the scales `render
-      -- --steps` draws six and ten rows of three figures at. Red if the move
+      -- per sheet length, face 61 turns inside out; at 33.8, three faces do
+      -- and one crosses itself, here faces 24, 56 and 61, and 27. These are
+      -- the scales `render --steps` draws six and ten rows of three figures at. Red if the move
       -- were not capped at 6 sheets, which gives six faces at 56.6, or ran the
       -- other way, which gives nine.
       it "turns the faces inside out that the prototype found" $ \crane -> do
@@ -76,7 +81,7 @@ spec = do
       -- 'insideOutBelow' gives, the face is inside out or crossed; a hair
       -- above, it is not inside out. Red if the threshold's sign or either
       -- area were taken the wrong way.
-      it "gives the scale below which each face turns inside out" $ \crane -> do
+      it "gives the scale below which each face's outline winds the other way" $ \crane -> do
         fig <- either (fail . show) pure (figureOf topDown crane)
         let thresholds = [(face, s) | face <- figureFaces fig, Just s <- [insideOutBelow fig face]]
         length thresholds `shouldSatisfy` (> 10)
@@ -86,8 +91,9 @@ spec = do
 
       -- 06 Risks: 7 faces have visible paper that moves, face 10's by 2.9
       -- page units, the point 0.6488 of the way along edge 0–13, whose ends
-      -- count 0 and 3 sheets. Red if the corners of visible paper inside a
-      -- face were moved as well, which gives 4.16.
+      -- count 0 and 3 sheets. Red if a corner were measured along a side of
+      -- its face it does not lie on, which gives 4.16, face 10's vertex 15
+      -- along its side 13–0.
       it "moves the visible paper of seven faces, at most 2.92 page units" $ \crane -> do
         fig <- either (fail . show) pure (figureOf topDown crane)
         let moved = movedPaper fig
@@ -107,18 +113,40 @@ spec = do
         maximum (map borderFoldMismatch folds) `shouldSatisfy` (\m -> abs (m - 9) < 1e-9)
         (length along, total) `shouldBe` (15, 99)
 
-      -- From above, two stretch ends come apart from the paper they met;
-      -- turned 180°, the fan runs the other way across the model, and face
-      -- 10's mountain edge, which from above runs on under face 1, leaves it
-      -- by about 2 page units. Red if the turn were ignored.
-      it "finds the ends that come apart, from above and turned round" $ \crane -> do
+      -- From above, two lines stop short of the paper they met; turned 180°,
+      -- the fan runs the other way across the model, and face 10's mountain
+      -- edge, which from above runs on under face 1, stops 3.67 page units
+      -- short of it. Red if the turn were ignored, or if the gap were the end's
+      -- distance from that paper rather than the length along the edge, which
+      -- gives 1.98 where the edge meets face 1's side at a slant.
+      it "finds the lines that stop short, from above and turned round" $ \crane -> do
         above <- either (fail . show) pure (figureOf topDown crane)
         turned <- either (fail . show) pure (figureOf (turnedBy pi topDown) crane)
         let gaps fig = [(unFaceId (metSheet e), g) | e <- metEnds fig, let g = gapAt fig 115 e, g > noticeable]
         map fst (gaps above) `shouldBe` [61, 20]
         case gaps turned of
-          [(10, g)] -> g `shouldSatisfy` (\x -> abs (x - 1.98) < 0.005)
+          [(10, g)] -> g `shouldSatisfy` (\x -> abs (x - 3.67) < 0.005)
           other -> expectationFailure ("expected face 10's end alone, got " <> show other)
+
+      -- Seen from below, the counts and the visible paper are the other
+      -- side's: face 20 crosses itself at 115, and 8 faces' visible paper
+      -- moves, by up to 2.75. Sheet 11's fold on edge 0–19 is drawn as the
+      -- border (0, 1) lying along it, which moves 3 page units more; borders
+      -- that only end there, at an angle, move 9. And no face gets a scale
+      -- from rounding: five faces whose one moving corner slides along the
+      -- line through its neighbours add no area. Red if the counts or the
+      -- visible paper were read from above whatever the camera, if every
+      -- border meeting a stretch's end counted, or if a rounding B gave a
+      -- face a scale, which gives scales of 1e-11.
+      it "reads the side the camera sees, the border the fold lies on, and no rounding" $ \crane -> do
+        below <- either (fail . show) pure (figureOf bottomUp crane)
+        [(unFaceId (faceId face), shape) | face <- figureFaces below, let { shape = faceShapeAt below 115 face }, shape /= Kept] `shouldBe` [(20, CrossesItself)]
+        length (movedPaper below) `shouldBe` 8
+        maximum (map movedMost (movedPaper below)) `shouldSatisfy` (\m -> abs (m - 2.75) < 0.005)
+        [borderFoldMismatch b | b <- borderDrawnFolds below, borderFoldSheet b == Just (FaceId 11)] `shouldSatisfy` \case
+          [m] -> abs (m - 3) < 1e-9
+          _ -> False
+        [s | face <- figureFaces below, Just s <- [insideOutBelow below face]] `shouldSatisfy` all (> 1)
 
   describe "the helmet base's folds" $ do
     -- Step 2 folds about edges 10 and 12 of the state before it. Edge 12 is

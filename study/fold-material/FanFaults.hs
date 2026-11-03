@@ -13,10 +13,13 @@
 --
 -- Nothing in the library fans a figure yet: #639 builds the shape that carries
 -- a move per point and #644 draws with it. This module measures what the rule
--- would get wrong, so that those two are designed knowing it. It holds the one
--- piece of the rule that has no home yet, the move itself ('fanMove'), as a
--- local copy; the counts and the stretches come from "Senbazuru.Origami.Visible"
--- and the page scale from "Senbazuru.Diagram.Page", so nothing else is copied.
+-- would get wrong, so that those two are designed knowing it. The pieces of
+-- the rule that have no home yet are local copies here: the move itself
+-- ('fanMove'); R-06-27's move for a point partway along a face edge, its two
+-- ends' moves mixed by where it lies; and the painter's covering, a face
+-- painted in a later layer covering what lies under it. The counts and the
+-- stretches come from "Senbazuru.Origami.Visible" and the page scale from
+-- "Senbazuru.Diagram.Page".
 --
 -- == Why everything is measured on the page
 --
@@ -35,23 +38,23 @@
 -- * A face drawn /inside out/: its fanned ring is simple and winds the other
 --   way from its true ring. Every move points the same way, so the fanned
 --   area is exactly @s² A₀ + s B@, a quadratic with no constant term, and the
---   face turns inside out below one scale, @−B / A₀@ ('insideOutBelow'). A
+--   ring winds the other way below one scale, @−B / A₀@ ('insideOutBelow'). A
 --   face whose fanned ring /crosses itself/ is counted as that instead, since
 --   a crossed ring's winding means nothing. \"Inside out\" rather than
 --   \"turned over\", which already names a whole-model move.
 --
--- * A /gap at a stretch's end/. A stretch is a visible piece of an edge; where
+-- * A /line that stops short/. A stretch is a visible piece of an edge; where
 --   its edge runs on under a nearer face, the stretch ends at that face's edge.
 --   Fanned, the end moves with its own edge and the face with its own corners,
---   so the two can come apart, and the edge's continuation, painted faint
---   under the nearer face, shows between them. An end that moves /into/ the
---   nearer face is no fault on the painter fanning shares with the offset view
---   (06 R-06-27), which paints a layer's faces after the layers below it and
---   so covers the overrun.
+--   so the two can come apart, and the full-weight line stops short of the
+--   paper it met. An end that moves /into/ the nearer face is no fault on the
+--   painter fanning shares with the offset view (06 R-06-27), which paints a
+--   layer's faces after the layers below it and so covers the overrun.
 --
 -- * /Moved visible paper/: the points of a face's visible boundary that move,
---   and how far. A fold-here line drawn on true positions sits that far from
---   the paper it marks. The face /leans/ when those moves differ.
+--   and how far. A fold-here line, the line a figure draws to say \"fold
+--   here\", drawn on true positions sits that far from the paper it marks. The
+--   face /leans/ when those moves differ.
 --
 -- * A /fold drawn as a border/: a stretch drawn at border weight whose named
 --   edge is a fold, because a buried sheet's border lies along it. Fanned, the
@@ -80,7 +83,7 @@ module FanFaults
     pagePoint,
     fannedPoint,
 
-    -- * Faults that grow as a figure shrinks
+    -- * Faults that change with the figure's size
     FaceShape (..),
     faceShapeAt,
     insideOutBelow,
@@ -101,7 +104,7 @@ where
 
 import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
-import Data.List (nub)
+import Data.List (nub, sort)
 import Data.Maybe (isJust, mapMaybe)
 import Data.Text (Text)
 import Senbazuru.Explain (explain)
@@ -262,32 +265,42 @@ crosses tolerance ring =
     sides = zip [0 :: Int ..] (zip ring (drop 1 ring <> take 1 ring))
     n = length sides
 
--- | The scale below which a face's fanned ring has the opposite winding to its
--- true one, if there is one.
+-- | The scale below which a face's fanned ring winds the other way from its
+-- true one, if there is one. Below it the face is drawn inside out unless its
+-- ring also crosses itself there, which 'faceShapeAt' asks at a given scale:
+-- the crane's face 20, seen from below, crosses itself on both sides of its
+-- scale.
 --
 -- The fanned area is @s² A₀ + s B@: @A₀@ is the true ring's area at one page
 -- unit per model unit, and @B@ is what the moves add, which grows with @s@
 -- only once because every move points the same way (the moves alone enclose
 -- nothing). So the area changes sign at @s = −B / A₀@, and only where @B@ and
--- @A₀@ have opposite signs. Below it the face is inside out unless its ring
--- also crosses itself, which 'faceShapeAt' asks at a given scale.
+-- @A₀@ have opposite signs.
 --
--- A face whose corners all move alike only slides, and @B@ is then rounding:
--- a face of the crane under six sheets everywhere gets a \"scale\" of 3e-14.
--- Such a face has none.
+-- @B@ is taken directly, as half the sum over the corners of each corner's
+-- move times the cross product of 'fanDirection' with the line from the
+-- corner before it to the corner after, rather than as the fanned area less
+-- the true one, which would subtract two nearly equal numbers. Where the moves
+-- add no area, @B@ is rounding: a face whose corners all move alike only
+-- slides, and one whose one moving corner travels along the line through its
+-- neighbours is only sheared. Such a face has no scale. @B@ counts as nothing
+-- when it is under a billionth, as a hair is, of the most the moves could add,
+-- half the sum of each corner's move times that line's length.
 insideOutBelow :: Figure -> Face -> Maybe Double
 insideOutBelow fig face
   | a0 == 0 = Nothing
-  | slides = Nothing
+  | abs b <= 1e-9 * most = Nothing
   | threshold > 0 = Just threshold
   | otherwise = Nothing
   where
-    slides = case map (moveOf fig) (faceVertexIds face) of
-      m : rest -> all (== m) rest
-      [] -> True
-    a0 = signedArea (map (truePoint fig 1) (faceVertexIds face))
-    a1 = signedArea (map (fannedPoint fig 1) (faceVertexIds face))
-    threshold = negate (a1 - a0) / a0
+    corners = map (truePoint fig 1) (faceVertexIds face)
+    moves = map (moveOf fig) (faceVertexIds face)
+    -- The line from the corner before each corner to the corner after it.
+    across = zipWith (^-^) (drop 1 corners <> take 1 corners) (take (length corners) (drop (length corners - 1) (corners <> corners)))
+    a0 = signedArea corners
+    b = 0.5 * sum (zipWith (\m d -> m * cross2 fanDirection d) moves across)
+    most = 0.5 * sum (zipWith (\m d -> m * norm d) moves across)
+    threshold = negate b / a0
 
 -- | An end of a stretch where the stretch's edge runs on under a nearer face.
 data MetEnd = MetEnd
@@ -298,7 +311,10 @@ data MetEnd = MetEnd
     metCovers :: ![FaceId],
     metSpan :: !EdgeSpan,
     -- | The end's fraction along the named edge, from 'spanFrom'.
-    metFraction :: !Double
+    metFraction :: !Double,
+    -- | Which way along the named edge the line runs on past the end: 1
+    -- toward 'spanTo', −1 toward 'spanFrom'.
+    metOutward :: !Double
   }
   deriving stock (Eq, Show)
 
@@ -311,7 +327,7 @@ data MetEnd = MetEnd
 -- have nothing to come apart from.
 metEnds :: Figure -> [MetEnd]
 metEnds fig =
-  [ MetEnd f covers sp t
+  [ MetEnd f covers sp t outward
     | e <- formSheetEdges (figureForm fig),
       Just f <- [sheetEdgeFace e],
       Just sp <- [sheetEdgeSpan e],
@@ -321,7 +337,7 @@ metEnds fig =
       let a = truePoint fig 1 (spanFrom sp)
           b = truePoint fig 1 (spanTo sp)
           at = a ^+^ (t *^ (b ^-^ a))
-          beyond = a ^+^ ((t + outward * 1e-6 / norm (b ^-^ a)) *^ (b ^-^ a))
+          beyond = a ^+^ ((t + outward * 1000 * hair / norm (b ^-^ a)) *^ (b ^-^ a))
           covers =
             [ faceId g
               | g <- figureFaces fig,
@@ -336,25 +352,42 @@ metEnds fig =
   where
     hair = figureHair fig
     edgeHair sp = hair / max hair (norm (truePoint fig 1 (spanTo sp) ^-^ truePoint fig 1 (spanFrom sp)))
-    onBoundary ring x = minimum [distanceToSegment side x | side <- sidesOf ring] <= 10 * hair
+    onBoundary ring x = any (\side -> distanceToSegment side x <= 10 * hair) (sidesOf ring)
 
 sidesOf :: [a] -> [(a, a)]
 sidesOf ps = zip ps (drop 1 ps <> take 1 ps)
 
--- | How far an end lies from the nearer paper it met, on the page at a scale:
--- 0 where some covering face's fanned ring still holds it, and otherwise the
--- distance to the nearest of their fanned edges. What lies between is the
--- edge's faint continuation, no longer covered.
+-- | How far the full-weight line falls short of the paper it met, on the page
+-- at a scale: the length of the named edge, from the fanned end on past it,
+-- that no face painted after the stretch's own face covers, up to the next
+-- point where one does, or the edge's own end if none ever does. 0 where the
+-- fanned end itself is under such paper, which covers the line. Measured
+-- along the edge, not as the end's distance from that paper, which is
+-- shorter wherever the edge meets the paper's side at a slant.
 gapAt :: Figure -> Double -> MetEnd -> Double
-gapAt fig s end
-  | any (\ring -> insideRing 0 ring at) rings = 0
-  | otherwise = minimum [distanceToSegment side at | ring <- rings, side <- sidesOf ring]
+gapAt fig s end = case [(lo, hi) | (lo, hi) <- zip cuts (drop 1 cuts), covered (along ((lo + hi) / 2))] of
+  (lo, _) : _ -> lo * norm (far ^-^ at)
+  [] -> norm (far ^-^ at)
   where
     sp = metSpan end
     a = fannedPoint fig s (spanFrom sp)
     b = fannedPoint fig s (spanTo sp)
     at = a ^+^ (metFraction end *^ (b ^-^ a))
-    rings = [map (fannedPoint fig s) (faceVertexIds g) | g <- figureFaces fig, faceId g `elem` metCovers end]
+    far = if metOutward end > 0 then b else a
+    along u = at ^+^ (u *^ (far ^-^ at))
+    later = [map (fannedPoint fig s) (faceVertexIds g) | g <- figureFaces fig, layerOf (figureLayers fig) (faceId g) > layerOf (figureLayers fig) (metSheet end)]
+    covered x = any (\ring -> insideRing 0 ring x) later
+    -- Where the line from the end to the edge's end crosses a side of any of
+    -- that paper: between two such crossings it is covered all the way or
+    -- not at all, which the midpoint tells.
+    cuts = sort (nub ([0, 1] <> [u | ring <- later, side <- sidesOf ring, Just u <- [crossing side]]))
+    crossing (p, q) =
+      let d = far ^-^ at
+          e = q ^-^ p
+          denom = cross2 d e
+          u = cross2 (p ^-^ at) e / denom
+          v = cross2 (p ^-^ at) d / denom
+       in if denom /= 0 && u > 0 && u < 1 && v >= 0 && v <= 1 then Just u else Nothing
 
 -- | How far a face's visible boundary moves.
 data MovedPaper = MovedPaper
@@ -438,6 +471,9 @@ borderDrawnFolds fig =
               bw = planar w,
           norm (bw ^-^ bu) > hair,
           distanceToSegment (bu, bw) x <= hair,
+          -- A border that only ends at the stretch's end, at an angle to the
+          -- fold, is not the border the fold is drawn as.
+          isJust (collinearOverlap hair (p, q) (bu, bw)),
           let s = dot (x ^-^ bu) (bw ^-^ bu) / dot (bw ^-^ bu) (bw ^-^ bu)
               alongBorder = (1 - s) * moveOf fig u + s * moveOf fig w
       ]

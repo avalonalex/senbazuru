@@ -4,15 +4,19 @@
 --
 -- The scales come from the library, never from a number typed here: the
 -- uncaptioned page of steps (@render --steps@) for one to ten rows of three
--- figures of a unit sheet, through 'gridOf' and 'pageTransform', and the
--- captioned @run@ page through 'fitPage'. Only the first shrinks as rows are
+-- figures of a unit sheet on the default page, through 'gridOf' and
+-- 'pageTransform', and the captioned @run@ page through 'fitPage'. Only the first shrinks as rows are
 -- added, since a captioned page at its default height grows taller instead
 -- (owner decision 7), so each size is named by the pages that draw it.
 --
 -- The fixtures are the folded crane, the runs of @helmet.foldseq@ and
 -- @blintz.foldseq@, and the flat states of @examples/bird-base-sequence.fold@.
 -- A run's state drawn as a crease pattern is drawn unfanned, and so is left
--- out; so are the bird's states with paper in the air.
+-- out; so are the bird's states with paper in the air. Every fixture is
+-- measured at the same scales, page units per sheet length of a unit sheet
+-- seen from above. The bird's own page draws it at another scale, since its
+-- states with paper in the air make that page's camera isometric and its box
+-- that of its lifted flaps; its counts are nil at every scale measured.
 module FanFaultsGallery (writeFanFaults) where
 
 import Data.Aeson (Value, encode, object, (.=))
@@ -73,7 +77,7 @@ writeFanFaults destination = do
           runCase "blintz" "from below" bottomUp blintz,
           Case "bird base" "from above" topDown birdFlat [],
           Case "bird base" "from below" bottomUp birdFlat [],
-          Case "bird base" "isometric, as its page" isometric birdFlat []
+          Case "bird base" "isometric" isometric birdFlat []
         ]
   results <- said (traverse (measure scales) cases)
   let tables = markdown steps runs results
@@ -169,8 +173,9 @@ data Hinge = Hinge
     hingeEdges :: ![EdgeId]
   }
 
--- | A run's fanned states, and its folds: every turn that is not an unfold,
--- which owner decision 74 draws no fold-here line for, and every pre-crease.
+-- | A run's fanned states, and its folds: every pre-crease, and every turn that
+-- is not an unfold, which C126 reads owner decision 74 as drawing no fold-here
+-- line for (S33, #643, asks the owner to confirm it).
 -- Each step of these runs makes one move, so the figure before a fold is the
 -- state written before its step, and the fold is measured where its own record
 -- holds the paper before it.
@@ -242,13 +247,13 @@ markdown steps runs results =
   T.unlines
     ( [ "## Faults by fixture and figure size",
         "",
-        "Each cell is faces drawn inside out · faces crossing themselves · stretch ends that come apart from the paper they met, summed over the fixture's fanned figures. The sizes are page units per sheet length, on `render --steps`' uncaptioned page of three columns, by its rows: "
+        "Each cell is faces drawn inside out · faces crossing themselves · lines that stop short of the paper they met, summed over the fixture's fanned figures. The sizes are page units per sheet length, on `render --steps`' uncaptioned page of three columns at its default 400 by 400, by its rows: "
           <> T.intercalate "; " [num s <> " (" <> rowsText rs <> ")" | (s, rs) <- byScale]
-          <> ". A captioned `run` page at its default height draws at "
+          <> ". A captioned `run` page at its default width and height draws at "
           <> T.intercalate ", " (nub [num s | (_, s) <- runs])
-          <> " whatever its rows.",
+          <> " whatever its rows. The bird base seen isometrically is measured at the same scales, though its own page, whose camera is isometric because its other states have paper in the air, draws it at another. The last column is the largest scale below which a face's fanned outline winds the other way; below it the face is inside out unless the outline also crosses itself there.",
         "",
-        "| Fixture | Seen | " <> T.intercalate " | " [num s | (s, _) <- byScale] <> " | Inside out below |",
+        "| Fixture | Seen | " <> T.intercalate " | " [num s | (s, _) <- byScale] <> " | Winds the other way below |",
         "| --- | --- | " <> T.intercalate " | " ["---:" | _ <- byScale] <> " | ---: |"
       ]
         <> [ "| " <> caseFixture (measuredCase m) <> " | " <> caseView (measuredCase m) <> " | " <> T.intercalate " | " [cell m s | (s, _) <- byScale] <> " | " <> largestBelow m <> " |"
@@ -266,7 +271,9 @@ markdown steps runs results =
              | m <- results
            ]
         <> [ "",
-             "## Scales below which each face is drawn inside out",
+             "## Scales below which each face's outline winds the other way",
+             "",
+             "Below its scale a face is drawn inside out unless its fanned outline also crosses itself there. Scales under 10 page units per sheet length, far smaller than any page draws, are left out here; `fan-faults.json` lists every one.",
              ""
            ]
         <> [ "- " <> caseFixture (measuredCase m) <> ", " <> caseView (measuredCase m) <> ": " <> T.intercalate "; " below

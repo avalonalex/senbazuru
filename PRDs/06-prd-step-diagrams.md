@@ -1339,23 +1339,28 @@ half turn, would have drawn a mark the author did not write.
   bands are in page units and clear the fan's largest move (§8), so the risk is
   only on pages with no caption.
 - **Faces turned inside out.** On small figures the fan is large beside a thin
-  face, and since a fan move is a fixed page length, each face turns inside out
-  below one scale. The folded crane seen from above has face 61 inside out below
-  92.98 page units per sheet length, so from the uncaptioned page of four rows
-  (85.6) down, and at ten rows (33.8) three faces inside out and one crossing
-  itself; from below, face 20 crosses itself at every size; turned 180°, face 63
-  is inside out below 222.94, so at 115, the largest size a page of three columns
-  draws. The helmet, the blintz and the bird base's flat states have none at any
+  face, and since a fan move is a fixed page length, a face's fanned outline
+  winds the other way below one scale; the face is drawn inside out there
+  unless the outline also crosses itself. The folded crane seen from above has
+  face 61 inside out below 92.98 page units per sheet length, so from the
+  uncaptioned page of four rows (85.6) down, and at ten rows (33.8) three faces
+  inside out and one crossing itself; from below, face 20 crosses itself at
+  every size measured; turned 180°, face 63 is inside out below 222.94, so at
+  115, the largest size a page of three columns draws at the default 400 by
+  400. The helmet, the blintz and the bird base's flat states have none at any
   of these sizes (S9, [`fan-faults.md`](../docs/notes/fan-faults.md),
   [C146](decisions.md#changes-since-draft-v2)). These are `render --steps`'
-  sizes: a captioned `run` page draws at 115 whatever its rows. No minimum
-  figure size guards this, and a face guarded alone tears from its fanned
-  neighbours, so S9 recommends drawing a whole figure unfanned when any face
-  would be inside out or crossed at the page's scale, decided once
-  `Diagram.Page.pageTransform` gives that scale: after `fitPage` in
-  `Render.Sequence.runPage` and after `gridOf` in `Render.Steps.stepPage`;
-  [#639](https://github.com/avalonalex/senbazuru/issues/639) and
-  [#644](https://github.com/avalonalex/senbazuru/issues/644) name that place.
+  sizes: a captioned `run` page at its default width and height draws at 115
+  whatever its rows. No minimum figure size guards this, and a face guarded
+  alone tears from its fanned neighbours, so S9 recommends drawing a whole
+  figure unfanned when any face would be inside out or crossed at the page's
+  scale, decided once `Diagram.Page.pageTransform` can give that scale: after
+  `fitPage` in `Render.Sequence.runPage`, and for `render --steps` where the
+  command line builds the page after `stepPage` returns, or in a function
+  beside `stepPage` that takes the page, since R-06-2 keeps `stepPage`'s
+  signature. [#639](https://github.com/avalonalex/senbazuru/issues/639) and
+  [#644](https://github.com/avalonalex/senbazuru/issues/644) are amended to name
+  that place once S9 merges.
 - **What `Origami.Visible` keeps.** Each stretch of `formSheetEdges` names the
   face edge it lies on and how far along it, by fractions (05 R-05-52,
   [C137](decisions.md#changes-since-draft-v2)), so R-06-27 moves it with its face without matching edges by
@@ -1368,11 +1373,11 @@ half turn, would have drawn a mark the author did not write.
   face's edge comes apart from it. Moving into the nearer face is no fault:
   R-06-27's painter paints that face after the stretch, which covers the
   prototype's case, face 10's mountain edge running into face 1 on the crane
-  seen from above. Moving out of it leaves the line short of the paper it met,
-  with the edge's faint continuation showing between: on the crane from above,
-  two ends, by 0.18 at every size and by 1.02 to 1.19 as the figure shrinks,
-  and turned 180°, face 10's end, leaving face 1 by 1.98 (S9,
-  [C146](decisions.md#changes-since-draft-v2)). The offset view accepts the same
+  seen from above. Moving out of it leaves the full-weight line short of the
+  paper it met, measured along the edge: on the crane from above, face 20's by
+  1.72 page units at every size and face 61's by 0.19 to 0.22, its whole
+  remaining edge of 1.24 at ten rows; turned 180°, face 10's by 3.65 to 3.67
+  (S9, [C146](decisions.md#changes-since-draft-v2)). The offset view accepts the same
   trade
   ([`CreasePattern.hs:404-415`](../src/Senbazuru/Render/CreasePattern.hs#L404-L415)).
 
