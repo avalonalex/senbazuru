@@ -106,9 +106,36 @@
 -- an edge of the later frame lying along an earlier edge, as the sheet has
 -- them, whose angle there differs: a crease the later frame adds is new, never
 -- changed, so a fold made along a crease it adds lists no crease at all.
+--
+-- == The creases a later frame adds
+--
+-- A book draws a /fold-here line/ on the figure before a fold: the line on
+-- the paper where it is about to be folded. A page drawn from frames alone has
+-- only one place to find such a line, the creases the next frame has and this
+-- one lacks, and 'creasesToCome' lists them, each with its ends where the
+-- earlier frame has that paper. A page drawn from a run takes its lines from
+-- each move's hinge instead (owner decision 74), since a run that folds along
+-- creases its sheet already has adds none; and nothing draws these until S28
+-- (#642).
+--
+-- A crease is new when it lies along no earlier edge on the sheet, by the
+-- test 'motionsAcross' asks of a crease whose angle changed, so the two never
+-- disagree about which creases are new, and the pieces creasing cuts an old
+-- crease or the border into are not.
+--
+-- Two ends are enough to say where a new crease is, though the earlier frame
+-- may be folded, and that looks wrong at first: a fold moves the paper on
+-- either side of it differently. But creasing cuts a crease wherever another
+-- crease or a vertex meets it ("Senbazuru.Fold.Creasing" hands what it makes
+-- to 'withPlanarFaces'), so a new crease meets an earlier edge only at its
+-- ends and lies inside one earlier face. A face moves as one rigid piece, which
+-- takes a straight line to a straight line, so the line between where its two
+-- ends went is where the whole crease went. A file that left a crossing uncut
+-- would have its crease drawn straight across the fold it crosses.
 module Senbazuru.Origami.Step
   ( Motion (..),
     motionsAcross,
+    creasesToCome,
     motionsBetween,
     wholeModelMotion,
     placeOn,
@@ -120,20 +147,23 @@ import Data.Bifunctor (first)
 import Data.IntMap.Strict qualified as IM
 import Data.List (foldl', maximumBy, sortOn)
 import Data.Map.Strict qualified as M
+import Data.Maybe (isNothing)
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Senbazuru.Fold.Crossings (withPlanarFaces)
 import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Query
-  ( EdgeKey,
+  ( Crease (..),
+    EdgeKey,
     Face (..),
     FoldError (..),
     edgeKey,
+    frameCreases,
     frameFaces,
     frameVertices,
     ringEdges,
   )
-import Senbazuru.Fold.Types (EdgeId (..), FaceId (..), Frame (..), VertexId (..))
+import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, insideRing)
 import Senbazuru.Geometry.Rigid (Rigid, fitRigid)
@@ -329,27 +359,43 @@ grownBetween before after = do
         ]
 
 -- | The later frame's edges whose fold angle differs from that of the earlier
--- edge they lie along, as the sheet has them: the first earlier edge, by id,
--- whose segment on the sheet holds both of the later edge's ends within a hair.
--- An edge lying along none is a crease the later frame adds, which is new and
--- never one that changed; and an edge whose angle either frame leaves
--- unrecorded did not change either, as 'motionsBetween' reads a frame that
--- records none.
+-- edge they lie along ('alongEarlier'). An edge lying along none is a crease
+-- the later frame adds, which is new and never one that changed; and an edge
+-- whose angle either frame leaves unrecorded did not change either, as
+-- 'motionsBetween' reads a frame that records none.
 changedAlong :: Frame -> Frame -> Placed -> [(EdgeId, EdgeKey)]
 changedAlong before after p =
   [ (EdgeId e, edgeKey u v)
     | (e, (u, v)) <- zip [0 ..] (edgesVertices after),
       Just mu <- [IM.lookup (unVertexId u) laterAt],
       Just mv <- [IM.lookup (unVertexId v) laterAt],
-      j : _ <- [[j | (j, a, b) <- segments, distanceToSegment (a, b) mu <= hair, distanceToSegment (a, b) mv <= hair]],
+      Just j <- [along mu mv],
       Just angleAfter <- [IM.lookup e anglesAfter],
       Just angleBefore <- [IM.lookup j anglesBefore],
       angleAfter /= angleBefore
   ]
   where
+    along = alongEarlier before p
+    laterAt = IM.fromList (zip [0 ..] (placedLaterMaterial p))
+    anglesBefore = IM.fromList (zip [0 ..] (edgesFoldAngle before))
+    anglesAfter = IM.fromList (zip [0 ..] (edgesFoldAngle after))
+
+-- | The earlier edge a later edge lies along, as the sheet has them: given the
+-- later edge's two ends on the sheet, the first earlier edge, by id, whose
+-- segment there holds both within a hair, or 'Nothing' for a crease the later
+-- frame adds. The one test of whether an edge is new, which 'changedAlong'
+-- and 'creasesToCome' both ask.
+--
+-- Applied to its two arguments once, so that the earlier edges are read once
+-- however many later edges ask.
+alongEarlier :: Frame -> Placed -> V2 -> V2 -> Maybe Int
+alongEarlier before p = holding
+  where
+    holding mu mv = case [j | (j, a, b) <- segments, distanceToSegment (a, b) mu <= hair, distanceToSegment (a, b) mv <= hair] of
+      j : _ -> Just j
+      [] -> Nothing
     hair = toleranceOf (placedEarlierMaterial p)
     earlierAt = IM.fromList (zip [0 ..] (placedEarlierMaterial p))
-    laterAt = IM.fromList (zip [0 ..] (placedLaterMaterial p))
     segments =
       [ (j, a, b)
         | (j, (VertexId x, VertexId y)) <- zip [0 ..] (edgesVertices before),
@@ -357,8 +403,45 @@ changedAlong before after p =
           Just b <- [IM.lookup y earlierAt],
           norm (b ^-^ a) > hair
       ]
-    anglesBefore = IM.fromList (zip [0 ..] (edgesFoldAngle before))
-    anglesAfter = IM.fromList (zip [0 ..] (edgesFoldAngle after))
+
+-- | The creases the later of two frames adds, each with its two ends where
+-- the earlier frame has that paper ('placeOn'): where the earlier figure shows
+-- the crease about to be made. In the later frame's edge order, each crease's
+-- ends in its own order. The module header has why two ends are enough.
+--
+-- A crease is new when it lies along no earlier edge on the sheet
+-- ('alongEarlier'), whatever either edge's letter. So a join the later frame
+-- makes a crease is not new, just as it is not between two frames with the
+-- same edges, where the letters are not read at all. A border, a cut and a
+-- join are not creases and are never listed; an edge the file gives no letter
+-- is, read as unassigned, and so is a crease lying flat, as a pre-crease
+-- leaves one.
+--
+-- None between two frames with the same vertices, edges and faces, which need
+-- no material points, as 'motionsAcross' needs none for them. Any other pair
+-- is refused as 'placeOn' refuses it.
+creasesToCome :: Frame -> Frame -> Either FoldError [(EdgeId, V3, V3)]
+creasesToCome before after = case sameModel before after of
+  Right () -> Right []
+  Left _ -> do
+    p <- placing before after
+    -- Placing has read these already, since 'surfaceFromFrame' reads a
+    -- frame's creases, so this cannot refuse; the wrapping says whose a
+    -- refusal would be.
+    creases <- first InNextFrame (frameCreases after)
+    let along = alongEarlier before p
+        laterAt = IM.fromList (zip [0 ..] (zip (placedLaterMaterial p) (placedOnEarlier p)))
+    pure
+      [ (creaseId c, from, to)
+        | c <- creases,
+          creaseAssignment c `notElem` [Border, Cut, Join],
+          -- Every end is a vertex that placing read, so both are found; the
+          -- lookup keeps the function total rather than standing for a case
+          -- that can happen.
+          Just (mu, from) <- [IM.lookup (unVertexId (creaseFrom c)) laterAt],
+          Just (mv, to) <- [IM.lookup (unVertexId (creaseTo c)) laterAt],
+          isNothing (along mu mv)
+      ]
 
 zip4 :: [a] -> [b] -> [c] -> [d] -> [(a, b, c, d)]
 zip4 (a : as) (b : bs) (c : cs) (d : ds) = (a, b, c, d) : zip4 as bs cs ds
