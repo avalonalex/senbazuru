@@ -24,9 +24,9 @@
 -- == Why everything is measured on the page
 --
 -- A fan move is a fixed length on the page, while the figure is drawn at
--- whatever scale its page gives it. So a fault depends on the scale: a move of
--- 9 page units is nothing beside a face 100 units across and turns a face 5
--- units across inside out. Every position here is a page point: the camera's
+-- whatever scale its page gives it. So some faults depend on the scale: a move
+-- of 9 page units is nothing beside a face 100 units across and can turn a face
+-- 5 units across inside out. Every position here is a page point: the camera's
 -- projection of the model point, times the scale @s@ in page units per model
 -- unit, with y negated, because model y grows up the page and page y grows
 -- down it. The fan direction, (−1, +1)/√2, is in those page axes: left and
@@ -37,8 +37,9 @@
 --
 -- * A face drawn /inside out/: its fanned ring is simple and winds the other
 --   way from its true ring. Every move points the same way, so the fanned
---   area is exactly @s² A₀ + s B@, a quadratic with no constant term, and the
---   ring winds the other way below one scale, @−B / A₀@ ('insideOutBelow'). A
+--   area is exactly @s² A₀ + s B@, a quadratic with no constant term, and
+--   where @B@ and @A₀@ have opposite signs the ring winds the other way below
+--   one scale, @−B / A₀@ ('insideOutBelow'). A
 --   face whose fanned ring /crosses itself/ is counted as that instead, since
 --   a crossed ring's winding means nothing. \"Inside out\" rather than
 --   \"turned over\", which already names a whole-model move.
@@ -213,7 +214,8 @@ moveOf fig v = fanStep * fromIntegral (min fanCap (countOf fig v))
 data FaceShape
   = -- | Still winds the way it did.
     Kept
-  | -- | Simple, but winds the other way: the paper is drawn from its back.
+  | -- | Simple, but winds the other way: the paper is drawn as its mirror
+    -- image.
     InsideOut
   | -- | Two of its sides cross, or one folds back along its neighbour.
     CrossesItself
@@ -361,7 +363,8 @@ sidesOf ps = zip ps (drop 1 ps <> take 1 ps)
 -- at a scale: the length of the named edge, from the fanned end on past it,
 -- that no face painted after the stretch's own face covers, up to the next
 -- point where one does, or the edge's own end if none ever does. 0 where the
--- fanned end itself is under such paper, which covers the line. Measured
+-- fanned end itself is under such paper, which covers the line. A face whose
+-- side lies along the edge only borders it and covers none of it. Measured
 -- along the edge, not as the end's distance from that paper, which is
 -- shorter wherever the edge meets the paper's side at a slant.
 gapAt :: Figure -> Double -> MetEnd -> Double
@@ -376,7 +379,10 @@ gapAt fig s end = case [(lo, hi) | (lo, hi) <- zip cuts (drop 1 cuts), covered (
     far = if metOutward end > 0 then b else a
     along u = at ^+^ (u *^ (far ^-^ at))
     later = [map (fannedPoint fig s) (faceVertexIds g) | g <- figureFaces fig, layerOf (figureLayers fig) (faceId g) > layerOf (figureLayers fig) (metSheet end)]
-    covered x = any (\ring -> insideRing 0 ring x) later
+    -- Inside by more than a hair, so that a face whose side lies along the
+    -- named edge, which only borders it, does not cover it; at no clearance
+    -- rounding decides which side of that face's edge the line falls on.
+    covered x = any (\ring -> insideRing (s * figureHair fig) ring x) later
     -- Where the line from the end to the edge's end crosses a side of any of
     -- that paper: between two such crossings it is covered all the way or
     -- not at all, which the midpoint tells.

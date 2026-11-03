@@ -19,9 +19,10 @@ and its [Risks](../../PRDs/06-prd-step-diagrams.md#risks)) before
 - **Inside out.** A face whose fanned outline is simple but winds the other way:
   the paper is drawn as its mirror image. Every move points the same way, so
   the fanned area is exactly *s*² *A*₀ + *s* *B* at *s* page units per sheet
-  length, and if a face's corners move by different amounts its outline winds
-  the other way below one scale, −*B* / *A*₀; the face is drawn inside out there
-  unless its outline also crosses itself. The section on those scales lists
+  length, and where *B* and *A*₀ have opposite signs, which needs the corners
+  to move by different amounts, its outline winds the other way below one
+  scale, −*B* / *A*₀; the face is drawn inside out there unless its outline
+  also crosses itself. The section on those scales lists
   them. "Inside out" rather than "turned over", which names a move of the whole
   model.
 - **Crossing itself.** Two sides of the fanned outline cross, or one folds back
@@ -92,7 +93,7 @@ Visible paper moved is the faces whose visible boundary moves, how many of them 
 
 ## Scales below which each face's outline winds the other way
 
-Below its scale a face is drawn inside out unless its fanned outline also crosses itself there. Scales under 10 page units per sheet length, far smaller than any page draws, are left out here; `fan-faults.json` lists every one.
+Below its scale a face is drawn inside out unless its fanned outline also crosses itself there. Scales under 10 page units per sheet length, under a third of the smallest measured here (33.76, the ten-row page of steps), are left out here; `fan-faults.json` lists every one.
 
 - crane, from above: folded face 61 below 92.98; folded face 56 below 37.24; folded face 24 below 36.75; folded face 35 below 31.57; folded face 34 below 31.57; folded face 31 below 28.48; folded face 6 below 27.98; folded face 2 below 27.98; folded face 28 below 27.60; folded face 27 below 26.44; folded face 70 below 25.63; folded face 4 below 22.02; folded face 41 below 18.21; folded face 9 below 16.32; folded face 39 below 15.08; folded face 37 below 15.08; folded face 0 below 14.51; folded face 32 below 13.08; folded face 38 below 13.08; folded face 51 below 11.68
 - crane, from below: folded face 20 below 63.44; folded face 28 below 36.75; folded face 37 below 31.57; folded face 39 below 31.57; folded face 5 below 27.98; folded face 31 below 26.44; folded face 7 below 20.47; folded face 24 below 20.45; folded face 43 below 18.21; folded face 65 below 17.09; folded face 35 below 15.08; folded face 34 below 15.08; folded face 15 below 15.00; folded face 10 below 15.00; folded face 36 below 13.08; folded face 33 below 13.08; folded face 3 below 12.96; folded face 49 below 11.68
@@ -141,7 +142,7 @@ crossed at the page's scale, and decide it once that scale is known.
 - **Not a minimum figure size.** From below, the crane's face 20 crosses itself
   at every size measured. Turned round, face 63 is inside out at 115, the
   largest size a page of three columns draws at the default 400 by 400; a floor
-  at its 222.94 needs a page of three columns at least 746 wide.
+  at its 222.94 needs a page of three columns more than 745.4 wide.
 - **Not per shape in `Render.Svg`.** A face drawn unfanned among fanned
   neighbours parts from them at every corner it shares, by that corner's move,
   up to 9 page units: the guard would tear the drawing it was meant to tidy.
@@ -158,9 +159,11 @@ crossed at the page's scale, and decide it once that scale is known.
   *s* when *s* is above every face's scale. Crossing needs each fanned outline
   checked at *s*.
 
-No guard removes the rest. The lines that stop short change little with the
-figure's size, and the visible paper that moves and the borders drawn over
-folds not at all: they are limitations for #644 to state.
+No guard removes the rest. Face 20's line stops short by the same length at
+every size, and face 61's grows as the figure shrinks; at 115, the one size
+measured at which the guard leaves the crane from above fanned, they stop 1.72
+and 0.19 short. The visible paper that moves and the borders drawn over folds do
+not change with size at all. They are limitations for #644 to state.
 
 ## What #637's plan had wrong
 
@@ -185,8 +188,9 @@ folds not at all: they are limitations for #644 to state.
 
 Every measured number above comes from `stack run senbazuru-material-study --
 --fan-faults build/fold-material/fan-faults`, which writes these tables to
-`fan-faults.md` and every face, end and hinge to `fan-faults.json`. The plan's
-and 06's numbers are quoted from them, and the traditional crane's refusal comes
-from `stack run senbazuru -- run examples/traditional-crane.foldseq -o
-crane.svg`. The move's step and cap are a copy of 06 R-06-25 in
-`study/fold-material/FanFaults.hs`, which #644 re-runs on the shipped rule.
+`fan-faults.md` and every face, end and hinge to `fan-faults.json`. #637's
+numbers are quoted from #637, and 06's from 06 Risks as it read before S9
+rewrote it; the traditional crane's refusal comes from `stack run senbazuru --
+run examples/traditional-crane.foldseq -o crane.svg`. The move's step and cap
+are a copy of 06 R-06-25 in `study/fold-material/FanFaults.hs`, which #644
+re-runs on the shipped rule.

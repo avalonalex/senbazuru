@@ -1340,7 +1340,7 @@ half turn, would have drawn a mark the author did not write.
   only on pages with no caption.
 - **Faces turned inside out.** On small figures the fan is large beside a thin
   face, and since a fan move is a fixed page length, a face's fanned outline
-  winds the other way below one scale; the face is drawn inside out there
+  can wind the other way below one scale; the face is drawn inside out there
   unless the outline also crosses itself. The folded crane seen from above has
   face 61 inside out below 92.98 page units per sheet length, so from the
   uncaptioned page of four rows (85.6) down, and at ten rows (33.8) three faces

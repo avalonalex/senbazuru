@@ -273,7 +273,7 @@ markdown steps runs results =
         <> [ "",
              "## Scales below which each face's outline winds the other way",
              "",
-             "Below its scale a face is drawn inside out unless its fanned outline also crosses itself there. Scales under 10 page units per sheet length, far smaller than any page draws, are left out here; `fan-faults.json` lists every one.",
+             "Below its scale a face is drawn inside out unless its fanned outline also crosses itself there. Scales under 10 page units per sheet length, under a third of the smallest measured here (" <> num (minimum (map snd steps)) <> ", the ten-row page of steps), are left out here; `fan-faults.json` lists every one.",
              ""
            ]
         <> [ "- " <> caseFixture (measuredCase m) <> ", " <> caseView (measuredCase m) <> ": " <> T.intercalate "; " below
@@ -339,7 +339,7 @@ report steps runs results =
         [ "figure" .= resultLabel r,
           "faces" .= resultFaces r,
           "metEnds" .= [object ["sheet" .= unFaceId (metSheet e), "covers" .= map unFaceId (metCovers e), "edge" .= edgeOf (metSpan e), "fraction" .= metFraction e] | e <- resultEnds r],
-          "insideOutBelow" .= [object ["face" .= unFaceId f, "scale" .= s] | (f, s) <- resultBelow r],
+          "windsOtherWayBelow" .= [object ["face" .= unFaceId f, "scale" .= s] | (f, s) <- resultBelow r],
           "atScale"
             .= [ object
                    [ "scale" .= s,
