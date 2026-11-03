@@ -460,7 +460,10 @@ then.
 - **R-06-26.** A figure is drawn unfanned, and the page is still drawn (R-06-3),
   when it is not flat, has no face orders, is seen edge-on, or when its fan counts
   or its visible form cannot be had: an unordered pair, a cycle, a twist with no
-  order to paint in, a concave face.
+  order to paint in, a concave face. It is drawn unfanned too when any of its
+  faces would be inside out or cross itself at the page's scale, decided once
+  that scale is known (owner decision 79, decided 2026-11-02; S9's guard, 06
+  Risks).
 - **R-06-27.** A fanned figure is painted by the offset view's painter
   ([`CreasePattern.hs:277-422`](../src/Senbazuru/Render/CreasePattern.hs#L277-L422))
   with a displacement per point instead of per layer. It paints layer by layer
@@ -1359,8 +1362,9 @@ half turn, would have drawn a mark the author did not write.
   command line builds the page after `stepPage` returns, or in a function
   beside `stepPage` that takes the page, since R-06-2 keeps `stepPage`'s
   signature. [#639](https://github.com/avalonalex/senbazuru/issues/639) and
-  [#644](https://github.com/avalonalex/senbazuru/issues/644) are amended to name
-  that place once S9 merges.
+  [#644](https://github.com/avalonalex/senbazuru/issues/644) name that place.
+  Owner decision 79 (decided 2026-11-02) keeps fanning by default with this
+  guard ([C147](decisions.md#changes-since-draft-v2)).
 - **What `Origami.Visible` keeps.** Each stretch of `formSheetEdges` names the
   face edge it lies on and how far along it, by fractions (05 R-05-52,
   [C137](decisions.md#changes-since-draft-v2)), so R-06-27 moves it with its face without matching edges by
