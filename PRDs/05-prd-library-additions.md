@@ -6,7 +6,9 @@ since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
 (R-05-17, R-05-18, `placeOn`), in #669
 ([C139](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
 their face edge (R-05-52, `EdgeSpan`), in #667
-([C137](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
+([C137](decisions.md#changes-since-draft-v2)), and its fan counts (R-05-50,
+R-05-51, `fanCounts`, `CoverError`), in #671
+([C141](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
 that commit, except those added on 2026-10-27, in the **Milestone** lines,
@@ -828,7 +830,7 @@ reproduces it in Haskell.
 data CoverStretch = CoverStretch
   { stretchFrom, stretchTo :: !Double   -- parameters along the line, 0 to 1
   , stretchFaces :: ![FaceId] }         -- nearest the viewer first
-data CoverError = CoverFlat FlatError | UnorderedCover FaceId FaceId V2 | CyclicCover [FaceId] V2
+data CoverError = CoverFlat FlatError | UnorderedCover FaceId FaceId V2 | CyclicCover [FaceId] V2   -- built by L16 (C141)
 orderedCover :: Bool -> Frame -> [FaceOrder] -> (V2, V2) -> Either CoverError [CoverStretch]
 ```
 
@@ -1369,7 +1371,7 @@ from the same pass.
 **Module.** `Origami.Visible`, where L9 goes at M4.
 
 ```haskell
--- SKETCH
+-- built (C141)
 fanCounts :: Bool -> Frame -> [FaceOrder] -> Either CoverError [(VertexId, Int)]
 ```
 
@@ -1379,8 +1381,9 @@ lying over it, the *fan count*
 ([glossary-additions](glossary-additions.md#step-pages); owner decision 65). The
 count is a fact about the folded state and the side it is seen from, not about a
 page, so it lives here, where L9 is to count the faces over a point. L9 is M4
-work, so at M3 neither that count nor its `CoverError` exists, and L16, which
-comes first, defines the `CoverError` it returns (R-05-51). (08's lifted GLB
+work, so L16, which comes first, defines the `CoverError` both return
+(R-05-51), and S8 of [#637](https://github.com/avalonalex/senbazuru/issues/637)
+built it ([C141](decisions.md#changes-since-draft-v2)). (08's lifted GLB
 does not use it; [08](08-prd-realistic-rendering.md#layers-lifted-off-the-stack)
 says why.) It is not the [layer number](../docs/glossary.md#origami), for L9's
 reason: on the crane that chain is 31 where no point holds more than 24 sheets.
@@ -1389,7 +1392,12 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 
 - **R-05-50.** For a vertex v and a face f with a corner at v, the faces over a
   point of f near v are those whose closure holds v within `sheetHair` and whose
-  corner or interior at v holds the direction from v to that point. The sides
+  corner, side or interior at v holds the direction from v to that point. A
+  vertex at which no face has a corner counts 0. The side and the 0 were added
+  when the rule was built ([C141](decisions.md#changes-since-draft-v2),
+  [C142](decisions.md#changes-since-draft-v2)): without the side, a face whose
+  side runs through the vertex covers nothing there, and the letter fold counts
+  0 everywhere. The sides
   through v cut f's corner into sectors, each with one set of such faces, and f's
   *cover* at v is the fewest faces nearer than f over any sector, "nearer" as
   R-05-32 orders them for the viewer `fromAbove` names. v's fan count is the
@@ -1413,7 +1421,7 @@ reason: on the crane that chain is 31 where no point holds more than 24 sheets.
 
 | Test | Turns red if |
 | --- | --- |
-| The helmet base's last state, the run of `helmet.foldseq` (`file_frames[3]`): counts by vertex 0, 3, 0, 2, 0, 0, 1, 1, 0 from +z and 2, 0, 2, 1, 0, 0, 1, 1, 0 from −z; its state 2 (`file_frames[2]`): 0, 1, 0, 0, 0, 0, 0, 1, 1 from +z (a scratch prototype, 2026-10-23) | the count is a face's layer number (state 2 then gives 0, 3, 0, 2, 0, 0, 0, 1, 1); a covering face counts only where it covers the whole corner (vertex 1 then gives 1); `fromAbove` is ignored |
+| The helmet base's last state, the run of `helmet.foldseq` (`file_frames[3]`): counts by vertex 0, 3, 0, 2, 0, 0, 1, 1, 0 from +z and 2, 0, 2, 1, 0, 0, 1, 1, 0 from −z; its state 2 (`file_frames[2]`): 0, 1, 0, 0, 0, 0, 0, 1, 1 from +z (a scratch prototype, 2026-10-23; pinned by `VisibleSpec`, S8) | the count is a face's layer number (state 2 then gives 0, 3, 0, 2, 0, 0, 0, 1, 1); a covering face counts only where it covers the whole corner (vertex 1 then gives 1); `fromAbove` is ignored |
 | Removing one order between overlapping faces at a vertex gives `UnorderedCover` | a missing order reads as "neither nearer" |
 | On the helmet's last state, every stretch's named edge holds both its ends within `sheetHair` | a stretch names its face but not the edge |
 
@@ -1425,7 +1433,9 @@ its stretch is now one per edge, since an `EdgeSpan` names one edge, and the
 offset view, which draws `formSheetEdges`, draws two abutting strokes there. No
 golden has one ([C137](decisions.md#changes-since-draft-v2)).
 
-**Milestone.** M3, before L9, which shares its point cover at M4.
+**Milestone.** M3, before L9, which shares its point cover at M4. Built by S8
+of [#637](https://github.com/avalonalex/senbazuru/issues/637)
+([C141](decisions.md#changes-since-draft-v2)).
 
 ## Errors
 
@@ -1451,7 +1461,7 @@ docs, and is a follow-up issue ([D20](decisions.md#d20-errors),
 | `CreasedNotAtRest e` | `Origami.ThroughLayers` | "(internal edge 7) changed angle when creasing, so layer orders cannot be carried across it" |
 | `ChildOutsideParents f`, `ParentsUnordered f g` | `Origami.ThroughLayers` | "(internal faces 2 and 6) overlap but have no layer order to carry" |
 | `SelectionError` | `Origami.ThroughLayers` | per the research refusal list |
-| `CoverError` (3) | `Origami.Visible` | "(internal faces 1 and 2) overlap at (0.75, 0.25) with no layer order between them" |
+| `CoverError` (3) | `Origami.Visible` | "(internal faces 1 and 2) overlap at (0.750000, 0.250000) with no layer order between them", pinned by `ExplainSpec` (C141) |
 | `RelationOnOneFace`, `RelationNotOverlapping`, `RelationsContradict` | `Origami.Stacking` | "(internal faces 10 and 27) do not overlap, so no layer order relates them" |
 | `MaterialCoordinatesMissing`, `VerticesNotAPrefix`, `AddedVertexOffPaper` | `Fold.Query` (`FoldError`) | "vertex 7 of the later frame lies on no edge and in no face of the earlier one" |
 | `MacroError` | `Origami.Macro` | "parameter 181 is outside the checked range 0 to 180" |

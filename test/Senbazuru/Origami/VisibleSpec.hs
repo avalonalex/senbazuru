@@ -26,9 +26,10 @@ import Senbazuru.Fold.Query (Face (..), FoldError (..), frameFaces, frameVertice
 import Senbazuru.Fold.Types
   ( Assignment (..),
     FaceId (..),
-    FaceOrder,
+    FaceOrder (..),
     FoldFile (..),
     Frame (..),
+    Stacking (..),
     VertexId (..),
     emptyFrame,
     keyFrame,
@@ -133,17 +134,18 @@ framed side name = do
   os <- orders folded
   pure (side, folded {faceOrders = os})
 
--- | The helmet base's last state, as the run of @helmet.foldseq@ writes it:
--- @file_frames[3]@, its faces ordered by the run.
-helmetLast :: IO Frame
-helmetLast = do
+-- | The helmet base's last two states, as the run of @helmet.foldseq@ writes
+-- them: @file_frames[2]@ and @file_frames[3]@, their faces ordered by the run.
+-- Run once, for the stretches' edges and the counts over each vertex alike.
+helmetStates :: IO (Frame, Frame)
+helmetStates = do
   sheet <- loadFoldFile "examples/helmet-base.fold" >>= right
   source <- readSequenceText "helmet.foldseq" >>= right
   run <- right (parseSequence "helmet.foldseq" source >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "examples/helmet-base.fold" sheet) . elaborate)
   file <- right (writeSequence noFileHeader run)
-  case drop 3 (otherFrames file) of
-    st : _ -> pure st
-    [] -> fail "the helmet run wrote fewer than four states"
+  case drop 2 (otherFrames file) of
+    [st2, st3] -> pure (st2, st3)
+    _ -> fail "the helmet run did not write four states"
 
 right :: (Show e) => Either e a -> IO a
 right = either (fail . show) pure
@@ -338,96 +340,209 @@ spec = do
   -- along, so a drawing that moves the sheets apart can move a point partway
   -- along a stretch with that edge, by fractions rather than by matching
   -- coordinates afterwards.
-  describe "the edge each stretch lies along" $ beforeAll helmetLast $ do
-    -- Read the named edge at the two fractions and get the stretch's two
-    -- ends, within the folded form's hair, on every flat fixture from both
-    -- sides and on the helmet base's last state. Every named sheet has an
-    -- edge there, since these frames order every overlapping pair, and the
-    -- edge named is that sheet's own. Red if the code named the right face's
-    -- wrong edge, snapped a fraction to the nearer vertex (the letter fold
-    -- below makes sure some stretch ends inside its edge), swapped the two
-    -- fractions, named another face's edge along the same line, or listed an
-    -- edge's two vertices against the order edges_vertices gives them.
-    it "names an edge of the sheet named, whose fractions give the stretch's ends" $ \helmet -> do
-      fixtures <- mapM (\(name, side) -> (,) (name <> " " <> sideName side) <$> framed side name) everyFlatFixture
-      let cases = fixtures <> [("the helmet base " <> sideName side, (side, helmet)) | side <- [True, False]]
-      forM_ cases $ \(name, (side, fr)) -> do
-        v <- right (visibleForm side fr (faceOrders fr))
-        hair <- sheetHair <$> right (flatSheet fr)
-        at <- positionsOf fr
-        forM_ (formSheetEdges v) $ \e -> case (sheetEdgeFace e, sheetEdgeSpan e) of
-          (Nothing, _) -> pure ()
-          (Just _, Nothing) -> expectationFailure (name <> ": a named sheet with no edge along " <> show e)
-          (Just f, Just sp) -> do
-            (name, isEdgeOf fr f (spanFrom sp, spanTo sp)) `shouldBe` (name, True)
-            (name, (spanFrom sp, spanTo sp) `elem` edgesVertices fr) `shouldBe` (name, True)
+  beforeAll helmetStates $ do
+    describe "the edge each stretch lies along" $ mapSubject snd $ do
+      -- Read the named edge at the two fractions and get the stretch's two
+      -- ends, within the folded form's hair, on every flat fixture from both
+      -- sides and on the helmet base's last state. Every named sheet has an
+      -- edge there, since these frames order every overlapping pair, and the
+      -- edge named is that sheet's own. Red if the code named the right face's
+      -- wrong edge, snapped a fraction to the nearer vertex (the letter fold
+      -- below makes sure some stretch ends inside its edge), swapped the two
+      -- fractions, named another face's edge along the same line, or listed an
+      -- edge's two vertices against the order edges_vertices gives them.
+      it "names an edge of the sheet named, whose fractions give the stretch's ends" $ \helmet -> do
+        fixtures <- mapM (\(name, side) -> (,) (name <> " " <> sideName side) <$> framed side name) everyFlatFixture
+        let cases = fixtures <> [("the helmet base " <> sideName side, (side, helmet)) | side <- [True, False]]
+        forM_ cases $ \(name, (side, fr)) -> do
+          v <- right (visibleForm side fr (faceOrders fr))
+          hair <- sheetHair <$> right (flatSheet fr)
+          at <- positionsOf fr
+          forM_ (formSheetEdges v) $ \e -> case (sheetEdgeFace e, sheetEdgeSpan e) of
+            (Nothing, _) -> pure ()
+            (Just _, Nothing) -> expectationFailure (name <> ": a named sheet with no edge along " <> show e)
+            (Just f, Just sp) -> do
+              (name, isEdgeOf fr f (spanFrom sp, spanTo sp)) `shouldBe` (name, True)
+              (name, (spanFrom sp, spanTo sp) `elem` edgesVertices fr) `shouldBe` (name, True)
+              let line = sheetEdgeLine e
+              (name, flatten (visibleFrom line), pointOf at sp (spanStart sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
+              (name, flatten (visibleTo line), pointOf at sp (spanEnd sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
+
+      -- The letter fold's unequal panels leave a stretch that stops partway
+      -- along its edge, so a fraction there is neither 0 nor 1. Without one, a
+      -- fraction snapped to the nearer vertex would pass the test above.
+      it "has a stretch on the letter fold that ends inside its edge" $ \_ -> do
+        (_, fr) <- framed True "letter-fold"
+        v <- right (visibleForm True fr (faceOrders fr))
+        [sp | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], inside (spanStart sp) || inside (spanEnd sp)]
+          `shouldSatisfy` (not . null)
+
+      -- Where a top face's fold lies along the border of a layer buried under
+      -- it, the stretch names the fold, its own face's edge, though it is drawn
+      -- as the border, the stronger line. The crane has such stretches from
+      -- above. Red if the code named whichever crease along the line came
+      -- first, or the strongest, which is the buried border.
+      it "names the fold, not the buried border, where a fold lies along one" $ \_ -> do
+        (_, fr) <- framed True "crane"
+        v <- right (visibleForm True fr (faceOrders fr))
+        let foldsDrawnAsBorder =
+              [ sp
+                | e <- formSheetEdges v,
+                  visibleAssignment (sheetEdgeLine e) == Border,
+                  Just sp <- [sheetEdgeSpan e],
+                  assignmentOf fr (spanFrom sp, spanTo sp) `elem` [Just Mountain, Just Valley]
+              ]
+        length foldsDrawnAsBorder `shouldSatisfy` (> 0)
+
+      -- A face with two edges along one line, a straight corner, which tracing
+      -- can leave where one crease ends on another, gives a stretch for each
+      -- edge, though the ordinary drawing joins them into one line. No fixture
+      -- has one, so this frame is built for it: a square whose bottom side is
+      -- two edges, through a vertex at its middle. Red if stretches were joined
+      -- whatever edge they name, which would hand a fanned drawing one stretch
+      -- moving with one edge for the length of two.
+      it "gives each of two edges along one line a stretch of its own" $ \_ -> do
+        let corner =
+              emptyFrame
+                { verticesCoords = [[0, 0], [0.5, 0], [1, 0], [1, 1], [0, 1]],
+                  facesVertices = [map VertexId [0, 1, 2, 3, 4]],
+                  edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]],
+                  edgesAssignment = replicate 5 Border
+                }
+        v <- right (visibleForm True corner [])
+        length (formEdges v) `shouldBe` 4
+        [(spanFrom sp, spanTo sp, spanStart sp, spanEnd sp) | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], spanFrom sp `elem` [VertexId 0, VertexId 1], spanTo sp `elem` [VertexId 1, VertexId 2]]
+          `shouldBe` [(VertexId 0, VertexId 1, 0, 1), (VertexId 1, VertexId 2, 0, 1)]
+
+      -- With the letter fold's orders dropped, the face found nearest along one
+      -- stretch is a face whose middle that stretch crosses, so it has no edge
+      -- there, and the stretch names the sheet and no edge. Red if an edge of
+      -- that face were named anyway.
+      it "names no edge where the sheet named has none along the stretch, with orders missing" $ \_ -> do
+        (_, fr) <- framed True "letter-fold"
+        v <- right (visibleForm True fr [])
+        let edgeless = [e | e <- formSheetEdges v, Just _ <- [sheetEdgeFace e], Nothing <- [sheetEdgeSpan e]]
+        length edgeless `shouldBe` 1
+        forM_ edgeless $ \e -> case sheetEdgeFace e of
+          Just f -> do
+            ring <- faceRing fr f
             let line = sheetEdgeLine e
-            (name, flatten (visibleFrom line), pointOf at sp (spanStart sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
-            (name, flatten (visibleTo line), pointOf at sp (spanEnd sp)) `shouldSatisfy` (\(_, p, q) -> norm (q ^-^ p) <= hair)
+                mid = 0.5 *^ (flatten (visibleFrom line) ^+^ flatten (visibleTo line))
+            -- Well inside the face: the stretch crosses its middle.
+            howFarInside ring mid `shouldSatisfy` (> 1e-6)
+          Nothing -> pure ()
 
-    -- The letter fold's unequal panels leave a stretch that stops partway
-    -- along its edge, so a fraction there is neither 0 nor 1. Without one, a
-    -- fraction snapped to the nearer vertex would pass the test above.
-    it "has a stretch on the letter fold that ends inside its edge" $ \_ -> do
-      (_, fr) <- framed True "letter-fold"
-      v <- right (visibleForm True fr (faceOrders fr))
-      [sp | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], inside (spanStart sp) || inside (spanEnd sp)]
-        `shouldSatisfy` (not . null)
+    -- R-05-50 and R-05-51: how many sheets lie over each vertex, from one side,
+    -- the count a fanned figure moves the vertex by. The helmet's numbers are
+    -- 05 L16's acceptance row, worked out by a prototype before this code was
+    -- written.
+    describe "the layers over each vertex" $ do
+      -- The helmet base's last state from both sides, and the state before it
+      -- from above. Red if a face's layer number were counted, which gives the
+      -- state before [0,3,0,2,0,0,0,1,1]; if a covering face counted only where
+      -- it covered the whole corner, which gives vertex 1 of the last state 1;
+      -- or if the side seen from were ignored.
+      it "counts the helmet base's sheets as 05's acceptance row has them" $ \(st2, st3) -> do
+        counts True st3 `shouldBe` Right [0, 3, 0, 2, 0, 0, 1, 1, 0]
+        counts False st3 `shouldBe` Right [2, 0, 2, 1, 0, 0, 1, 1, 0]
+        counts True st2 `shouldBe` Right [0, 1, 0, 0, 0, 0, 0, 1, 1]
 
-    -- Where a top face's fold lies along the border of a layer buried under
-    -- it, the stretch names the fold, its own face's edge, though it is drawn
-    -- as the border, the stronger line. The crane has such stretches from
-    -- above. Red if the code named whichever crease along the line came
-    -- first, or the strongest, which is the buried border.
-    it "names the fold, not the buried border, where a fold lies along one" $ \_ -> do
-      (_, fr) <- framed True "crane"
-      v <- right (visibleForm True fr (faceOrders fr))
-      let foldsDrawnAsBorder =
-            [ sp
-              | e <- formSheetEdges v,
-                visibleAssignment (sheetEdgeLine e) == Border,
-                Just sp <- [sheetEdgeSpan e],
-                assignmentOf fr (spanFrom sp, spanTo sp) `elem` [Just Mountain, Just Valley]
-            ]
-      length foldsDrawnAsBorder `shouldSatisfy` (> 0)
+      -- The letter fold's panels lie C over B over A, and at vertex 1 the long
+      -- panel's side runs past the corners of the others, so a face whose side
+      -- passes through a vertex covers half the directions there. Red if only
+      -- corners and insides counted, which gives every vertex 0.
+      it "counts a sheet whose side runs through a vertex" $ \_ -> do
+        (_, letter) <- framed True "letter-fold"
+        counts True letter `shouldBe` Right [0, 1, 0, 0, 0, 0, 1, 0]
+        counts False letter `shouldBe` Right [0, 0, 1, 0, 0, 1, 0, 0]
 
-    -- A face with two edges along one line, a straight corner, which tracing
-    -- can leave where one crease ends on another, gives a stretch for each
-    -- edge, though the ordinary drawing joins them into one line. No fixture
-    -- has one, so this frame is built for it: a square whose bottom side is
-    -- two edges, through a vertex at its middle. Red if stretches were joined
-    -- whatever edge they name, which would hand a fanned drawing one stretch
-    -- moving with one edge for the length of two.
-    it "gives each of two edges along one line a stretch of its own" $ \_ -> do
-      let corner =
-            emptyFrame
-              { verticesCoords = [[0, 0], [0.5, 0], [1, 0], [1, 1], [0, 1]],
-                facesVertices = [map VertexId [0, 1, 2, 3, 4]],
-                edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 4), (4, 0)]],
-                edgesAssignment = replicate 5 Border
-              }
-      v <- right (visibleForm True corner [])
-      length (formEdges v) `shouldBe` 4
-      [(spanFrom sp, spanTo sp, spanStart sp, spanEnd sp) | e <- formSheetEdges v, Just sp <- [sheetEdgeSpan e], spanFrom sp `elem` [VertexId 0, VertexId 1], spanTo sp `elem` [VertexId 1, VertexId 2]]
-        `shouldBe` [(VertexId 0, VertexId 1, 0, 1), (VertexId 1, VertexId 2, 0, 1)]
+      -- A square with a smaller one lying on it, its corners inside the
+      -- larger. Red if a vertex inside a face counted nothing over it, and if
+      -- two faces over one wedge with no order between them were counted as
+      -- neither nearer rather than refused.
+      it "counts a sheet a vertex lies inside, and refuses two with no order" $ \_ -> do
+        let os = [FaceOrder (FaceId 0) (FaceId 1) Above]
+        counts True (squareOnSquare os) `shouldBe` Right [0, 0, 0, 0, 1, 1, 1, 1]
+        counts False (squareOnSquare os) `shouldBe` Right (replicate 8 0)
+        fanCounts True (squareOnSquare []) [] `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 1) (V2 0.25 0.25))
 
-    -- With the letter fold's orders dropped, the face found nearest along one
-    -- stretch is a face whose middle that stretch crosses, so it has no edge
-    -- there, and the stretch names the sheet and no edge. Red if an edge of
-    -- that face were named anyway.
-    it "names no edge where the sheet named has none along the stretch, with orders missing" $ \_ -> do
-      (_, fr) <- framed True "letter-fold"
-      v <- right (visibleForm True fr [])
-      let edgeless = [e | e <- formSheetEdges v, Just _ <- [sheetEdgeFace e], Nothing <- [sheetEdgeSpan e]]
-      length edgeless `shouldBe` 1
-      forM_ edgeless $ \e -> case sheetEdgeFace e of
-        Just f -> do
-          ring <- faceRing fr f
-          let line = sheetEdgeLine e
-              mid = 0.5 *^ (flatten (visibleFrom line) ^+^ flatten (visibleTo line))
-          -- Well inside the face: the stretch crosses its middle.
-          howFarInside ring mid `shouldSatisfy` (> 1e-6)
-        Nothing -> pure ()
+      -- No face has a corner at any vertex of a frame with no faces. Red if such
+      -- a vertex were left out, or its count were the least of nothing.
+      it "counts 0 at a vertex where no face has a corner" $ \_ ->
+        fanCounts True bareSquare [] `shouldBe` Right [(VertexId i, 0) | i <- [0 .. 3]]
+
+      -- The crane from each side. From +z, binned 0, 1–6 and 7–15, these are
+      -- the counts 06 §10's table gives from the prototype that worked out the
+      -- helmet's; the counts within each bin, and every count from −z, are
+      -- this code's own, pinned so that a change shows. This is also what holds
+      -- the merging of sides to a hair rather than to exact equality. Two
+      -- sides are compared by how far the far end of the longer lies from the
+      -- line of the shorter, which magnifies rounding by the ratio of their
+      -- lengths: at vertex 1, its coordinates rounded by about 8e-14, a side
+      -- 0.5 long lies 8.6e-13 off one 0.04 long. Merged only within 1e-13, the
+      -- two come apart and vertex 1 is refused, faces 1 and 49 over one wedge
+      -- with no order between them.
+      it "counts the crane's sheets from either side" $ \_ -> do
+        (_, crane) <- framed True "crane"
+        fmap histogram (counts True crane)
+          `shouldBe` Right [(0, 17), (1, 9), (2, 8), (3, 3), (4, 3), (5, 3), (6, 1), (7, 2), (8, 1), (9, 2), (10, 3), (11, 1), (12, 2), (13, 1), (14, 1), (15, 1)]
+        fmap histogram (counts False crane)
+          `shouldBe` Right [(0, 16), (1, 6), (2, 8), (3, 5), (4, 6), (5, 3), (6, 1), (7, 1), (8, 1), (9, 1), (10, 2), (12, 2), (13, 2), (14, 2), (15, 2)]
+
+      -- Each refusal, from a named input.
+      describe "what it refuses" $ do
+        -- The helmet's last state without the order between faces 0 and 4,
+        -- which overlap at its four corners: refused at the first of them,
+        -- vertex 0. Red if a missing order were read as neither face nearer.
+        it "refuses two faces over one wedge with no order between them" $ \(_, st3) -> do
+          at <- positionsOf st3
+          let dropped = [o | o <- faceOrders st3, (orderFace o, orderRelativeTo o) /= (FaceId 4, FaceId 0)]
+          length dropped `shouldBe` length (faceOrders st3) - 1
+          fanCounts True st3 dropped `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 4) (M.findWithDefault (V2 9 9) (VertexId 0) at))
+          fanCounts False st3 dropped `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 4) (M.findWithDefault (V2 9 9) (VertexId 0) at))
+
+        -- Two strips crossing with no order between them, and a square under
+        -- both whose corner lies inside the crossing. Neither strip has a
+        -- corner there, so the unordered pair never includes the face being
+        -- counted. Red if only pairs with that face were checked, which counts
+        -- the square's corner 2 from above and every vertex 0 from below.
+        it "refuses an unordered pair over another face's corner" $ \_ ->
+          forM_ [True, False] $ \side ->
+            fanCounts side crossedStrips (faceOrders crossedStrips)
+              `shouldBe` Left (UnorderedCover (FaceId 0) (FaceId 1) (V2 0.5 0.5))
+
+        -- Two strips overlapping with no order between them at a square's
+        -- corner, on the side away from the square: neither lies over a
+        -- corner there, so no count would change. Refused all the same, since
+        -- the faces over every wedge at a vertex are one stack; with the order
+        -- given, every vertex counts 0. Red if only the wedges of a corner were
+        -- checked.
+        it "refuses an unordered pair over a wedge no corner lies in" $ \_ ->
+          forM_ [True, False] $ \side -> do
+            fanCounts side stripsBesideACorner [] `shouldBe` Left (UnorderedCover (FaceId 1) (FaceId 2) (V2 0 0))
+            counts side stripsBesideACorner {faceOrders = [FaceOrder (FaceId 1) (FaceId 2) Above]} `shouldBe` Right (replicate 12 0)
+
+        -- Three triangles on top of one another, each over the next and the
+        -- last over the first. Seen from below the circle runs the other way.
+        -- The same three in a chain are counted. Red if a circle were not
+        -- looked for, which counts every vertex 1.
+        it "refuses three faces whose orders run in a circle" $ \_ -> do
+          let circle = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 2) (FaceId 0) Above]
+              chain = [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 2) Above, FaceOrder (FaceId 0) (FaceId 2) Above]
+          fanCounts True threeTriangles circle `shouldBe` Left (CyclicCover [FaceId 0, FaceId 1, FaceId 2] (V2 0 0))
+          fanCounts False threeTriangles circle `shouldBe` Left (CyclicCover [FaceId 0, FaceId 2, FaceId 1] (V2 0 0))
+          counts True threeTriangles {faceOrders = chain} `shouldBe` Right [0, 0, 0, 1, 1, 1, 2, 2, 2]
+          counts False threeTriangles {faceOrders = chain} `shouldBe` Right [2, 2, 2, 1, 1, 1, 0, 0, 0]
+
+        -- Paper in the air, and orders that contradict one another a pair at a
+        -- time, are refused for what they are.
+        it "refuses a frame that is not flat, or whose orders contradict each other" $ \_ -> do
+          twist <- fixture "squaretwist"
+          fanCounts True twist [] `shouldSatisfy` \case
+            Left (CoverFlat (PaperInTheAir dz)) -> dz > 0
+            _ -> False
+          fanCounts True threeTriangles [FaceOrder (FaceId 0) (FaceId 1) Above, FaceOrder (FaceId 1) (FaceId 0) Above]
+            `shouldBe` Left (CoverFlat (FlatRefused (ContradictoryStacking (FaceId 1) (FaceId 0))))
 
   describe "what it declines" $ do
     it "declines a model with paper still in the air" $ do
@@ -439,3 +554,68 @@ spec = do
       visibleForm True fr [] `shouldSatisfy` \case
         Left (PaperInTheAir dz) -> dz > 0
         _ -> False
+
+-- | The counts alone, in vertex order, under the frame's own orders.
+counts :: Bool -> Frame -> Either CoverError [Int]
+counts side fr = fmap (map snd) (fanCounts side fr (faceOrders fr))
+
+-- | How many vertices have each count.
+histogram :: [Int] -> [(Int, Int)]
+histogram cs = M.toList (M.fromListWith (+) [(c, 1) | c <- cs])
+
+-- | A unit square, face 0, with a square half its size lying on it, face 1,
+-- its corners inside the larger one.
+squareOnSquare :: [FaceOrder] -> Frame
+squareOnSquare os =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [0.25, 0.25], [0.75, 0.25], [0.75, 0.75], [0.25, 0.75]],
+      facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7]],
+      edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0), (4, 5), (5, 6), (6, 7), (7, 4)]],
+      edgesAssignment = replicate 8 Border,
+      faceOrders = os
+    }
+
+-- | A horizontal strip, face 0, and a vertical strip, face 1, crossing over the
+-- unit square with no order between them, and a unit square, face 2, under
+-- both, its corner (0.5, 0.5) inside the crossing.
+crossedStrips :: Frame
+crossedStrips =
+  emptyFrame
+    { verticesCoords = [[-1, 0], [2, 0], [2, 1], [-1, 1], [0, -1], [1, -1], [1, 2], [0, 2], [0.5, 0.5], [1.5, 0.5], [1.5, 1.5], [0.5, 1.5]],
+      facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7], map VertexId [8, 9, 10, 11]],
+      edgesVertices = [(VertexId (4 * k + a), VertexId (4 * k + b)) | k <- [0, 1, 2], (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0)]],
+      edgesAssignment = replicate 12 Border,
+      faceOrders = [FaceOrder (FaceId 0) (FaceId 2) Above, FaceOrder (FaceId 1) (FaceId 2) Above]
+    }
+
+-- | A unit square, face 0, its corner at the origin, and two strips, faces 1
+-- and 2, one along each side of that corner on the far side from the square,
+-- overlapping each other just below and left of it. No face but the square
+-- has a corner at the origin, and its corner is the quarter the strips leave.
+stripsBesideACorner :: Frame
+stripsBesideACorner =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1], [-3, -1], [2, -1], [2, 0], [-3, 0], [-1, -3], [0, -3], [0, 2], [-1, 2]],
+      facesVertices = [map VertexId [0, 1, 2, 3], map VertexId [4, 5, 6, 7], map VertexId [8, 9, 10, 11]],
+      edgesVertices = [(VertexId (4 * k + a), VertexId (4 * k + b)) | k <- [0, 1, 2], (a, b) <- [(0, 1), (1, 2), (2, 3), (3, 0)]],
+      edgesAssignment = replicate 12 Border
+    }
+
+-- | A unit square with no faces.
+bareSquare :: Frame
+bareSquare =
+  emptyFrame
+    { verticesCoords = [[0, 0], [1, 0], [1, 1], [0, 1]],
+      edgesVertices = [(VertexId 0, VertexId 1), (VertexId 1, VertexId 2), (VertexId 2, VertexId 3), (VertexId 3, VertexId 0)],
+      edgesAssignment = replicate 4 Border
+    }
+
+-- | Three triangles, faces 0, 1 and 2, each on (0, 0), (1, 0) and (0, 1).
+threeTriangles :: Frame
+threeTriangles =
+  emptyFrame
+    { verticesCoords = concat (replicate 3 [[0, 0], [1, 0], [0, 1]]),
+      facesVertices = [map VertexId [0, 1, 2], map VertexId [3, 4, 5], map VertexId [6, 7, 8]],
+      edgesVertices = [(VertexId (3 * k + a), VertexId (3 * k + b)) | k <- [0, 1, 2], (a, b) <- [(0, 1), (1, 2), (2, 0)]],
+      edgesAssignment = replicate 9 Border
+    }

@@ -114,6 +114,52 @@
 -- every frame tracing gives, a named sheet always has an edge along its
 -- stretch.
 --
+-- == How many sheets lie over a vertex
+--
+-- A fanned figure (see the glossary's Fan count) draws a stack of layers moved
+-- apart, each corner by how many sheets lie over it, so the reader can count
+-- the layers. 'fanCounts' says how many. It is not a face's layer number, how
+-- deep in the stack the face is, and a newcomer reaching for that number gets
+-- the wrong picture: a sheet that covers only part of a face's corner, or that
+-- covers a face somewhere far from this vertex, is not over this corner at all.
+--
+-- So the question is asked of directions out of the vertex, never of points
+-- beside it, since a point a hair from a vertex can land on a fold line and
+-- belong to both faces or neither. Every face at the vertex has a range of
+-- directions it covers there: all of them if the vertex is inside it, half of
+-- them if the vertex is on one of its sides, and the angle of its corner if the
+-- vertex is one of its corners. The sides of those ranges cut the directions
+-- into /wedges/, and over one wedge the same faces lie throughout. A face's
+-- /cover/ is the fewest faces nearer the viewer than it over any wedge of its
+-- own corner, and the count at the vertex is the least cover over the faces
+-- with a corner there, or 0 where no face has one.
+--
+-- A side through the vertex counts as much as a corner. Leave it out and a
+-- vertex where a long layer's edge runs past another layer's corner, as on a
+-- letter fold, counts nothing.
+--
+-- The sides of the ranges are merged when they lie within a hair of one
+-- another, for the reason the edges are gathered into tracks: folded paper
+-- brings edges onto one line in all but the last bits. Compared exactly, two
+-- sides that are one line cut a sliver of wedge between them, and the sliver
+-- lies under some of the faces along that line and not the others. It can leave
+-- out a face that is really over a corner, or hold two faces that never overlap
+-- and so have no order. Without the merge the helmet base's run is refused at
+-- its states 1 and 2, two faces with no order between them over a sliver at its
+-- centre, and its last state, seen from above, is counted wrong without a word:
+-- 1 sheet at vertex 1 rather than 3, and none at vertex 7 rather than 1.
+--
+-- The faces over one wedge are in one stack, so every pair of them must have an
+-- order and the orders must not run in a circle, which is the layer solver's
+-- @Acyclic@ rule. A pair with no order is 'UnorderedCover', since a missing
+-- order read as \"neither is nearer\" would undercount, and a circle is
+-- 'CyclicCover'. Every wedge at the vertex is checked, not only the wedges of a
+-- corner, so two faces overlapping there with no order are refused even where
+-- neither lies over a corner and no count would change: the rule is about the
+-- paper at the vertex, and a reader can check it without working out which
+-- wedges belong to which corner. A twist's three flaps lying in a circle are no
+-- obstacle, for the reason the regions give: no wedge lies under all three.
+--
 -- == What this does not do
 --
 -- Only models folded flat, for the reason "Senbazuru.Origami.Flat" gives.
@@ -138,16 +184,25 @@ module Senbazuru.Origami.Visible
     SheetEdge (..),
     EdgeSpan (..),
     visibleForm,
+
+    -- * How many sheets lie over each vertex
+    fanCounts,
+    CoverError (..),
   )
 where
 
 import Control.Monad (foldM)
-import Data.List (foldl', sort)
+import Data.Bifunctor (first)
+import Data.IntMap.Strict qualified as IM
+import Data.List (foldl', minimumBy, sort)
 import Data.Map.Strict qualified as M
+import Data.Maybe (mapMaybe)
+import Data.Ord (comparing)
+import Senbazuru.Explain (Explain (..), num, tshow)
 import Senbazuru.Fold.Query (Crease (..), Face (..), FoldError (..))
 import Senbazuru.Fold.Types
   ( Assignment (..),
-    FaceId,
+    FaceId (..),
     FaceOrder (..),
     Frame,
     Stacking (..),
@@ -159,6 +214,7 @@ import Senbazuru.Geometry.Polygon
     clipConvex,
     cross2,
     distanceOutside,
+    distanceToSegment,
     signedArea,
     subtractConvex,
   )
@@ -754,3 +810,160 @@ data Side = OnTheLeft | OnTheRight | OnBothSides
 -- model lies in.
 raise :: Double -> V2 -> V3
 raise z (V2 x y) = V3 x y z
+
+-- | Why the layers over a vertex of a flat-folded frame cannot be counted.
+data CoverError
+  = -- | The frame is not a flat-folded model of convex faces, or its layer
+    -- orders contradict one another a pair at a time: 'flatSheet' or the
+    -- reading of @faceOrders@ refused it.
+    CoverFlat !FlatError
+  | -- | Two faces lie over one wedge at a vertex with no layer order between
+    -- them. Carries the two faces, the lower id first, and where the vertex
+    -- lies.
+    UnorderedCover !FaceId !FaceId !V2
+  | -- | The faces over one wedge at a vertex have orders that run in a circle:
+    -- each is nearer the viewer than the next, and the last nearer than the
+    -- first. Carries the faces, the lowest id first, and where the vertex lies.
+    CyclicCover ![FaceId] !V2
+  deriving stock (Eq, Show)
+
+instance Explain CoverError where
+  explain = \case
+    CoverFlat err -> explain err
+    UnorderedCover f g p ->
+      "(internal faces "
+        <> tshow (unFaceId f)
+        <> " and "
+        <> tshow (unFaceId g)
+        <> ") overlap at "
+        <> point p
+        <> " with no layer order between them"
+    CyclicCover fs p ->
+      "(internal faces "
+        <> listed (map (tshow . unFaceId) fs)
+        <> ") lie each over the next and the last over the first at "
+        <> point p
+        <> ", so the layers there cannot be counted"
+    where
+      point (V2 x y) = "(" <> num x <> ", " <> num y <> ")"
+      listed = \case
+        [] -> ""
+        [a] -> a
+        [a, b] -> a <> " and " <> b
+        a : rest -> a <> ", " <> listed rest
+
+-- | How many sheets lie over each vertex of a flat-folded frame, seen from one
+-- side: the count a fanned figure moves the vertex by. Every vertex of the
+-- frame, in id order, and the count is not capped. The module header has the
+-- rule.
+--
+-- @fanCounts fromAbove frame orders@ takes its arguments as 'visibleForm'
+-- does. Refused at the first vertex, by id, that cannot be counted: where two
+-- faces over one wedge there have no order between them ('UnorderedCover'), or
+-- orders that run in a circle ('CyclicCover'). Refused as 'CoverFlat' where
+-- the frame is not flat or its orders contradict one another.
+fanCounts :: Bool -> Frame -> [FaceOrder] -> Either CoverError [(VertexId, Int)]
+fanCounts fromAbove fr orders = do
+  sheet <- first CoverFlat (flatSheet fr)
+  nearer <- first CoverFlat (nearness fromAbove sheet orders)
+  traverse (countAt sheet nearer) (IM.toList (sheetPositions sheet))
+
+-- | The count at one vertex: the least cover over the faces with a corner
+-- there, or 0 where none has one, once the faces over every wedge there are
+-- found to be one stack.
+countAt :: Sheet -> (FaceId -> FaceId -> Bool) -> (Int, V2) -> Either CoverError (VertexId, Int)
+countAt sheet nearer (i, p) = do
+  mapM_ (inOneStack nearer p . facesOver) wedges
+  pure
+    ( VertexId i,
+      case mapMaybe coverOf cornered of
+        [] -> 0
+        c : cs -> foldl' min c cs
+    )
+  where
+    hair = sheetHair sheet
+    -- By id, so a corner where the ring runs straight on, which no angle
+    -- shows, still counts.
+    cornered = [panelId panel | (face, panel) <- zip (sheetFaces sheet) (sheetPanels sheet), VertexId i `elem` faceVertexIds face]
+    over = [(panelId panel, cone) | panel <- sheetPanels sheet, distanceOutside (panelRing panel) p <= hair, Just cone <- [coneAt hair (panelRing panel) p]]
+    wedges = wedgeDirections hair (concatMap (coneSides . snd) over)
+    facesOver d = [g | (g, cone) <- over, inCone cone d]
+
+    -- The fewest faces nearer than this one over any wedge of its corner. A
+    -- ring too small to have a corner covers nothing and has no say.
+    coverOf f = do
+      cone <- lookup f over
+      pure $ case [nearerOver f (facesOver d) | d <- wedges, inCone cone d] of
+        [] -> 0
+        c : cs -> foldl' min c cs
+
+    nearerOver f faces = length [g | g <- faces, g /= f, nearer g f]
+
+-- | That the faces over one wedge are one stack: every pair ordered, and the
+-- orders running in no circle. With every pair ordered, a circle through any
+-- number of faces has three of them in a circle, so circles of three are the
+-- only ones to look for.
+inOneStack :: (FaceId -> FaceId -> Bool) -> V2 -> [FaceId] -> Either CoverError ()
+inOneStack nearer p faces = do
+  case [(a, b) | (k, a) <- zip [1 :: Int ..] sorted, b <- drop k sorted, not (nearer a b || nearer b a)] of
+    (a, b) : _ -> Left (UnorderedCover a b p)
+    [] -> Right ()
+  case [[a, b, c] | a <- sorted, b <- sorted, a < b, nearer a b, c <- sorted, a < c, b /= c, nearer b c, nearer c a] of
+    circle : _ -> Left (CyclicCover circle p)
+    [] -> Right ()
+  where
+    sorted = sort faces
+
+-- | The directions a face covers at a point of its closure.
+data Cone
+  = -- | The point is inside the face: every direction.
+    Whole
+  | -- | The point is on the side from the first point to the second: the half
+    -- of the directions on that side's left, the face's inside, since rings
+    -- run anticlockwise.
+    Half !V2 !V2
+  | -- | The point is a corner: the directions between the next corner along
+    -- the ring and the one before it, each given from the point.
+    Corner !V2 !V2
+
+coneAt :: Double -> [V2] -> V2 -> Maybe Cone
+coneAt hair ring p = case break isHere ring of
+  (before, _ : after) -> Corner <$> firstAway (after <> before) <*> firstAway (reverse before <> reverse after)
+  _
+    | distanceOutside ring p < negate hair -> Just Whole
+    | otherwise -> case [(a, b) | (a, b) <- zip ring (drop 1 ring <> take 1 ring), norm (b ^-^ a) > hair] of
+        [] -> Nothing
+        sides -> let (a, b) = minimumBy (comparing (`distanceToSegment` p)) sides in Just (Half a b)
+  where
+    isHere c = norm (c ^-^ p) <= hair
+    firstAway cs = case [c ^-^ p | c <- cs, not (isHere c)] of
+      c : _ -> Just c
+      [] -> Nothing
+
+inCone :: Cone -> V2 -> Bool
+inCone Whole _ = True
+inCone (Half a b) d = cross2 (b ^-^ a) d > 0
+inCone (Corner next prev) d = cross2 next d > 0 && cross2 d prev > 0
+
+-- | Where a cone stops: the lines that cut the directions at the point into
+-- wedges.
+coneSides :: Cone -> [V2]
+coneSides Whole = []
+coneSides (Half a b) = [b ^-^ a, a ^-^ b]
+coneSides (Corner next prev) = [next, prev]
+
+-- | A direction inside each wedge the cones' sides cut, halfway round it.
+--
+-- Sides within a hair of one another are one side, judged as the edges'
+-- tracks are, by how far the far end of one lies from the line of the other,
+-- so that two edges folded onto one line cut no sliver of wedge between them.
+wedgeDirections :: Double -> [V2] -> [V2]
+wedgeDirections hair sides = case sort (map angleOf (foldr keep [] sides)) of
+  [] -> [V2 1 0]
+  [a] -> [direction (a + pi)]
+  angles@(a0 : _) -> [direction (0.5 * (a + b)) | (a, b) <- zip angles (drop 1 angles <> [a0 + 2 * pi])]
+  where
+    keep side kept = if any (sameLine side) kept then kept else side : kept
+    sameLine a b = dot a b > 0 && abs (cross2 a b) / min (norm a) (norm b) <= hair
+    angleOf (V2 x y) = atan2 y x
+    direction t = V2 (cos t) (sin t)

@@ -134,17 +134,20 @@ data FlatError
 
 -- | The plain statement of the fact, with nothing about what it stops.
 --
--- Nothing prints this today, and the three callers of 'flatSheet' avoid it
--- three different ways. "Senbazuru.Origami.Stacking" and
+-- Nothing prints this today. Three modules call 'flatSheet', and they treat
+-- its error three ways. "Senbazuru.Origami.Stacking" and
 -- "Senbazuru.Origami.ThroughLayers" each have a @fromFlat@ that maps the same
 -- three constructors into their own error type, because the useful message
 -- names what the model being unflat /prevented/ — working out which layer is
 -- on top, or reading a line drawn on the model — and this module does not know
--- which was being attempted. "Senbazuru.Origami.Visible" does not convert at
--- all: it returns @Either FlatError@ unchanged, and its caller
--- "Senbazuru.Render.CreasePattern" matches 'PaperInTheAir' and 'ConcaveFace'
--- to pick a /fallback drawing/ rather than to refuse. For that third caller
--- being unflat is not a failure, so it never becomes words.
+-- which was being attempted. "Senbazuru.Origami.Visible" calls it twice.
+-- 'Senbazuru.Origami.Visible.visibleForm' returns @Either FlatError@
+-- unchanged, and its caller "Senbazuru.Render.CreasePattern" matches
+-- 'PaperInTheAir' and 'ConcaveFace' to pick a /fallback drawing/ rather than to
+-- refuse: there being unflat is not a failure, so it never becomes words.
+-- 'Senbazuru.Origami.Visible.fanCounts' does refuse, wrapping the error in
+-- @CoverFlat@, whose words are this instance's unchanged; nothing calls
+-- 'Senbazuru.Origami.Visible.fanCounts' yet.
 --
 -- So this is not quite a common stem: only 'ConcaveFace' is the two printed
 -- messages minus their trailing clause. Their 'PaperInTheAir' wordings differ

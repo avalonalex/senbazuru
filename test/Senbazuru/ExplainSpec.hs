@@ -15,9 +15,10 @@
 -- the exception: "Senbazuru.Sequence.ErrorSpec" samples every constructor of
 -- theirs.
 --
--- The two instances nothing prints yet, 'FlatError' and
--- 'Senbazuru.Render.Steps.StepError'. They have no golden file and no CLI path
--- to notice them, so this is the only place their words are read.
+-- The three instances nothing prints yet, 'FlatError',
+-- 'Senbazuru.Render.Steps.StepError' and 'Senbazuru.Origami.Visible.CoverError'.
+-- They have no golden file and no CLI path to notice them, so this is the only
+-- place their words are read.
 --
 -- The arms that reach a /second/ instance, or deliberately do not forward
 -- at all. Those used to be pinned by naming the inner module's rendering
@@ -30,8 +31,9 @@
 -- vectors that way until #582, which also made the ids show as their numbers,
 -- so an id can no longer print as a record anywhere; a vector still can.
 -- 'idMessages' samples every constructor of both types, with the study's
--- messages the same fix touched and the eight 'FoldError' constructors
--- placement added, and holds each to the numbers it was given.
+-- messages the same fix touched, the eight 'FoldError' constructors placement
+-- added and the three of 'CoverError', and holds each to the numbers it was
+-- given.
 module Senbazuru.ExplainSpec (spec) where
 
 import ContactDiscovery (DiscoveryError (AmbiguousReferenceOrder))
@@ -59,6 +61,7 @@ import Senbazuru.Origami.Folding qualified as Fold
 import Senbazuru.Origami.Stacking qualified as Stack
 import Senbazuru.Origami.Surface (SurfaceError (..))
 import Senbazuru.Origami.ThroughLayers (ThroughError (..))
+import Senbazuru.Origami.Visible (CoverError (..))
 import Senbazuru.Render.Gltf (GltfError (..))
 import Senbazuru.Render.PaperMesh (PaperMeshError (..))
 import Senbazuru.Render.Sequence (RunPageError (..))
@@ -117,17 +120,19 @@ everyType =
     ("RunPageError, the page's", explain (PageDoesNotFit FiguresHaveNoWidth))
   ]
 
--- | Every constructor of 'SurfaceError' and 'PaperMeshError', the study's
--- messages the same fix touched, and placement's refusals, each with the
--- numbers its message must show.
+-- | Every constructor of 'SurfaceError', 'PaperMeshError' and 'CoverError',
+-- the study's messages the same fix touched, and placement's refusals, each
+-- with the numbers its message must show.
 -- The ids are all different, so a message that printed one id twice, or none,
--- leaves a number out. 'surfaceName' and 'paperName' match without a
--- catch-all, so that a constructor added to either type without a sample here
--- at least warns there, as "Senbazuru.Sequence.ErrorSpec" does for its types.
+-- leaves a number out. 'surfaceName', 'paperName' and 'coverName' match
+-- without a catch-all, so that a constructor added to any of them without a
+-- sample here at least warns there, as "Senbazuru.Sequence.ErrorSpec" does for
+-- its types.
 idMessages :: [(String, Text, [Text])]
 idMessages =
   [("SurfaceError " <> surfaceName e, explain e, shown) | (e, shown) <- surfaceSamples]
     <> [("PaperMeshError " <> paperName e, explain e, shown) | (e, shown) <- paperSamples]
+    <> [("CoverError " <> coverName e, explain e, shown) | (e, shown) <- coverSamples]
     <> [ ("BendingError MissingRestAngle", explain (MissingRestAngle (EdgeId 23)), ["23"]),
          ("BendingError UnexpectedRestAngle", explain (UnexpectedRestAngle (EdgeId 24)), ["24"]),
          ("BendingError InvalidRestAngle", explain (InvalidRestAngle (EdgeId 25) 4), ["25", "4.0"]),
@@ -197,6 +202,21 @@ surfaceName = \case
   SurfaceDegenerateFan {} -> "SurfaceDegenerateFan"
   SurfaceJoinedCut {} -> "SurfaceJoinedCut"
   SurfaceMissingVertex {} -> "SurfaceMissingVertex"
+
+-- | The layers over a vertex: two faces with no order, faces in a circle, and
+-- a frame refused for not being flat, whose words are the 'FlatError''s own.
+coverSamples :: [(CoverError, [Text])]
+coverSamples =
+  [ (UnorderedCover (FaceId 37) (FaceId 38) (V2 0.75 0.25), ["37", "38", "(0.750000, 0.250000)"]),
+    (CyclicCover [FaceId 39, FaceId 40, FaceId 41] (V2 0.5 0.125), ["39", "40", "41", "(0.500000, 0.125000)"]),
+    (CoverFlat (FlatRefused (ContradictoryStacking (FaceId 42) (FaceId 43))), ["42", "43"])
+  ]
+
+coverName :: CoverError -> String
+coverName = \case
+  CoverFlat {} -> "CoverFlat"
+  UnorderedCover {} -> "UnorderedCover"
+  CyclicCover {} -> "CyclicCover"
 
 paperName :: PaperMeshError -> String
 paperName = \case
@@ -293,6 +313,7 @@ spec = do
       explain (Stack.StackingRefused inner) `shouldBe` explain inner
       explain (GltfRefused inner) `shouldBe` explain inner
       explain (FlatRefused inner) `shouldBe` explain inner
+      explain (CoverFlat (PaperInTheAir 0.25)) `shouldBe` explain (PaperInTheAir 0.25)
 
     -- The one arm in the library whose inner error is not a 'FoldError'. It
     -- used to name 'renderFoldingError', so the field's type was pinned by the
@@ -335,6 +356,10 @@ spec = do
     it "states the fact a FlatError carries, with nothing about what it stops" $
       explain (PaperInTheAir 0.25)
         `shouldBe` "the model spans 0.250000 in z, so it is not folded flat"
+
+    it "names a CoverError's faces and where they overlap, the point by its parts" $
+      explain (UnorderedCover (FaceId 1) (FaceId 2) (V2 0.75 0.25))
+        `shouldBe` "(internal faces 1 and 2) overlap at (0.750000, 0.250000) with no layer order between them"
 
     it "leads a StepError with the frame, which is what the reader lacks" $
       explain (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
