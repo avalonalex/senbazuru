@@ -462,7 +462,7 @@ then.
   or its visible form cannot be had: an unordered pair, a cycle, a twist with no
   order to paint in, a concave face. It is drawn unfanned too when any of its
   faces would be inside out or cross itself at the page's scale, decided once
-  that scale is known (owner decision 79, decided 2026-11-02; S9's guard, 06
+  that scale is known (owner decision 79, decided 2026-11-02; S9's guard,
   Risks).
 - **R-06-27.** A fanned figure is painted by the offset view's painter
   ([`CreasePattern.hs:277-422`](../src/Senbazuru/Render/CreasePattern.hs#L277-L422))
@@ -1438,6 +1438,12 @@ Each has a recommended default in
   included, by an error S19
   ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names. It
   settles §2's "a fold then a turn" row and D22's.
+- **79**, whether `run` still fans by default now that S9 has measured fanning,
+  **decided 2026-11-02** as recommended ([the question as
+  asked](https://github.com/avalonalex/senbazuru/issues/644#issuecomment-6596674251),
+  [C147](decisions.md#changes-since-draft-v2)): decision 66 stands, and a
+  figure with a face that would be inside out or cross itself at the page's
+  scale is drawn unfanned, decided once that scale is known (R-06-26, Risks).
 
 ## Research links
 
