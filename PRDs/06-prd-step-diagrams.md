@@ -259,7 +259,9 @@ then.
   [#648](https://github.com/avalonalex/senbazuru/issues/648).
 - **R-06-6.** `Shape` gains `Symbol`: a glyph whose geometry is in page units at one
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
-  moves only the anchor.
+  moves only the anchor. Built by S13 of [#639](https://github.com/avalonalex/senbazuru/issues/639)
+  with `Glyph = TurnOverLoop` alone ([C145](decisions.md#changes-since-draft-v2)).
+  The `Theme` gains no glyph size until S29 sets it, as the owner chose.
 - **R-06-7.** The PR adding `Symbol` updates by hand the wildcard matchers the
   compiler cannot flag:
   [`LayoutSpec.hs:32-35`](../test/Senbazuru/Diagram/LayoutSpec.hs#L32-L35),
@@ -286,6 +288,9 @@ then.
   ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) could
   not see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
   update them. S24 updated `labels` (C134), and S25 `labelsOf` ([C136](decisions.md#changes-since-draft-v2)).
+  S13 names `Symbol` in `LayoutSpec`'s two matchers, `labelsOf` and `isArrow`,
+  each before its wildcard, which stays for `Fanned`, and gives
+  `CreasePatternSpec`'s `kind` a case ([C145](decisions.md#changes-since-draft-v2)).
 
 **Views**
 
@@ -642,8 +647,15 @@ printed size with the column count, the units bug recorded at
 
 `TurnOverLoop`'s vector is in the same frame as the anchor: the axis direction
 projected through the page basis onto (right, up), so **y up**. `Render.Svg`
-negates its y, as it does for every model coordinate, but does not scale it,
-because the loop's size is in page units. Beside `Offset`, whose displacement is
+turns it by the signs of the page's scales, which negates its y on every page
+that flips y, as it does for every model coordinate, but does not scale it,
+because the loop's size is in page units. The signs rather than a fixed
+negation, because a page whose margins are wider than half of it draws the
+model turned round, and the loop turns with it ([C145](decisions.md#changes-since-draft-v2)).
+As built, the stem crosses the axis at the anchor and the loop rises on the
+side the vector points to, so S29 points it into the figure; the loop has a
+radius of 0.18 of its length, centred 0.28 above the stem, and a solid head 0.3
+long, the owner's choice of three renderings on 2026-11-01. Beside `Offset`, whose displacement is
 y-down ([`Diagram.hs:202-221`](../src/Senbazuru/Diagram.hs#L202-L221)), that reads
 as a sign error; it is deliberate. `Offset`'s nudge is authored in page units; the
 loop's vector is computed from model geometry, and turning it y-down in
@@ -1183,7 +1195,7 @@ decisions 67 to 69).
 | A11 | For the quarter-fold run, `fmap (map fst) (stepNotes run)` equals the `file_frames` of `writeSequence`'s file, both `Right`. In review: `Render.Sequence` imports `Sequence.Record` and `Sequence.Error` and no other sequence module, and no `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`. Sharing `writtenStates` makes the frames equal by construction; the test guards what the construction does not, `stepNotes` dropping or reordering states | `stepNotes` filters `writtenStates` (for example drops sample states) or rebuilds frames without the [state rule](glossary-additions.md#the-fold-format); `Render.Sequence` imports `Sequence.Write` or `Sequence.Run`; a `View` reaches the runner, the writer or `stepNotes` |
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | the equal-graph branch is bypassed, restated from "`motionsAcross` visits rings in another order", which the equal-graph branch makes impossible ([C144](decisions.md#changes-since-draft-v2)) |
-| A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g` | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
+| A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g`; pinned by `LayoutSpec`, S13 | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
 | A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
 | A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
 | A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |

@@ -67,12 +67,13 @@ import Senbazuru.Diagram
     Colour (..),
     Dash (..),
     Diagram (..),
+    Glyph (..),
     Shape (..),
     Stroke (..),
   )
 import Senbazuru.Diagram.Page (Page (..), defaultPage, pageContentBox, pageTransform)
 import Senbazuru.Geometry
-  ( Transform,
+  ( Transform (..),
     V2 (..),
     applyTransform,
     dot,
@@ -244,6 +245,44 @@ shapeToSvg toPage (Arrow a) =
     hollowWidth
       | headLength < arrowHeadLength a = strokeWidth (arrowStroke a) * headLength / arrowHeadLength a
       | otherwise = strokeWidth (arrowStroke a)
+-- A symbol is drawn wholly in page units around the one point that is
+-- projected. A turn-over loop's axis is a direction in model axes, so it is
+-- turned by the signs of the page's scales, flipping y on every page that
+-- flips it, and never scaled: next to an Offset's y-down nudge that reads as a
+-- sign error, and it is not one. Mapping the axis through the transform and
+-- using its length would size the loop by the page's scale: the same loop
+-- would come out 400 times larger on a sheet one unit across than on one 400
+-- across.
+shapeToSvg toPage (Symbol st size anchor (TurnOverLoop axis))
+  | isNaN size || isInfinite size || size <= 0 = mempty
+  | otherwise =
+      "    <path"
+        <> attr "d" ("M " <> point (-0.5) 0 <> T.concat [" C " <> point u1 w1 <> " " <> point u2 w2 <> " " <> point u3 w3 | ((u1, w1), (u2, w2), (u3, w3)) <- loopStem])
+        <> attr "stroke" (colourText (strokeColour st))
+        <> attrNum "stroke-width" (strokeWidth st)
+        <> dashAttr (strokeDash st)
+        <> "/>\n"
+        <> "    <path"
+        <> attr "d" ("M " <> point 0.5 0 <> " L " <> point loopHeadBase loopHeadHalf <> " L " <> point loopHeadBase (negate loopHeadHalf) <> " Z")
+        <> attr "fill" (colourText (strokeColour st))
+        <> "/>\n"
+  where
+    at = applyTransform toPage anchor
+    -- The axis as the page shows it: model axes turned by the signs of the
+    -- page's scales, then made a unit vector. Divided by its largest part
+    -- first, so that a huge vector keeps its direction. A vector with no
+    -- direction, or with a part that is not a number, is taken as up the
+    -- page: dividing by a largest part of 0 or NaN leaves a vector whose
+    -- length is not a number, which 'normalize' refuses.
+    Transform (V2 sx sy) _ = toPage
+    V2 ax ay = axis
+    biggest = max (abs ax) (abs ay)
+    along = fromMaybe (V2 0 (-1)) (normalize (V2 (signOf sx * ax / biggest) (signOf sy * ay / biggest)))
+    signOf x = if x < 0 || isNegativeZero x then -1 else 1
+    -- The stem travels square to the axis, and the loop rises along it.
+    travel = perpendicular along
+    point u w = pointText (at ^+^ ((size * u) *^ travel) ^+^ ((size * w) *^ along))
+    pointText (V2 x y) = formatNumber x <> " " <> formatNumber y
 shapeToSvg toPage (Fill (Colour c) rings)
   -- Two points enclose no area, so a ring of them would paint nothing.
   -- 'frameFaces' rejects such a face outright; this guard is for diagrams built
@@ -395,3 +434,30 @@ xmlChar c =
     || ('\x20' <= c && c <= '\xD7FF')
     || ('\xE000' <= c && c <= '\xFFFD')
     || ('\x10000' <= c && c <= '\x10FFFF')
+
+-- | The turn-over loop's stem, as cubic segments from its tail at (-1/2, 0),
+-- in units of the loop's length: across along the first coordinate, up the
+-- axis along the second. It rises to a loop of radius 0.18 centred 0.28 above
+-- the stem, the owner's choice of three on 2026-11-01, and runs on to the base
+-- of a head 0.3 long whose tip is at (1/2, 0).
+loopStem :: [((Double, Double), (Double, Double), (Double, Double))]
+loopStem =
+  [ ((-0.5 + lead, 0), (r, c - handle), (r, c)),
+    ((r, c + kappa * r), (kappa * r, c + r), (0, c + r)),
+    ((negate (kappa * r), c + r), (negate r, c + kappa * r), (negate r, c)),
+    ((negate r, c - handle), (loopHeadBase - lead, 0), (loopHeadBase, 0))
+  ]
+  where
+    r = 0.18
+    c = 0.28
+    lead = 0.28
+    handle = 0.16
+    -- How far along its tangent a cubic's control point lies to draw a
+    -- quarter circle: 4 (sqrt 2 - 1) / 3.
+    kappa = 0.5522847498
+
+-- | Where the loop's head starts, and half its width: 0.3 long, and 0.4 of its
+-- length to each side, as an arrow's head is.
+loopHeadBase, loopHeadHalf :: Double
+loopHeadBase = 0.5 - 0.3
+loopHeadHalf = 0.4 * 0.3

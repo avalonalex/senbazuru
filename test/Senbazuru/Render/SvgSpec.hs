@@ -132,6 +132,12 @@ headLine = maybe "" fst . unsnocLines
       l : rest -> Just (l, rest)
       [] -> Nothing
 
+-- | A turn-over loop of the default theme's ink, 40 page units long, at the
+-- middle of a square model of the given size, its axis as given.
+loopPage :: Page -> Double -> V2 -> Text
+loopPage page size axis =
+  renderSvg page (diagramWithExtent (Box (V2 0 0) (V2 size size)) [Symbol (solid (Colour "#1a1a1a") 1.8) 40 (V2 (0.5 * size) (0.5 * size)) (TurnOverLoop axis)])
+
 -- | Each path's points, as its @d@ attribute lists them, letters dropped.
 pathPointsOf :: Text -> [[V2]]
 pathPointsOf out = [pairs (numbers l) | l <- T.lines out, "<path" `T.isInfixOf` l]
@@ -441,6 +447,60 @@ spec = do
             [base, tip, barb] -> signum (cross (tip ^-^ base) (barb ^-^ base))
             _ -> 0
       map side heads `shouldBe` replicate 8 (-1)
+
+    -- 06's A4 for the loop: the same whole page at model sizes 1 and 400.
+    -- Only the axis's direction counts, so at size 400 the axis is given both
+    -- as it is and 400 times longer, and both pages equal size 1's. Red if
+    -- the loop's size came from the page transform: from its scale, or from
+    -- the axis mapped through it with its length kept, which the axis as it
+    -- is catches, being 400 times shorter on that page. Red too if the size
+    -- came from the axis's own length, which the longer axis catches.
+    it "draws a turn-over loop the same on the page however big the model is" $
+      forM_ [V2 0 1, V2 1 1, V2 0.3 0.7] $ \axis ->
+        (axis, loopPage testPage 400 axis, loopPage testPage 400 (400 *^ axis)) `shouldBe` (axis, loopPage testPage 1 axis, loopPage testPage 1 axis)
+
+    -- The loop lies across its axis as the page shows it. TurnOverLoop (V2 1 1)
+    -- names an axis running up and to the right, y up as the model's is, so
+    -- the loop rises up and to the right of its point and the stem runs on
+    -- down and to the right. Measured from the path data: the loop's top is
+    -- the end of its second segment, and the point is halfway from the tail to
+    -- the head's tip. Red if the axis's y were not flipped onto the page,
+    -- which turns the loop down and to the right.
+    it "lays the loop across its axis as the page shows it, y flipped" $
+      case pathPointsOf (loopPage testPage 1 (V2 1 1)) of
+        [tail' : _ : _ : _ : _ : _ : top : _, tip : _] -> do
+          let at = 0.5 *^ (tail' ^+^ tip)
+              V2 tx ty = top ^-^ at
+              V2 hx hy = tip ^-^ at
+          (tx > 0, ty < 0) `shouldBe` (True, True)
+          (hx > 0, hy > 0) `shouldBe` (True, True)
+          norm (tip ^-^ tail') `shouldSatisfy` (\l -> abs (l - 40) < 1e-3)
+        other -> expectationFailure ("expected a stem and a head, got " <> show other)
+
+    -- On a page whose margins are wider than half of it, the drawing comes out
+    -- turned round, a half turn, and the loop turns with it: an axis up and to
+    -- the right on the model is down and to the left on that page. Red if the
+    -- axis's y were always negated, or its x never, rather than both turned by
+    -- the signs of the page's scales.
+    it "turns the loop with a drawing the page turns round" $
+      case pathPointsOf (loopPage testPage {pageMargin = 150} 1 (V2 1 1)) of
+        [tail' : _ : _ : _ : _ : _ : top : _, tip : _] ->
+          let V2 tx ty = top ^-^ (0.5 *^ (tail' ^+^ tip)) in (tx < 0, ty > 0) `shouldBe` (True, True)
+        other -> expectationFailure ("expected a stem and a head, got " <> show other)
+
+    -- Only the axis's direction counts: a huge vector keeps it, and a vector
+    -- with none is taken as up the page. A loop of no size, or of a size that
+    -- is not a number, draws nothing.
+    it "reads the axis's direction alone, and draws a loop of no size as nothing" $ do
+      -- Diagonal, so that a vector whose squared length overflows, if it were
+      -- not first divided down, could not pass for the fallback, up the page.
+      loopPage testPage 1 (V2 1e300 1e300) `shouldBe` loopPage testPage 1 (V2 1 1)
+      loopPage testPage 1 (V2 0 0) `shouldBe` loopPage testPage 1 (V2 0 1)
+      loopPage testPage 1 (V2 (0 / 0) 1) `shouldBe` loopPage testPage 1 (V2 0 1)
+      loopPage testPage 1 (V2 1 (0 / 0)) `shouldBe` loopPage testPage 1 (V2 0 1)
+      loopPage testPage 1 (V2 (1 / 0) 1) `shouldBe` loopPage testPage 1 (V2 0 1)
+      forM_ [0, -1, 0 / 0, 1 / 0] $ \size ->
+        (show size, T.count "<path" (renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Symbol (solid (Colour "#1a1a1a") 1.8) size (V2 0.5 0.5) (TurnOverLoop (V2 0 1))]))) `shouldBe` (show size, 0)
 
     it "shrinks the head rather than drawing the arrow backwards" $ do
       -- The head is a fixed size in page units, and a small flap on a large

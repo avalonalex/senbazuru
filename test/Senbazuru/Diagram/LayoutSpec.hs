@@ -35,6 +35,8 @@ widths d = map spread (mapMaybe points (diagramShapes d))
     points = \case
       Polyline _ ps -> Just ps
       Offset _ shape -> points shape
+      -- A mark at a point is no line, however wide it is drawn (06 R-06-7).
+      Symbol {} -> Nothing
       _ -> Nothing
     spread ps = maximum (map xOf ps) - minimum (map xOf ps)
     xOf (V2 x _) = x
@@ -47,6 +49,8 @@ labels d = mapMaybe text (diagramShapes d)
     text = \case
       Label _ _ _ t -> Just (show t)
       Offset _ shape -> text shape
+      -- A mark has no words (06 R-06-7).
+      Symbol {} -> Nothing
       _ -> Nothing
 
 plain :: Grid
@@ -106,6 +110,22 @@ spec = do
       -- And the shape inside did move, or it would have been drawn on top of
       -- the first figure.
       widths page `shouldBe` [1, 1]
+
+  -- 06's A14: a symbol's extent is its point, and laying figures out moves the
+  -- point and nothing else. Red if the mark's page-unit size, or a turn-over
+  -- loop's axis, entered the extent or were moved by the layout.
+  describe "a symbol" $ do
+    let loop = Symbol (solid ink 1.8) 40 (V2 0.25 0.75) (TurnOverLoop (V2 0.5 1))
+    it "stands at its point alone, whatever its size" $ do
+      shapePoints loop `shouldBe` [V2 0.25 0.75]
+      mapShapePoints (^+^ V2 3 4) loop `shouldBe` Symbol (solid ink 1.8) 40 (V2 3.25 4.75) (TurnOverLoop (V2 0.5 1))
+      shapesBounds [loop] `shouldBe` Just (Box (V2 0.25 0.75) (V2 0.25 0.75))
+
+    it "moves with its figure when laid out, its size and axis as they were" $ do
+      let marked = (square 1) {diagramShapes = diagramShapes (square 1) <> [loop]}
+      page <- pageOf plain [square 1, marked]
+      [(size, axis) | Symbol _ size _ (TurnOverLoop axis) <- diagramShapes page] `shouldBe` [(40, V2 0.5 1)]
+      [p | Symbol _ _ p _ <- diagramShapes page] `shouldSatisfy` all (\(V2 x _) -> x > 1)
 
   describe "numbering" $ do
     it "numbers from one, because that is what a reader counts from" $ do

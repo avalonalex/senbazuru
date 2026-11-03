@@ -203,7 +203,7 @@ sheet lengths with M2, and physical lengths in M6's PR that first converts a
 | M2, the presentation-classification PR | 13 | `src/Senbazuru/Origami/Step.hs:30-34` | a whole-model rigid motion is a presentation change |
 | M3, S21 | 12 | `AGENTS.md:229-233` | `stepPageWith` joins that list |
 | M3, S22 | 12 | `AGENTS.md:229-233` | `runPage` joins that list |
-| M3, the PR adding `Fanned` | 19 | `AGENTS.md:192-195`, `:372-376` | `Symbol` and `Fanned` need both units; offset and fanned figures paint a layer at a time |
+| M3, in three parts: `Symbol` with S13 ([C145](decisions.md#changes-since-draft-v2)), `Fanned` with S14, the painting gotcha with S38 | 19 | `AGENTS.md:192-195`, `:372-376` | `Symbol` and `Fanned` need both units; offset and fanned figures paint a layer at a time |
 | M2 or later, recipe deletion PRs | 14 | `docs/architecture.md:288-297`; `BlintzSequence`, `HelmetSequence` headers | recipes replaced by sequences |
 | before M4's runner wraps `ThroughError`, in L6's PR | 17 | `test/Senbazuru/Origami/ThroughLayersSpec.hs:271-275`, `docs/usage.md:1652-1658` | the `LineStopsOnTheModel` sentence names the end by its point |
 | M4, the PR adding the slow job | 15 | `AGENTS.md:390-391` | "all three CI checks" names the slow job as a required check (owner decision 12, decided 2026-10-12) |
