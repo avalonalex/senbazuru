@@ -44,7 +44,9 @@
 --   anchor's face lying where it lay on the sheet. Nothing about how the
 --   model stands or is shown on a page, re-anchored, turned over or spun, is
 --   applied to them; 'recordPlacement' and 'recordPresentation' say that,
---   and 'displayBefore' and 'displayAfter' put the two together.
+--   'displayBefore' and 'displayAfter' put the two together, and
+--   'displayedFrame' shows a surface under one of them as a frame, the one
+--   function the written states are shown by.
 --   This matters most to the material study. It reads which of two touching
 --   faces lies on top by whether each face's normal points up, along +z, and
 --   it solves for contact along +z; a model turned over for the page flips
@@ -148,6 +150,7 @@ module Senbazuru.Sequence.Record
     recordPlacement,
     displayBefore,
     displayAfter,
+    displayedFrame,
     recordMoving,
     recordStationary,
     recordResolved,
@@ -441,6 +444,30 @@ displayBefore r = fst (thePresentation r) `Rigid.after` fst (thePlacement r)
 -- | How 'recordAfter' is shown, as 'displayBefore' is for 'recordBefore'.
 displayAfter :: MoveRecord -> Rigid
 displayAfter r = snd (thePresentation r) `Rigid.after` snd (thePlacement r)
+
+-- | A surface as the reader sees it under a display, such as 'displayBefore'
+-- gives: each vertex placed, then presented (decisions D5, D14), so a state
+-- after a turn-over shows its faces' backs, and one after a re-anchoring
+-- stands where the model stood before it.
+--
+-- Its positions only. The frame is the surface's own ('materialFrame'),
+-- material coordinates and all, with its letters and angles as the run holds
+-- them. It is not a written state: 'writtenStates' adds the state rule, the
+-- class and the caption, and a page must not draw creases from this frame.
+--
+-- 'writtenStates' shows its states by this function, so a page drawing a
+-- record's surfaces and the file a run writes do the same arithmetic and
+-- agree to the last bit, which a second copy of it would not promise: placing
+-- and then presenting a point one step at a time can round differently from
+-- applying the two composed. A display that is the identity leaves the
+-- coordinates exactly as folded, so a run with no turn-over, rotate or
+-- re-anchoring onto moved paper writes what it always wrote.
+displayedFrame :: Surface V2 -> Rigid -> Frame
+displayedFrame surface shown
+  | shown == identity = folded
+  | otherwise = folded {verticesCoords = [let V3 x y z = applyRigid shown (V3 a b c) in [x, y, z] | a : b : rest <- verticesCoords folded, let c = case rest of z : _ -> z; [] -> 0]}
+  where
+    folded = materialFrame surface
 
 -- | The paper that moved: each seed the author named it by, with the faces
 -- that seed picked out. The faces are the turn's; the seed is the runner's.
@@ -748,7 +775,7 @@ data WrittenState = WrittenState
 -- which is not the same as having an empty one.
 --
 -- Positions are displayed, each state's by the placement and presentation
--- it ended with ('writtenFrame'). A state with the same faces as the state
+-- it ended with ('displayedFrame'). A state with the same faces as the state
 -- before it numbers them as that state did ('numberedAsBefore').
 writtenStates :: Run -> Either SequenceError [WrittenState]
 writtenStates run = alike <$> sequence (zipWith3 write [0 ..] produced titles)
@@ -793,24 +820,14 @@ numberedAsBefore previous frame
     renumbered o = o {orderFace = to (orderFace o), orderRelativeTo = to (orderRelativeTo o)}
     to (FaceId f) = FaceId (IM.findWithDefault f f moved)
 
--- | One surface as a written frame, shown as the reader sees it: the state
--- rule, the class, the caption and the two vendor keys. Nothing of the
--- sheet's own frame is kept but its unit: its extras, attributes, author and
--- description described the sheet, and would be stale on a state folded from
--- it.
---
--- Written frames are displayed (decisions D5, D14): each vertex placed, then
--- presented, so a state after a turn-over is written turned over, its faces
--- showing their backs, and one after a re-anchoring stands where the model
--- stood before it. A display that is the identity leaves the coordinates
--- exactly as folded, so a run with no turn-over, rotate or re-anchoring
--- onto moved paper writes what it always wrote.
+-- | One surface as a written frame, shown as the reader sees it
+-- ('displayedFrame'), with the state rule, the class, the caption and the two
+-- vendor keys. Nothing of the sheet's own frame is kept but its unit: its
+-- extras, attributes, author and description described the sheet, and would
+-- be stale on a state folded from it.
 writtenFrame :: Surface V2 -> Rigid -> Maybe Text -> Maybe Value -> Either WriteProblem Frame
 writtenFrame surface shown title assurance = do
-  let folded = materialFrame surface
-      base
-        | shown == identity = folded
-        | otherwise = folded {verticesCoords = [let V3 x y z = applyRigid shown (V3 a b c) in [x, y, z] | a : b : rest <- verticesCoords folded, let c = case rest of z : _ -> z; [] -> 0]}
+  let base = displayedFrame surface shown
       angles = edgesFoldAngle base
       edgeCount = length (edgesVertices base)
       letters = case edgesAssignment base of

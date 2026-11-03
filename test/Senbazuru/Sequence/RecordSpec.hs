@@ -9,7 +9,9 @@
 -- The sense a page reads ('recordSense', 'recordUnfolds') is the other way
 -- round: it comes from the move a run made the record for, so those tests
 -- take the run's own records, and hold each sense to the way its own checked
--- turn moved the paper.
+-- turn moved the paper. So do the tests of a surface as the reader sees it
+-- ('displayedFrame'), which hold each record's surfaces, under the record's
+-- own displays, to the states the run writes on either side of its step.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
 import Control.Monad (forM_)
@@ -24,7 +26,7 @@ import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, flapAt)
 import Senbazuru.Origami.Surface
-import Senbazuru.Sequence.Build (header, move, sequenceOf, sheetSquare, step_, turnOver)
+import Senbazuru.Sequence.Build (at, behind, fold, header, inFront, move, rotate, sequenceOf, sheetFile, sheetSquare, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate
 import Senbazuru.Sequence.Error (SequenceError)
@@ -155,6 +157,63 @@ spec = describe "a move record" $ do
         moved <- towardsReader record
         (recordStep record, recordMoveIndex record, recordSense record, fmap signum moved)
           `shouldBe` (recordStep record, recordMoveIndex record, recordSense record, Just (if recordSense record == Just ValleyFold then 1 else -1))
+  -- A record's surfaces under its displays, as a page of steps will draw them
+  -- (06 R-06-16), against the states the run writes. 'writtenStates' shows its
+  -- states by 'displayedFrame' too, so these hold the pairing, each surface
+  -- with its own side's display; the arithmetic inside 'displayedFrame' is held
+  -- by RunSpec's tests that compare the written states with literal
+  -- coordinates, a rotate's corners, or with another run's ('sameModel'
+  -- across a re-anchoring). Every record held here is alone in its step and
+  -- creases nothing, so its before is the state written before it; a move
+  -- that creases adds its new crease to its before.
+  describe "a surface as the reader sees it" $ do
+    -- Nothing turns the blintz on the page or re-anchors it, so every display
+    -- here is the identity and this cannot tell one display from another. It
+    -- holds that a record's before and after are the surfaces its step starts
+    -- and ends on: red if the two were swapped, since every blintz record
+    -- turns paper. The two tests below hold which display goes with which.
+    it "shows each blintz record's before and after exactly as the states either side of its step" $ do
+      blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
+      states <- right (writtenStates blintzRun)
+      map recordStep (runRecords blintzRun) `shouldBe` [1 .. 5]
+      [(displayBefore r, displayAfter r) | r <- runRecords blintzRun] `shouldBe` replicate 5 (identity, identity)
+      [verticesCoords (displayedFrame (recordBefore r) (displayBefore r)) | r <- runRecords blintzRun]
+        `shouldBe` map (verticesCoords . stateFrame) (take 5 states)
+      [verticesCoords (displayedFrame (recordAfter r) (displayAfter r)) | r <- runRecords blintzRun]
+        `shouldBe` map (verticesCoords . stateFrame) (drop 1 states)
+
+    -- The crane's opening turned over left to right, alone in its step: its
+    -- before as state 1 was written, and its after as state 2, the paper's
+    -- corners swapped across the vertical line through the middle. Literal,
+    -- so that a display ignored, or read from the other side, shows here
+    -- whatever the written states do. Red if the display were dropped, or the
+    -- after paired with the display before.
+    it "shows the crane opening's turn-over before and after as states 1 and 2" $ do
+      crane <- right (runOn M.empty openingWithAMountain)
+      states <- right (writtenStates crane)
+      case ([r | r <- runRecords crane, recordKind r == Presentation (TurnedOver LeftRight)], drop 1 states) of
+        ([turn], state1 : state2 : _) -> do
+          verticesCoords (displayedFrame (recordBefore turn) (displayBefore turn)) `shouldBe` [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0], [0.5, 0.5, 0]]
+          verticesCoords (displayedFrame (recordAfter turn) (displayAfter turn)) `shouldBe` [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0], [0.5, 0.5, 0]]
+          verticesCoords (displayedFrame (recordBefore turn) (displayBefore turn)) `shouldBe` verticesCoords (stateFrame state1)
+          verticesCoords (displayedFrame (recordAfter turn) (displayAfter turn)) `shouldBe` verticesCoords (stateFrame state2)
+        _ -> expectationFailure "expected one turn-over and at least three states"
+
+    -- The quarter fold re-anchored onto the corner its first fold turns, so
+    -- placed from step 2 by a half turn about the line x = 1/2, then turned an
+    -- eighth, over top to bottom, and back three eighths. None of the three
+    -- presentations commutes with the half turn, so placed then presented
+    -- differs from presented then placed at steps 3 to 5. Red if
+    -- 'displayAfter' composed them the other way round.
+    it "shows every record's before and after as the states either side of its step, placed then presented" $ do
+      run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
+      states <- right (writtenStates run)
+      let byStep = M.fromList [(k, verticesCoords (stateFrame st)) | st <- states, Just k <- [stateStep st]]
+      map recordStep (runRecords run) `shouldBe` [1 .. 5]
+      [verticesCoords (displayedFrame (recordBefore r) (displayBefore r)) | r <- runRecords run]
+        `shouldBe` map (verticesCoords . stateFrame) (take 5 states)
+      [(recordStep r, Just (verticesCoords (displayedFrame (recordAfter r) (displayAfter r)))) | r <- runRecords run]
+        `shouldBe` [(recordStep r, M.lookup (recordStep r) byStep) | r <- runRecords run]
   where
     -- The fixture's corners, in the order both blintzes fold them; the
     -- creases that cut each one off (edges 8 to 11 of
@@ -196,6 +255,18 @@ openingWithAMountain = sequenceOf (header "A square" sheetSquare Nothing) $ do
   step_ "Crease both midlines." $ do
     move (FoldAndUnfold MountainFold (LineOnto (EdgeOf South) (EdgeOf North) Nothing) FlapOfFirstArgument Nothing)
     move (FoldAndUnfold ValleyFold (LineOnto (EdgeOf West) (EdgeOf East) Nothing) FlapOfFirstArgument Nothing)
+
+-- | The quarter fold anchored at (3/4, 3/4), in the quarter its second fold
+-- turns, so that the run re-anchors onto (1/4, 1/4) and places the model by a
+-- half turn about x = 1/2; then turned on the page by an eighth, over top to
+-- bottom, and back by three eighths.
+oddEighths :: Sequence
+oddEighths = sequenceOf (header "A quarter fold, turned on the page" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (3 / 4)))) $ do
+  step_ "Fold the left half behind." (fold behind (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
+  step_ "Fold the top half down in front." (fold inFront (LineOnto (EdgeOf North) (EdgeOf South) Nothing))
+  step_ "Turn the model an eighth." (rotate 1 Anticlockwise)
+  step_ "Turn the model over." (turnOver TopBottom)
+  step_ "Turn it back three eighths." (rotate 3 Clockwise)
 
 -- | Which way a record's own checked turn carried the paper, as the reader
 -- sees it: the total change in z, under the record's display before, of the

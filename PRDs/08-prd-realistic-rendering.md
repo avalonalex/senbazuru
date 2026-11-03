@@ -843,7 +843,9 @@ presentation turn. Each keeps presentation and anchor placement as separate
 (before, after) pairs, `recordPresentation` and `recordPlacement`, which
 `displayBefore` and `displayAfter` compose (presentation `after` placement) and
 only writers and renderers apply ([D14](decisions.md#d14-material-consumption),
-[01 §2.2](01-architecture.md#22-contract-1-moverecord)). Animation reads the two
+[01 §2.2](01-architecture.md#22-contract-1-moverecord)); the states a run writes
+and a page drawing a record's surfaces apply them through one function,
+`displayedFrame` ([C143](decisions.md#changes-since-draft-v2)). Animation reads the two
 pairs separately: presentation becomes the pivot nodes described here, and
 placement the root of each segment below. Presentation move k gets a pivot node
 (translation c_k, rotation keyed from identity to the move's turn) with an
