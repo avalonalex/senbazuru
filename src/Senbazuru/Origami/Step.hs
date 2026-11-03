@@ -110,13 +110,15 @@
 -- == The creases a later frame adds
 --
 -- A book draws a /fold-here line/ on the figure before a fold: the line on
--- the paper where it is about to be folded. A page drawn from frames alone has
--- only one place to find such a line, the creases the next frame has and this
--- one lacks, and 'creasesToCome' lists them, each with its ends where the
--- earlier frame has that paper. A page drawn from a run takes its lines from
--- each move's hinge instead (owner decision 74), since a run that folds along
--- creases its sheet already has adds none; and nothing draws these until S28
--- (#642).
+-- the paper where it is about to be folded. A page drawn from frames alone
+-- can find such a line in the creases the next frame has and this one lacks,
+-- and 'creasesToCome' lists them, each with its ends where the earlier frame
+-- has that paper; nothing draws them until S28 (#642). A fold along a crease
+-- the paper already has adds none, and the frames show which crease it was
+-- only by that crease's angle changing ('motionCreases'). So a page drawn
+-- from a run of a fold sequence is to take its lines from each fold's and
+-- pre-crease's /hinge/ instead, the line the move turns paper about, which
+-- its record keeps (owner decision 74; S33 of #643).
 --
 -- A crease is new when it lies along no earlier edge on the sheet, by the
 -- test 'motionsAcross' asks of a crease whose angle changed, so the two never
@@ -131,7 +133,10 @@
 -- ends and lies inside one earlier face. A face moves as one rigid piece, which
 -- takes a straight line to a straight line, so the line between where its two
 -- ends went is where the whole crease went. A file that left a crossing uncut
--- would have its crease drawn straight across the fold it crosses.
+-- would have its crease drawn as the straight line between where its two ends
+-- went, which is not where the crease is: on a flat fold the end beyond the
+-- fold is turned back over the paper held still, so the line can lie wholly
+-- on one side of the fold it crosses, or shrink to a point.
 module Senbazuru.Origami.Step
   ( Motion (..),
     motionsAcross,
@@ -410,16 +415,16 @@ alongEarlier before p = holding
 -- ends in its own order. The module header has why two ends are enough.
 --
 -- A crease is new when it lies along no earlier edge on the sheet
--- ('alongEarlier'), whatever either edge's letter. So a join the later frame
--- makes a crease is not new, just as it is not between two frames with the
--- same edges, where the letters are not read at all. A border, a cut and a
--- join are not creases and are never listed; an edge the file gives no letter
--- is, read as unassigned, and so is a crease lying flat, as a pre-crease
--- leaves one.
+-- ('alongEarlier'), whatever either edge's letter. So where the earlier frame
+-- has a join and the later frame a crease along it, that crease is not new,
+-- just as it is not between two frames with the same edges, where the letters
+-- are not read at all. A border, a cut and a join are not creases and are
+-- never listed; an edge the file gives no letter is, read as unassigned, and
+-- so is a crease lying flat, as a pre-crease leaves one.
 --
 -- None between two frames with the same vertices, edges and faces, which need
 -- no material points, as 'motionsAcross' needs none for them. Any other pair
--- is refused as 'placeOn' refuses it.
+-- is placed, and refused only where 'placeOn' refuses it.
 creasesToCome :: Frame -> Frame -> Either FoldError [(EdgeId, V3, V3)]
 creasesToCome before after = case sameModel before after of
   Right () -> Right []

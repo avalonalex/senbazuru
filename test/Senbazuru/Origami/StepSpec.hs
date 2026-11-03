@@ -455,9 +455,11 @@ toCome :: Spec
 toCome = describe "the creases a later frame adds" $ do
   -- 05 L5's second acceptance row: L2's batch creased at rest on the
   -- diagonal pattern, where no paper moves. The new creases are edges 8 to
-  -- 12, at their ends on the sheet, exactly; the pieces creasing cut from the
-  -- border (0, 1, 4 and 5) and from the old diagonal (6 and 7) are not new.
-  -- Red if a cut piece counted as new.
+  -- 12, at their ends on the sheet, exactly, and the pieces creasing cut from
+  -- the old diagonal, 6 and 7, are not new. Red if a cut piece of a crease
+  -- counted as new. The pieces cut from the border, 0, 1, 4 and 5, are
+  -- borders, never listed whatever the test of newness says; that they are
+  -- not new is pinned below, where the later frame records no letters.
   it "lists the creases a batch adds, and none of the pieces it cuts" $ do
     cp <- diagonalPattern
     later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
@@ -509,8 +511,13 @@ toCome = describe "the creases a later frame adds" $ do
   -- A border, a cut and a join are not creases: L2's later frame with three
   -- of its new edges given those letters lists the other two. An edge the
   -- file gives no letter is read as unassigned, a crease, so the same frame
-  -- recording no letters lists all five. Red if every new edge were listed,
-  -- or if an edge with no letter were not.
+  -- recording no letters lists all five, and none of the pieces cut from the
+  -- border or the old diagonal, which are then creases too. And a crease
+  -- along an earlier join is not new: with the old diagonal lettered J in the
+  -- earlier frame, its pieces 6 and 7, V in the later one, are not listed.
+  -- Red if every new edge were listed; if an edge with no letter were not; if
+  -- a piece of the border counted as new; or if an earlier join were left out
+  -- of the test of newness.
   it "lists no border, cut or join, and an edge with no letter" $ do
     cp <- diagonalPattern
     later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
@@ -518,15 +525,21 @@ toCome = describe "the creases a later frame adds" $ do
         relettered = later {edgesAssignment = take 8 (edgesAssignment later) <> [Border, Cut, Join, Mountain, Mountain]}
     edgeIds (creasesToCome cp relettered) `shouldBe` Right [EdgeId 11, EdgeId 12]
     edgeIds (creasesToCome cp later {edgesAssignment = []}) `shouldBe` Right (map EdgeId [8 .. 12])
+    edgeIds (creasesToCome cp {edgesAssignment = [Border, Border, Border, Border, Join]} later) `shouldBe` Right (map EdgeId [8 .. 12])
 
   -- Each step of the two runs whose crease patterns grow: the creases found
   -- between the state before the step and the state it writes, against the
   -- creases the step's records drew, each where its record has the paper
   -- before the move, as the reader sees it ('displayedFrame'). They agree.
   -- Red if the ends were read where the later state has them, which the
-  -- turn-over ending the second run's second step moves; or if a crease lying
-  -- flat were not one to come, as a pre-crease leaves its crease, which the
-  -- state it writes letters F.
+  -- turn-over ending each of the second run's steps moves, so it is red from
+  -- that run's first step; or on the sheet, which differs from the state
+  -- before a step only after that first turn-over, at the second run's second
+  -- step. The first run cannot tell either way: each of its new creases is a
+  -- pre-crease lying flat as it was made, or lies on its fold's own hinge,
+  -- which the fold does not move. Red too if a crease lying flat were not one
+  -- to come, as a pre-crease leaves its crease, which the state it writes
+  -- letters F.
   it "finds each step's new creases where its own records draw them" $
     forM_ [creasedTwice, turnedEachStep] $ \source -> do
       run <- right (checkSequence source >>= runSequence defaultRunSettings M.empty . elaborate)
