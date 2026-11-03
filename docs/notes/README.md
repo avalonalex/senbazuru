@@ -40,6 +40,7 @@ read the Haddock module headers; for the domain, start with
 | [visible-regions.md](visible-regions.md) | Draw a folded model by subtracting the layers over each face, not by painting faces in order |
 | [layer-numbers.md](layer-numbers.md) | Which sheet of the stack a face is in is the longest chain below it, not a count of what it covers |
 | [fan-counts.md](fan-counts.md) | A fanned figure moves a corner by the sheets over that corner, which is not the layer its face is in |
+| [fan-faults.md](fan-faults.md) | A fan move is a fixed length on the page, so faces turn inside out and cross themselves as the figure shrinks, and a guard must be decided per figure once the page's scale is known |
 | [paper-thickness.md](paper-thickness.md) | Why independent layer lifting opened crease gaps and was replaced |
 | [huzita-hatori.md](huzita-hatori.md) | Paper folding is strictly stronger than straightedge and compass |
 | [no-sequence-solver.md](no-sequence-solver.md) | Nobody can turn a crease pattern into folding instructions, and why |

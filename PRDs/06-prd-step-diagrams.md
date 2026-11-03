@@ -1323,10 +1323,13 @@ half turn, would have drawn a mark the author did not write.
   (`recordMoving`) in its own numbering, so a later figure would find them by
   material point ([D22](decisions.md#d22-figures-holding-several-moves)).
 - **Leaning visible paper.** A face with nothing over some of its vertices but
-  something over another is drawn leaning toward the covered one. On the
-  prototype's crane, 7 faces have uncovered points on edges that move, one by 2.9
-  page units. A fold-here line on true positions then sits that far from the edge
-  it marks.
+  something over another is drawn leaning toward the covered one. On the folded
+  crane seen from above, 7 faces have visible paper on edges that move, one by
+  2.92 page units, and 8 from below, by up to 2.75 (S9,
+  [`fan-faults.md`](../docs/notes/fan-faults.md),
+  [C146](decisions.md#changes-since-draft-v2)). A fold-here line on true
+  positions then sits that far from the edge it marks. Decision 74's lines on
+  the helmet's folds do not: there only buried hinge edges move.
 - **Long pages.** The fan is a fixed page length and the gutter a fraction of
   the figure, so past five rows of three uncaptioned figures the fan can reach
   the next cell (§10). `Layout` was rewritten once to stop step numbers doing
@@ -1336,28 +1339,47 @@ half turn, would have drawn a mark the author did not write.
   bands are in page units and clear the fan's largest move (§8), so the risk is
   only on pages with no caption.
 - **Faces turned inside out.** On small figures the fan is large beside a thin
-  face. On the folded crane drawn 56.6 page units across, the size of 16 to 18
-  figures on the default page, face 61 turns over; at 33.8, the size of the
-  traditional crane's 29 figures, three turn over and one crosses itself. A guard
-  such as drawing a figure unfanned when a fanned ring would turn over needs the
-  page's scale, which `Diagram.Page.pageTransform` gives before anything is
-  written (in `Render.Svg` until S25a,
-  [C135](decisions.md#changes-since-draft-v2)); the guard is **UNVERIFIED**, and
-  the M3 PR tries it on that 29-figure page.
+  face, and since a fan move is a fixed page length, a face's fanned outline
+  can wind the other way below one scale; the face is drawn inside out there
+  unless the outline also crosses itself. The folded crane seen from above has
+  face 61 inside out below 92.98 page units per sheet length, so from the
+  uncaptioned page of four rows (85.6) down, and at ten rows (33.8) three faces
+  inside out and one crossing itself; from below, face 20 crosses itself at
+  every size measured; turned 180°, face 63 is inside out below 222.94, so at
+  115, the largest size a page of three columns draws at the default 400 by
+  400. The helmet, the blintz and the bird base's flat states have none at any
+  of these sizes (S9, [`fan-faults.md`](../docs/notes/fan-faults.md),
+  [C146](decisions.md#changes-since-draft-v2)). These are `render --steps`'
+  sizes: a captioned `run` page at its default width and height draws at 115
+  whatever its rows. No minimum figure size guards this, and a face guarded
+  alone tears from its fanned neighbours, so S9 recommends drawing a whole
+  figure unfanned when any face would be inside out or crossed at the page's
+  scale, decided once `Diagram.Page.pageTransform` can give that scale: after
+  `fitPage` in `Render.Sequence.runPage`, and for `render --steps` where the
+  command line builds the page after `stepPage` returns, or in a function
+  beside `stepPage` that takes the page, since R-06-2 keeps `stepPage`'s
+  signature. [#639](https://github.com/avalonalex/senbazuru/issues/639) and
+  [#644](https://github.com/avalonalex/senbazuru/issues/644) are amended to name
+  that place once S9 merges.
 - **What `Origami.Visible` keeps.** Each stretch of `formSheetEdges` names the
   face edge it lies on and how far along it, by fractions (05 R-05-52,
   [C137](decisions.md#changes-since-draft-v2)), so R-06-27 moves it with its face without matching edges by
   tolerance. Where a top face's fold lies along a buried sheet's border, as 15
   of the crane's 99 folds do, the stretch names the fold and is drawn at border
-  weight while that border fans away.
-- **Hidden lines shown.** Visibility is judged on the model as it lies. Once
-  faces move by different amounts, a stretch's end that met another face's edge
-  leaves it, and the full-weight line runs over paper painted in front of it: on
-  the folded crane, face 10's mountain edge runs 3.4 page units into face 1. The
-  offset view accepts the same trade
+  weight while that border fans away: 4 such stretches from either side, the
+  border moving up to 9 page units from its fold (S9).
+- **Lines that stop short.** Visibility is judged on the model as it lies.
+  Once faces move by different amounts, a stretch's end that met a nearer
+  face's edge comes apart from it. Moving into the nearer face is no fault:
+  R-06-27's painter paints that face after the stretch, which covers the
+  prototype's case, face 10's mountain edge running into face 1 on the crane
+  seen from above. Moving out of it leaves the full-weight line short of the
+  paper it met, measured along the edge: on the crane from above, face 20's by
+  1.72 page units at every size and face 61's by 0.19 to 0.22, its whole
+  remaining edge of 1.24 at ten rows; turned 180°, face 10's by 3.65 to 3.67
+  (S9, [C146](decisions.md#changes-since-draft-v2)). The offset view accepts the same
+  trade
   ([`CreasePattern.hs:404-415`](../src/Senbazuru/Render/CreasePattern.hs#L404-L415)).
-  Clipping each stretch against the fanned faces painted after it would remove
-  it; **UNVERIFIED**, and a rasterised crane page would check it.
 
 ## Open questions for the owner ([10 §6](10-roadmap-risks-questions.md#6-owner-decisions))
 
