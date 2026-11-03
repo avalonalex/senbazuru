@@ -4,7 +4,9 @@ Written 2026-09-15 against `568dcb6`, when nothing here was implemented. Built
 since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
 `flapStationaryFace`, in #344; L5's `insideRing`, in #491, and its placement
 (R-05-17, R-05-18, `placeOn`), in #669
-([C139](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
+([C139](decisions.md#changes-since-draft-v2)), and its moves across a growing
+pattern (R-05-16, R-05-19, `motionsAcross`), in #673
+([C144](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
 their face edge (R-05-52, `EdgeSpan`), in #667
 ([C137](decisions.md#changes-since-draft-v2)), and its fan counts (R-05-50,
 R-05-51, `fanCounts`, `CoverError`), in #671
@@ -605,6 +607,14 @@ on material points.
   segment contains both ends; an unmatched edge is new, never "changed".
 - **R-05-20.** `creasesToCome` returns unmatched `after` edges at `before`
   positions.
+- R-05-16 and R-05-19 are built by S6 of [#638](https://github.com/avalonalex/senbazuru/issues/638)
+  ([C144](decisions.md#changes-since-draft-v2)) as
+  `Origami.Step.motionsAcross :: Frame -> Frame -> Either FoldError [Motion]`.
+  It alone decides which kind a pair is, by `motionsBetween`'s own test of
+  vertices, edges and faces, so a pair is never refused for differing. A turn
+  of the whole model is judged on the vertices the two frames share, and a
+  later frame recording no faces gives no motion, as `motionsBetween` gives
+  none.
 
 **Refusals** (new `FoldError` constructors): `MaterialCoordinatesMissing`,
 `VerticesNotAPrefix VertexId`, `AddedVertexOffPaper VertexId`. Built with five
@@ -620,7 +630,7 @@ crane's every crease on step 1 (same note, "(c)").
 
 | Test | Turns red if |
 | --- | --- |
-| `motionsAcross == motionsBetween` on consecutive pairs of `quarter-fold-steps.fold` and of `FlapSpec`'s material-frame sequences (the note's "D. When the crease graph grows", finding 18) | the equal-graph branch is bypassed |
+| `motionsAcross == motionsBetween` on consecutive pairs of `quarter-fold-steps.fold` and of `FlapSpec`'s material-frame sequences (the note's "D. When the crease graph grows", finding 18); pinned by `StepSpec`, S6 | the equal-graph branch is bypassed (the quarter fixture's first pair is then refused as `InNextFrame MaterialCoordinatesMissing` and its second as `MaterialCoordinatesMissing`, [C144](decisions.md#changes-since-draft-v2)) |
 | Before `diagonal-cp.fold`, after L2's batch under `AtRest`: no motions; `creasesToCome` lists edges 8–12 at their material ends | cut old pieces 6, 7 count as new |
 | Vertex 7 at (1/4, 1/4) lies on no edge, inside `before`'s face [0,1,3], and is placed at (1/4, 1/4, 0) | only edge interpolation exists |
 | `insideRing` on an L-shaped ring: notch outside, arm inside | the convex test is reused |

@@ -6,10 +6,13 @@
 -- in the code knows which way a fold "usually" goes.
 module Senbazuru.Origami.StepSpec (spec) where
 
+import Control.Monad (forM_)
 import Data.Aeson (toJSON)
 import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
+import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
+import FlapExample (alignedFlap, singleFlap, touchingFlap)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Load (decodeFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
@@ -26,10 +29,20 @@ import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace (norm, (^-^))
+import Senbazuru.Origami.Flap (checkFlap, flapAt, prepareFlap)
 import Senbazuru.Origami.Folding (foldFrame, foldFrameWith)
+import Senbazuru.Origami.HingeSweep (defaultSweepSettings)
 import Senbazuru.Origami.Step
 import Senbazuru.Origami.Surface (materialFrame, surfaceFromFolded)
+import Senbazuru.Sequence.Build (at, header, move, sequenceOf, sheetSquare, step_)
+import Senbazuru.Sequence.Build qualified as Build
+import Senbazuru.Sequence.Check (checkSequence)
+import Senbazuru.Sequence.Elaborate (elaborate)
+import Senbazuru.Sequence.Record (WrittenState (..), displayAfter, displayBefore, displayedFrame, recordAfter, recordBefore, recordStep, runRecords, writtenStates)
+import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
+import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), Sense (..), Sequence)
 import Test.Hspec
+import Test.SequenceExamples (creasedTwice)
 
 steps :: IO [Frame]
 steps = do
@@ -71,6 +84,7 @@ spec :: Spec
 spec = do
   presentation
   placement
+  growing
   describe "the folding sequence fixture" $ do
     it "sees the left half swing onto the right" $ do
       fs <- steps
@@ -310,6 +324,189 @@ placement = describe "placing a later frame's vertices on an earlier frame" $ do
       placeOn cp {verticesCoords = [0 / 0, 0] : drop 1 (verticesCoords cp)} cp `shouldBe` Left (VertexNotFinite (VertexId 0))
       -- The later frame's are the same refusals, said to be about it.
       placeOn cp (withMaterial (toJSON ("corners" :: String))) `shouldBe` Left (InNextFrame MaterialCoordinatesUnreadable)
+
+-- | 05 L5's moves between two frames ('motionsAcross'), for frames whose
+-- crease pattern grew as much as for frames whose did not.
+growing :: Spec
+growing = describe "the moves across two frames" $ do
+  -- 06's A13 and L5's first row. Where the crease pattern did not grow,
+  -- 'motionsAcross' is 'motionsBetween' and needs no material points: the
+  -- quarter fold's frames have none after the first. Red if every pair were
+  -- placed, which refuses the quarter fold's first pair as
+  -- InNextFrame MaterialCoordinatesMissing and its second, and the folded
+  -- diagonal pattern, as MaterialCoordinatesMissing.
+  it "is the moves between two frames where the crease pattern did not grow" $ do
+    quarter <- steps
+    flaps <- mapM flapStates [(singleFlap, EdgeId 6, FaceId 1, 150), (singleFlap {edgesFoldAngle = replicate 7 0}, EdgeId 6, FaceId 1, 180), (touchingFlap, EdgeId 8, FaceId 1, 90), (alignedFlap, EdgeId 8, FaceId 1, 90)]
+    cp <- diagonalPattern
+    folded <- right (foldFrame cp)
+    let pairs = consecutive quarter <> concatMap consecutive flaps <> [(folded, cp)]
+    length pairs `shouldBe` 2 + 4 * 3 + 1
+    [motionsAcross b a | (b, a) <- pairs] `shouldBe` [motionsBetween b a | (b, a) <- pairs]
+    map (fmap length . uncurry motionsBetween) pairs `shouldBe` replicate (length pairs) (Right 1)
+
+  -- (b), the folded diagonal pattern against it creased at rest: the face
+  -- the fold turned comes back, moving from (2/7, 2/7) to (5/7, 5/7), and the
+  -- faces moved are the later frame's. Red if the motion's start were read
+  -- where the later frame has the paper, which finds nothing moved, or if the
+  -- faces were the earlier frame's, which moves face 1 alone, from (1/3, 1/3).
+  -- Reversed, the later frame does not begin with the earlier one's vertices.
+  it "finds the paper the fold turned coming back, between frames whose pattern grew" $ do
+    (earlier, later) <- foldedPair
+    case motionsAcross earlier later of
+      Right [m] -> do
+        (motionFaces m, motionCreases m) `shouldBe` ([FaceId 1, FaceId 2, FaceId 3, FaceId 4], [])
+        farFrom [motionFrom m, motionTo m] [V3 (2 / 7) (2 / 7) 0, V3 (5 / 7) (5 / 7) 0] `shouldBe` []
+      other -> expectationFailure ("expected one motion, got " <> show other)
+    motionsAcross later earlier `shouldBe` Left (VerticesNotAPrefix (VertexId 4))
+
+  -- L2's batch creased at rest: the pattern grew and no paper moved. Red if
+  -- the pair went to 'motionsBetween', which refuses it for differing.
+  it "finds nothing moved where creasing at rest grew the pattern" $ do
+    cp <- diagonalPattern
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    motionsAcross cp later `shouldBe` Right []
+    motionsBetween cp later `shouldBe` Left (FramesDiffer "vertices_coords" 4 8)
+
+  -- R-05-19's creases: the diagonal pattern flat, against it creased along
+  -- the other diagonal and folded on the first. The old diagonal, cut in two
+  -- by the new crease, is the later frame's edges 4 and 5, and changed from 0
+  -- to the fold's angle; the new diagonal is edges 6 and 7, at rest, and one
+  -- of them lies on the moving faces' rings. Red if angles were compared
+  -- edge by id, which lists edge 4 alone, since the earlier frame has no edge
+  -- 5, or if a new edge counted as changed, which lists edge 7 as well.
+  it "lists the earlier creases whose angle changed, and never a new one" $ do
+    cp <- diagonalPattern
+    creased <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Mountain)] cp)
+    later <- right (foldFrameWith creased) >>= \f -> materialFrame <$> right (surfaceFromFolded f)
+    case motionsAcross cp {edgesFoldAngle = replicate 5 0} later of
+      Right [m] -> do
+        (motionFaces m, motionCreases m) `shouldBe` ([FaceId 1, FaceId 2], [EdgeId 4, EdgeId 5])
+        farFrom [motionFrom m, motionTo m] [V3 (2 / 3) (2 / 3) 0, V3 (1 / 3) (1 / 3) 0] `shouldBe` []
+      other -> expectationFailure ("expected one motion, got " <> show other)
+
+  -- An edge whose angle either frame leaves unrecorded did not change, as
+  -- 'motionsBetween' reads a frame that records none: the diagonal pattern as
+  -- the file records it, its diagonal at 180 rather than the 0 the test above
+  -- gives it, against the same later frame, with each frame's angles taken
+  -- away in turn. Red if a missing angle were read as 0, which lists the old
+  -- diagonal's halves: a missing 0 against their 180, or the file's 180
+  -- against a missing 0. With the diagonal at 0, the second would stay green.
+  it "lists no crease where a frame records no angles" $ do
+    cp <- diagonalPattern
+    creased <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0, V2 1 1, Mountain)] cp)
+    later <- right (foldFrameWith creased) >>= \f -> materialFrame <$> right (surfaceFromFolded f)
+    map motionCreases <$> motionsAcross cp {edgesFoldAngle = []} later `shouldBe` Right [[]]
+    map motionCreases <$> motionsAcross cp later {edgesFoldAngle = []} `shouldBe` Right [[]]
+
+  -- Each step of two runs whose crease patterns grow: the motion found
+  -- between the state before the step and the state it writes, against the
+  -- one found between its first record's before and its last record's after,
+  -- each shown as the reader sees it ('displayedFrame'), whose crease pattern
+  -- is the same. The ends agree, at the hand-worked points. Red if the start
+  -- were read where the later frame has the paper, which finds nothing moved;
+  -- if the faces were the earlier frame's; or if a turn of the whole model
+  -- went unrecognised, which gives a turn-over a motion. The fold of each run's
+  -- second step is made along a crease it adds, now at a flat fold's angle, so
+  -- its creases are listed as none. Red if a crease the later frame adds were
+  -- compared with an angle of 0.
+  it "finds each step's motion where its own records find it" $
+    forM_ [(creasedTwice, [[], [(V3 (2 / 7) (3 / 7) 0, V3 (5 / 7) (3 / 7) 0)]]), (turnedEachStep, [[], [(V3 0.5 0.5 0, V3 0.5 (2 / 7) 0)]])] $ \(source, expected) -> do
+      run <- right (checkSequence source >>= runSequence defaultRunSettings M.empty . elaborate)
+      states <- right (writtenStates run)
+      length states `shouldBe` length expected + 1
+      forM_ (zip3 [1 ..] (consecutive (map stateFrame states)) expected) $ \(k, (b, a), want) -> do
+        fromStates <- right (motionsAcross b a)
+        fromRecords <- case [r | r <- runRecords run, recordStep r == k] of
+          first' : rest ->
+            let final = last (first' : rest)
+             in right (motionsBetween (displayedFrame (recordBefore first') (displayBefore first')) (displayedFrame (recordAfter final) (displayAfter final)))
+          [] -> fail ("no record for step " <> show k)
+        (k, length fromStates, length fromRecords) `shouldBe` (k, length want, length want)
+        (k, farFrom (concatMap ends fromStates) (concatMap pair want), farFrom (concatMap ends fromRecords) (concatMap pair want)) `shouldBe` (k, [], [])
+        (k, map motionCreases fromStates) `shouldBe` (k, map (const []) want)
+
+  -- Two flaps folded onto the middle of a strip of three squares while a
+  -- crease grows across the middle: two motions, each listing the hinge it
+  -- turned about and not the other's, as 'motionsBetween' does for the same
+  -- fold without the crease. Red if a group listed every crease that changed,
+  -- wherever it lies.
+  it "gives each group its own motion and its own creases, where the pattern grew" $
+    motionsAcross stripFlat stripFolded
+      `shouldBe` Right
+        [ Motion [FaceId 0] [EdgeId 1] (V3 0.5 0.5 0) (V3 1.5 0.5 0),
+          Motion [FaceId 3] [EdgeId 2] (V3 2.5 0.5 0) (V3 1.5 0.5 0)
+        ]
+
+  -- A grown pair is refused for what placing it refuses. Red if the later
+  -- frame's refusal were not said to be about it, or if a pair that shrank
+  -- were sent to 'motionsBetween', which refuses it for differing.
+  it "refuses a grown pair as placing it refuses" $ do
+    cp <- diagonalPattern
+    l2 <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    folded <- right (foldFrame l2)
+    motionsAcross cp folded `shouldBe` Left (InNextFrame MaterialCoordinatesMissing)
+    motionsAcross l2 cp `shouldBe` Left (VerticesNotAPrefix (VertexId 4))
+
+-- | The four states a checked turn of one flap goes through, as FlapSpec draws
+-- them, each with its material points.
+flapStates :: (Frame, EdgeId, FaceId, Double) -> IO [Frame]
+flapStates (sheet, edge, face, angle) = do
+  start <- right (foldFrameWith sheet)
+  motion <- right (prepareFlap edge face angle start >>= checkFlap defaultSweepSettings)
+  states <- right (traverse (flapAt motion) [0, 1 / 3, 2 / 3, 1])
+  pure (map materialFrame states)
+
+-- | A strip of three unit squares, flat, its two hinges valleys at rest:
+-- faces 0, 1 and 2 from the left.
+stripFlat :: Frame
+stripFlat =
+  emptyFrame
+    { verticesCoords = [[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1], [3, 0], [3, 1]],
+      edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (2, 4), (4, 6), (1, 3), (3, 5), (5, 7)]],
+      edgesAssignment = [Border, Valley, Valley] <> replicate 7 Border,
+      edgesFoldAngle = replicate 10 0,
+      facesVertices = [map VertexId [0, 2, 3, 1], map VertexId [2, 4, 5, 3], map VertexId [4, 6, 7, 5]],
+      frameClasses = ["creasePattern"]
+    }
+
+-- | The strip with both outer squares folded in onto the middle one, and a
+-- crease added across the middle, from (3/2, 0) to (3/2, 1), at rest: the
+-- strip's vertices first, then the crease's two, each with its point on the
+-- sheet. Faces 0 and 3 are the flaps.
+stripFolded :: Frame
+stripFolded =
+  emptyFrame
+    { verticesCoords = [[2, 0], [2, 1], [1, 0], [1, 1], [2, 0], [2, 1], [1, 0], [1, 1], [1.5, 0], [1.5, 1]],
+      edgesVertices = [(VertexId a, VertexId b) | (a, b) <- [(0, 1), (2, 3), (4, 5), (6, 7), (0, 2), (2, 8), (8, 4), (4, 6), (1, 3), (3, 9), (9, 5), (5, 7), (8, 9)]],
+      edgesAssignment = [Border, Valley, Valley] <> replicate 9 Border <> [Valley],
+      edgesFoldAngle = [0, 180, 180] <> replicate 10 0,
+      facesVertices = [map VertexId [0, 2, 3, 1], map VertexId [2, 8, 9, 3], map VertexId [8, 4, 5, 9], map VertexId [4, 6, 7, 5]],
+      frameClasses = ["foldedForm"],
+      frameExtras = KM.singleton "senbazuru:material_coords" (toJSON ([[0, 0], [0, 1], [1, 0], [1, 1], [2, 0], [2, 1], [3, 0], [3, 1], [1.5, 0], [1.5, 1]] :: [[Double]]))
+    }
+
+consecutive :: [a] -> [(a, a)]
+consecutive xs = zip xs (drop 1 xs)
+
+ends :: Motion -> [V3]
+ends m = [motionFrom m, motionTo m]
+
+pair :: (V3, V3) -> [V3]
+pair (a, b) = [a, b]
+
+-- | A plain square pre-creased on a diagonal and turned over, then folded in
+-- half along the line joining its west and east midpoints and turned over
+-- again, anchored at (3/4, 1/4) as 'creasedTwice' is. Each step ends with a
+-- turn of the whole model, and each adds creases.
+turnedEachStep :: Sequence
+turnedEachStep = sequenceOf (header "A square turned over at each step" sheetSquare (Just (at (3 / 4) (1 / 4)))) $ do
+  step_ "Crease the diagonal, and turn the paper over." $ do
+    move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf NorthWest)))
+    Build.turnOver LeftRight
+  step_ "Fold the top half down, and turn the paper over." $ do
+    move (Fold ValleyFold ToFlat (Segment (MidpointOfEdge West) (MidpointOfEdge East)) FlapOfFirstArgument (Just (CornerOf NorthEast)))
+    Build.turnOver LeftRight
 
 -- | @examples/diagonal-cp.fold@: a unit square with one valley diagonal, from
 -- (0, 1) to (1, 0), and its two faces.

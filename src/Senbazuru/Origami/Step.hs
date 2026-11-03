@@ -81,8 +81,34 @@
 -- they meet end to end at a corner (a square creased from (0, 1/2) to
 -- (3/10, 1/2) and on to (3/10, 1)), holds points beyond the line of the edge
 -- that turns in, and a half-plane test would call them outside it.
+--
+-- == The moves between two such frames
+--
+-- 'motionsAcross' finds the moves between two frames, whether or not the
+-- crease pattern grew between them, and it alone decides which they are. A
+-- page of steps is to ask it from S28 (#642); until then
+-- "Senbazuru.Render.Steps" and @render --frame k --arrows@ ask
+-- 'motionsBetween', which refuses a pair whose pattern grew. Two frames with
+-- the same vertices, edges and faces go to 'motionsBetween', unchanged, and
+-- need no material points. Any other pair is placed: the later frame's
+-- vertices put where the earlier frame has its paper ('placeOn'), and each
+-- vertex that moved from there to where the later frame has it is paper that
+-- folded. So a pair is never refused for differing. A pair 'motionsBetween'
+-- refuses for faces written another way round is answered instead where both
+-- frames' material points can be read, and otherwise refused as 'placeOn'
+-- refuses, for the points it cannot read.
+--
+-- The faces and their groups are the later frame's, since only it has the
+-- faces creasing cut, and a frame recording none gives no motion, as
+-- 'motionsBetween' gives none. A turn of the whole model is judged on the
+-- vertices the two frames share, the earlier frame's, since an added vertex
+-- lies on earlier paper and turns with it. And a crease whose angle changed is
+-- an edge of the later frame lying along an earlier edge, as the sheet has
+-- them, whose angle there differs: a crease the later frame adds is new, never
+-- changed, so a fold made along a crease it adds lists no crease at all.
 module Senbazuru.Origami.Step
   ( Motion (..),
+    motionsAcross,
     motionsBetween,
     wholeModelMotion,
     placeOn,
@@ -122,10 +148,14 @@ import Senbazuru.Origami.Surface (Sample (..), SurfaceError (..), surfaceFromFra
 -- flap being moved, not its middle — but it is the one point that certainly
 -- lies on the moving paper and certainly moves with it.
 data Motion = Motion
-  { -- | The faces that moved, in id order.
+  { -- | The faces that moved, in id order: the later frame's, between two
+    -- frames whose crease pattern grew.
     motionFaces :: ![FaceId],
     -- | The creases whose fold angle changed, in id order. Empty when a frame
-    -- records no angles, which does not stop the motion being real.
+    -- records no angles, which does not stop the motion being real. Between
+    -- two frames whose crease pattern grew, the later frame's edges, and only
+    -- those lying along an earlier edge: a crease the later frame adds is
+    -- never one that changed, so a fold along it lists none.
     motionCreases :: ![EdgeId],
     motionFrom :: !V3,
     motionTo :: !V3
@@ -134,13 +164,15 @@ data Motion = Motion
 
 -- | What moves between one frame and the next.
 --
--- The two frames must describe the same paper: the same vertices, edges and
--- faces, differing only in where they are. That is what consecutive frames of a
--- diagram are, and a pair that disagrees about the graph is not a step but two
--- different models.
+-- The two frames must describe the same paper with the same vertices, edges
+-- and faces, differing only in where they are, as consecutive frames of a
+-- diagram do when no move made a crease between them.
 --
 -- A pair that differs only by a turn of the whole model, a presentation
 -- change, has no motion: the paper did not fold ('wholeModelMotion').
+--
+-- Refused for frames whose vertices, edges or faces differ, as consecutive
+-- frames do when a move made a crease; 'motionsAcross' takes those too.
 motionsBetween :: Frame -> Frame -> Either FoldError [Motion]
 motionsBetween before after = do
   sameModel before after
@@ -167,9 +199,9 @@ wholeModelMotion before after = do
 -- faces.
 --
 -- Compared for equality and not merely for length. Two frames with the same
--- number of faces joined up differently are two models, and matching face i to
--- face i across them would take the centre of one flap and the centre of an
--- unrelated one as the two ends of a motion.
+-- number of faces joined up differently cannot be matched face i to face i:
+-- that would take the centre of one flap and the centre of an unrelated one as
+-- the two ends of a motion.
 sameModel :: Frame -> Frame -> Either FoldError ()
 sameModel before after = do
   sameLength "vertices_coords" (length (verticesCoords before)) (length (verticesCoords after))
@@ -231,9 +263,6 @@ foldedBetween before after from to = do
     -- the function total rather than standing for a case that can happen.
     laterCorners byId f = M.findWithDefault (faceCorners f) (faceId f) byId
 
-    centre [] = V3 0 0 0
-    centre ps = (1 / fromIntegral (length ps)) *^ foldl' (^+^) (V3 0 0 0) ps
-
     -- The creases whose recorded angle changed, indexed by the pair of vertices
     -- they join, so that asking whether a group turned about one is a set
     -- lookup rather than a walk down edges_vertices per edge.
@@ -253,6 +282,83 @@ foldedBetween before after from to = do
     -- corners without being one of its sides, and is not a crease that face
     -- turned about.
     creasesIn ringsOf = [eid | (eid, key) <- changed, key `S.member` ringsOf]
+
+-- | The middle of some points: their mean.
+centre :: [V3] -> V3
+centre [] = V3 0 0 0
+centre ps = (1 / fromIntegral (length ps)) *^ foldl' (^+^) (V3 0 0 0) ps
+
+-- | What moves between one frame and the next, whether or not creasing grew
+-- the crease pattern between them: 'motionsBetween' for two frames with the
+-- same vertices, edges and faces, and otherwise the later frame placed on the
+-- earlier ('placeOn'). The module header has how.
+--
+-- Refused as 'motionsBetween' refuses for the first kind of pair, and as
+-- 'placeOn' refuses for the second, never for the two differing.
+motionsAcross :: Frame -> Frame -> Either FoldError [Motion]
+motionsAcross before after = case sameModel before after of
+  Right () -> motionsBetween before after
+  Left _ -> grownBetween before after
+
+-- | The motions between two frames whose crease pattern grew.
+grownBetween :: Frame -> Frame -> Either FoldError [Motion]
+grownBetween before after = do
+  p <- placing before after
+  let shared = length (placedEarlierMaterial p)
+  case wholeTurn (take shared (placedOnEarlier p)) (take shared (placedLater p)) of
+    Just _ -> pure []
+    Nothing -> do
+      faces <- first InNextFrame (frameFaces after)
+      let from = IM.fromList (zip [0 ..] (placedOnEarlier p))
+          moved = movedBetween (placedOnEarlier p) (placedLater p)
+          movedFaces =
+            [ (f, ringKeys (faceVertexIds f))
+              | f <- faces,
+                any ((`S.member` moved) . unVertexId) (faceVertexIds f)
+            ]
+          changed = changedAlong before after p
+          creasesIn ringsOf = [eid | (eid, key) <- changed, key `S.member` ringsOf]
+      pure
+        [ Motion
+            { motionFaces = map (faceId . fst) group,
+              motionCreases = creasesIn (S.unions (map snd group)),
+              motionFrom = centre [IM.findWithDefault (V3 0 0 0) v from | (f, _) <- group, VertexId v <- faceVertexIds f],
+              motionTo = centre (concatMap (faceCorners . fst) group)
+            }
+          | group <- connectedGroups movedFaces
+        ]
+
+-- | The later frame's edges whose fold angle differs from that of the earlier
+-- edge they lie along, as the sheet has them: the first earlier edge, by id,
+-- whose segment on the sheet holds both of the later edge's ends within a hair.
+-- An edge lying along none is a crease the later frame adds, which is new and
+-- never one that changed; and an edge whose angle either frame leaves
+-- unrecorded did not change either, as 'motionsBetween' reads a frame that
+-- records none.
+changedAlong :: Frame -> Frame -> Placed -> [(EdgeId, EdgeKey)]
+changedAlong before after p =
+  [ (EdgeId e, edgeKey u v)
+    | (e, (u, v)) <- zip [0 ..] (edgesVertices after),
+      Just mu <- [IM.lookup (unVertexId u) laterAt],
+      Just mv <- [IM.lookup (unVertexId v) laterAt],
+      j : _ <- [[j | (j, a, b) <- segments, distanceToSegment (a, b) mu <= hair, distanceToSegment (a, b) mv <= hair]],
+      Just angleAfter <- [IM.lookup e anglesAfter],
+      Just angleBefore <- [IM.lookup j anglesBefore],
+      angleAfter /= angleBefore
+  ]
+  where
+    hair = toleranceOf (placedEarlierMaterial p)
+    earlierAt = IM.fromList (zip [0 ..] (placedEarlierMaterial p))
+    laterAt = IM.fromList (zip [0 ..] (placedLaterMaterial p))
+    segments =
+      [ (j, a, b)
+        | (j, (VertexId x, VertexId y)) <- zip [0 ..] (edgesVertices before),
+          Just a <- [IM.lookup x earlierAt],
+          Just b <- [IM.lookup y earlierAt],
+          norm (b ^-^ a) > hair
+      ]
+    anglesBefore = IM.fromList (zip [0 ..] (edgesFoldAngle before))
+    anglesAfter = IM.fromList (zip [0 ..] (edgesFoldAngle after))
 
 zip4 :: [a] -> [b] -> [c] -> [d] -> [(a, b, c, d)]
 zip4 (a : as) (b : bs) (c : cs) (d : ds) = (a, b, c, d) : zip4 as bs cs ds
@@ -294,9 +400,25 @@ connectedGroups = go
 -- traced (whatever 'withPlanarFaces' refuses, as it does a crease that stops
 -- in the middle of the paper).
 placeOn :: Frame -> Frame -> Either FoldError [V3]
-placeOn earlier later = do
+placeOn earlier later = placedOnEarlier <$> placing earlier later
+
+-- | Two frames placed, with what was read to place them, so that a caller
+-- reads each frame's material points once.
+data Placed = Placed
+  { -- | The earlier frame's material points.
+    placedEarlierMaterial :: ![V2],
+    -- | The later frame's material points.
+    placedLaterMaterial :: ![V2],
+    -- | Where the later frame has its vertices.
+    placedLater :: ![V3],
+    -- | Where the earlier frame has them: 'placeOn''s answer.
+    placedOnEarlier :: ![V3]
+  }
+
+placing :: Frame -> Frame -> Either FoldError Placed
+placing earlier later = do
   (positions, materials) <- materialOf earlier
-  (_, laterMaterials) <- first InNextFrame (materialOf later)
+  (laterPositions, laterMaterials) <- first InNextFrame (materialOf later)
   prefixOf materials laterMaterials
   let hair = toleranceOf materials
       edges = edgesOn earlier materials positions
@@ -310,7 +432,7 @@ placeOn earlier later = do
           rings <- faces
           maybe (Left (AddedVertexOffPaper (VertexId i))) Right (inFace hair rings m)
   added <- traverse place (zip [length materials ..] (drop (length materials) laterMaterials))
-  pure (positions <> added)
+  pure (Placed materials laterMaterials laterPositions (positions <> added))
 
 -- | A frame's vertices, where they are and where they lay on the sheet.
 materialOf :: Frame -> Either FoldError ([V3], [V2])
