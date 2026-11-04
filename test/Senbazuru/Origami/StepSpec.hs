@@ -6,7 +6,7 @@
 -- in the code knows which way a fold "usually" goes.
 module Senbazuru.Origami.StepSpec (spec) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM, forM_)
 import Data.Aeson (toJSON)
 import Data.Aeson.KeyMap qualified as KM
 import Data.ByteString qualified as BS
@@ -15,7 +15,7 @@ import Data.Maybe (isJust)
 import FlapExample (alignedFlap, singleFlap, touchingFlap)
 import Senbazuru.Fold.Creasing (NewCreaseAngle (..), creaseAllAlongWith)
 import Senbazuru.Fold.Load (decodeFoldFile)
-import Senbazuru.Fold.Query (FoldError (..), frameVertices)
+import Senbazuru.Fold.Query (Crease (..), FoldError (..), frameCreases, frameVertices)
 import Senbazuru.Fold.Types
   ( Assignment (..),
     EdgeId (..),
@@ -38,7 +38,7 @@ import Senbazuru.Sequence.Build (at, header, move, sequenceOf, sheetSquare, step
 import Senbazuru.Sequence.Build qualified as Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
-import Senbazuru.Sequence.Record (WrittenState (..), displayAfter, displayBefore, displayedFrame, recordAfter, recordBefore, recordStep, runRecords, writtenStates)
+import Senbazuru.Sequence.Record (WrittenState (..), displayAfter, displayBefore, displayedFrame, recordAfter, recordBefore, recordNewCreases, recordStep, runRecords, writtenStates)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), PageAxis (..), Point (..), Sense (..), Sequence)
 import Test.Hspec
@@ -85,6 +85,7 @@ spec = do
   presentation
   placement
   growing
+  toCome
   describe "the folding sequence fixture" $ do
     it "sees the left half swing onto the right" $ do
       fs <- steps
@@ -447,6 +448,119 @@ growing = describe "the moves across two frames" $ do
     folded <- right (foldFrame l2)
     motionsAcross cp folded `shouldBe` Left (InNextFrame MaterialCoordinatesMissing)
     motionsAcross l2 cp `shouldBe` Left (VerticesNotAPrefix (VertexId 4))
+
+-- | 05 L5's creases a later frame adds ('creasesToCome'), at their ends where
+-- the earlier frame has the paper.
+toCome :: Spec
+toCome = describe "the creases a later frame adds" $ do
+  -- 05 L5's second acceptance row: L2's batch creased at rest on the
+  -- diagonal pattern, where no paper moves. The new creases are edges 8 to
+  -- 12, at their ends on the sheet, exactly, and the pieces creasing cut from
+  -- the old diagonal, 6 and 7, are not new. Red if a cut piece of a crease
+  -- counted as new. The pieces cut from the border, 0, 1, 4 and 5, are
+  -- borders, never listed whatever the test of newness says; that they are
+  -- not new is pinned below, where the later frame records no letters.
+  it "lists the creases a batch adds, and none of the pieces it cuts" $ do
+    cp <- diagonalPattern
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    motionsAcross cp later `shouldBe` Right []
+    creasesToCome cp later
+      `shouldBe` Right
+        [ (EdgeId 8, V3 0 0.5 0, V3 0.25 0.25 0),
+          (EdgeId 9, V3 0.25 0.25 0, V3 0.5 0 0),
+          (EdgeId 10, V3 0 0 0, V3 0.25 0.25 0),
+          (EdgeId 11, V3 0.25 0.25 0, V3 0.5 0.5 0),
+          (EdgeId 12, V3 0.5 0.5 0, V3 1 1 0)
+        ]
+
+  -- Pair (b): the diagonal pattern folded on its diagonal, against it creased
+  -- at rest along (1/2, 1)-(1, 1/2) and the other diagonal. Edge 12 runs from
+  -- material (3/4, 3/4) to vertex 2, at (1, 1) on the sheet and in the later
+  -- frame, and both ends lie on the face the fold turned, so the crease is at
+  -- (1/4, 1/4) and (0, 0), where the fold put them. Red if the ends were read
+  -- on the sheet or in the later frame, either of which has vertex 2 at
+  -- (1, 1). The new diagonal's halves either side of the fold, edges 10 and
+  -- then 11 and 12, land on one line, the held half out from (0, 0) and the
+  -- turned half back to it.
+  it "puts each new crease where the earlier figure has its paper" $ do
+    (earlier, later) <- foldedPair
+    coming <- right (creasesToCome earlier later)
+    [e | (e, _, _) <- coming] `shouldBe` map EdgeId [8 .. 12]
+    farFrom
+      (concat [[a, b] | (_, a, b) <- coming])
+      [ V3 0 0.5 0,
+        V3 0.25 0.25 0,
+        V3 0.25 0.25 0,
+        V3 0.5 0 0,
+        V3 0 0 0,
+        V3 0.5 0.5 0,
+        V3 0.5 0.5 0,
+        V3 0.25 0.25 0,
+        V3 0.25 0.25 0,
+        V3 0 0 0
+      ]
+      `shouldBe` []
+
+  -- The quarter fold's frames have the same vertices, edges and faces, so
+  -- nothing is new, and its frames 1 and 2 record no material points. Red if
+  -- such a pair were placed, which refuses it for them.
+  it "finds none between frames whose crease pattern did not grow" $ do
+    fs <- steps
+    [creasesToCome b a | (b, a) <- consecutive fs] `shouldBe` [Right [], Right []]
+
+  -- A border, a cut and a join are not creases: L2's later frame with three
+  -- of its new edges given those letters lists the other two. An edge the
+  -- file gives no letter is read as unassigned, a crease, so the same frame
+  -- recording no letters lists all five, and none of the pieces cut from the
+  -- border or the old diagonal, which are then creases too. And a crease
+  -- along an earlier join is not new: with the old diagonal lettered J in the
+  -- earlier frame, its pieces 6 and 7, V in the later one, are not listed.
+  -- Red if every new edge were listed; if an edge with no letter were not; if
+  -- a piece of the border counted as new; or if an earlier join were left out
+  -- of the test of newness.
+  it "lists no border, cut or join, and an edge with no letter" $ do
+    cp <- diagonalPattern
+    later <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    let edgeIds = fmap (map (\(e, _, _) -> e))
+        relettered = later {edgesAssignment = take 8 (edgesAssignment later) <> [Border, Cut, Join, Mountain, Mountain]}
+    edgeIds (creasesToCome cp relettered) `shouldBe` Right [EdgeId 11, EdgeId 12]
+    edgeIds (creasesToCome cp later {edgesAssignment = []}) `shouldBe` Right (map EdgeId [8 .. 12])
+    edgeIds (creasesToCome cp {edgesAssignment = [Border, Border, Border, Border, Join]} later) `shouldBe` Right (map EdgeId [8 .. 12])
+
+  -- Each step of the two runs whose crease patterns grow: the creases found
+  -- between the state before the step and the state it writes, against the
+  -- creases the step's records drew, each where its record has the paper
+  -- before the move, as the reader sees it ('displayedFrame'). They agree.
+  -- Red if the ends were read where the later state has them, which the
+  -- turn-over ending each of the second run's steps moves, so it is red from
+  -- that run's first step; or on the sheet, which differs from the state
+  -- before a step only after that first turn-over, at the second run's second
+  -- step. The first run cannot tell either way: each of its new creases is a
+  -- pre-crease lying flat as it was made, or lies on its fold's own hinge,
+  -- which the fold does not move. Red too if a crease lying flat were not one
+  -- to come, as a pre-crease leaves its crease, which the state it writes
+  -- letters F.
+  it "finds each step's new creases where its own records draw them" $
+    forM_ [creasedTwice, turnedEachStep] $ \source -> do
+      run <- right (checkSequence source >>= runSequence defaultRunSettings M.empty . elaborate)
+      states <- right (writtenStates run)
+      length states `shouldBe` 3
+      forM_ (zip3 [1 ..] (consecutive (map stateFrame states)) [1, 2]) $ \(k, (b, a), count) -> do
+        coming <- right (creasesToCome b a)
+        drawn <- fmap concat . forM [r | r <- runRecords run, recordStep r == k] $ \r -> do
+          creases <- right (frameCreases (displayedFrame (recordBefore r) (displayBefore r)))
+          pure [(creaseStart c, creaseEnd c) | c <- creases, creaseId c `elem` concat [ids | (_, ids, _) <- recordNewCreases r]]
+        (k, length coming, length drawn) `shouldBe` (k, count, count)
+        (k, farFrom (concat [[x, y] | (_, x, y) <- coming]) (concatMap pair drawn)) `shouldBe` (k, [])
+
+  -- Refused as placing refuses, as 'motionsAcross' is. Red if the later
+  -- frame's refusal were not said to be about it.
+  it "refuses a grown pair as placing it refuses" $ do
+    cp <- diagonalPattern
+    l2 <- right (fst <$> creaseAllAlongWith AtRest [(V2 0 0.5, V2 0.5 0, Valley), (V2 0 0, V2 1 1, Mountain)] cp)
+    folded <- right (foldFrame l2)
+    creasesToCome cp folded `shouldBe` Left (InNextFrame MaterialCoordinatesMissing)
+    creasesToCome l2 cp `shouldBe` Left (VerticesNotAPrefix (VertexId 4))
 
 -- | The four states a checked turn of one flap goes through, as FlapSpec draws
 -- them, each with its material points.

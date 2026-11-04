@@ -1,15 +1,10 @@
 # 05 — Library additions the runner needs
 
 Written 2026-09-15 against `568dcb6`, when nothing here was implemented. Built
-since: L1, L2, L3 and L14, whose **Milestone** lines name their PRs; L4's
-`flapStationaryFace`, in #344; L5's `insideRing`, in #491, and its placement
-(R-05-17, R-05-18, `placeOn`), in #669
-([C139](decisions.md#changes-since-draft-v2)), and its moves across a growing
-pattern (R-05-16, R-05-19, `motionsAcross`), in #673
-([C144](decisions.md#changes-since-draft-v2)); and L16's stretches that keep
-their face edge (R-05-52, `EdgeSpan`), in #667
-([C137](decisions.md#changes-since-draft-v2)), and its fan counts (R-05-50,
-R-05-51, `fanCounts`, `CoverError`), in #671
+since: L1, L2, L3, L5 and L14, whose **Milestone** lines name their PRs; L4's
+`flapStationaryFace`, in #344; and L16's stretches that keep their face edge
+(R-05-52, `EdgeSpan`), in #667 ([C137](decisions.md#changes-since-draft-v2)),
+and its fan counts (R-05-50, R-05-51, `fanCounts`, `CoverError`), in #671
 ([C141](decisions.md#changes-since-draft-v2)). `flapPoseAt` and
 `Origami.Route` wait for `flapPoseAt`'s first consumer
 ([C90](decisions.md#changes-since-draft-v2)). Code links are to lines read at
@@ -615,6 +610,14 @@ on material points.
   of the whole model is judged on the vertices the two frames share, and a
   later frame recording no faces gives no motion, as `motionsBetween` gives
   none.
+- R-05-20 is built by S7 of [#638](https://github.com/avalonalex/senbazuru/issues/638)
+  ([C148](decisions.md#changes-since-draft-v2)) as
+  `Origami.Step.creasesToCome :: Frame -> Frame -> Either FoldError [(EdgeId, V3, V3)]`,
+  each new crease with its ends at `before`'s positions for them (`placeOn`).
+  An edge is unmatched by R-05-19's own test, so the two never disagree; an
+  equal pair has none and needs no material points; and a border, a cut or a
+  join is not a crease and is never listed, though R-05-20 says every
+  unmatched edge.
 
 **Refusals** (new `FoldError` constructors): `MaterialCoordinatesMissing`,
 `VerticesNotAPrefix VertexId`, `AddedVertexOffPaper VertexId`. Built with five
@@ -631,13 +634,20 @@ crane's every crease on step 1 (same note, "(c)").
 | Test | Turns red if |
 | --- | --- |
 | `motionsAcross == motionsBetween` on consecutive pairs of `quarter-fold-steps.fold` and of `FlapSpec`'s material-frame sequences (the note's "D. When the crease graph grows", finding 18); pinned by `StepSpec`, S6 | the equal-graph branch is bypassed (the quarter fixture's first pair is then refused as `InNextFrame MaterialCoordinatesMissing` and its second as `MaterialCoordinatesMissing`, [C144](decisions.md#changes-since-draft-v2)) |
-| Before `diagonal-cp.fold`, after L2's batch under `AtRest`: no motions; `creasesToCome` lists edges 8–12 at their material ends | cut old pieces 6, 7 count as new |
+| Before `diagonal-cp.fold`, after L2's batch under `AtRest`: no motions; `creasesToCome` lists edges 8–12 at their material ends; pinned by `StepSpec`, S7 | cut old pieces 6, 7 count as new |
 | Vertex 7 at (1/4, 1/4) lies on no edge, inside `before`'s face [0,1,3], and is placed at (1/4, 1/4, 0) | only edge interpolation exists |
 | `insideRing` on an L-shaped ring: notch outside, arm inside | the convex test is reused |
 
 **Outputs unchanged.** New functions; `motionsBetween` changes only by L3.
 
-**Milestone.** M3.
+**Milestone.** M3. Built in four PRs: `insideRing` in #491; placement (R-05-17,
+R-05-18, `placeOn`) in #669, S5 of
+[#638](https://github.com/avalonalex/senbazuru/issues/638)
+([C139](decisions.md#changes-since-draft-v2)); the moves across a growing
+pattern (R-05-16, R-05-19, `motionsAcross`) in #673, S6
+([C144](decisions.md#changes-since-draft-v2)); and the creases to come
+(R-05-20, `creasesToCome`) in #678, S7
+([C148](decisions.md#changes-since-draft-v2)).
 
 ---
 
