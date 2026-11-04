@@ -160,6 +160,8 @@ spec = do
     it "moves with its figure when laid out, its displacements as they were" $ do
       let line = Fanned (FanLine (solid ink 1) [FanPoint (V2 0 0) (V2 (-3) 3), FanPoint (V2 1 0) (V2 0 0)])
           fannedSquare = (square 1) {diagramShapes = [line]}
+      shapePoints line `shouldBe` [V2 0 0, V2 1 0]
+      shapesBounds [line] `shouldBe` Just (Box (V2 0 0) (V2 1 0))
       page <- pageOf plain [square 1, fannedSquare]
       [map fanBy ps | Fanned (FanLine _ ps) <- diagramShapes page] `shouldBe` [[V2 (-3) 3, V2 0 0]]
       -- Measured in model units, where the first figure's square is 1 wide.

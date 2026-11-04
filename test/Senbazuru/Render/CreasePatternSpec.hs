@@ -297,8 +297,9 @@ spec = do
     it "moves each layer whole, with Offset and never Fanned" $ do
       -- C142: a fanned shape moves each point by its own amount, and the
       -- offset view moves a face by its layer, so it has no use for one. The
-      -- tests here read the displacements off Offsets, and would pass over a
-      -- Fanned drawn in place of one; this is what says there is none.
+      -- other tests here notice a Fanned in place of an Offset only by what
+      -- goes missing from their counts, and by the tag `kind` gives it; this
+      -- states the rule itself.
       d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
       [() | Fanned _ <- diagramShapes d] `shouldBe` []
 

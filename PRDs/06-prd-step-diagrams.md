@@ -283,7 +283,8 @@ then.
   [`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
   [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329) and
   [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99), pass over a
-  `Fanned` drawn in place of an `Offset`; the PR adding `Fanned` updates them.
+  `Fanned` drawn in place of an `Offset`; S14 left them as they are and tests
+  instead that the offset view emits none (below).
   `LayoutSpec`'s `labels` (above) and `StepsSpec`'s `labelsOf`
   ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) could
   not see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions

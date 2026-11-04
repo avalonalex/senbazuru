@@ -262,7 +262,8 @@ data Shape
     -- 'Offset''s is, so @y@ grows downwards.
     --
     -- The fifth shape to need both units, and the second whose page-unit part
-    -- is a position. It exists for a fanned figure (06 §10), where each corner
+    -- is a position. It exists for a fanned figure (docs\/glossary.md, and
+    -- PRDs\/06-prd-step-diagrams.md §10), where each corner
     -- of the paper is drawn toward the lower left by an amount that depends on
     -- how many sheets lie over it there: two corners of one face can move by
     -- different amounts, so no one 'Offset' around the face can say it.
@@ -284,8 +285,15 @@ data Shape
 data Fan
   = -- | An open polyline, as 'Polyline'.
     FanLine !Stroke ![FanPoint]
-  | -- | An area of one colour, as 'Fill', with the same contract: the union of
-    -- its rings, whichever way round each is written.
+  | -- | An area of one colour, as 'Fill': the union of its rings, whichever
+    -- way round each is written where it lies in the model.
+    --
+    -- With one exception the backend does not mend. Which way a ring runs is
+    -- judged where it lies, not where it is drawn, so a ring its displacements
+    -- turn round on the page, a face drawn inside out, stays turned, and cuts a
+    -- hole where it overlaps another ring. Whoever fans a figure has to keep
+    -- such a face off the page; "Senbazuru.Render.Svg"'s @runsClockwise@ says
+    -- why the backend does not.
     FanFill !Colour ![[FanPoint]]
   deriving stock (Eq, Show)
 

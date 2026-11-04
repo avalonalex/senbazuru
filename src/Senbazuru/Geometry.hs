@@ -138,9 +138,13 @@ applyTransform (Transform (V2 sx sy) (V2 ox oy)) (V2 x y) =
 
 -- | The same transform, followed by a shift of its results.
 --
--- @applyTransform (movedBy v t) p == applyTransform t p ^+^ v@, which is the
--- whole of it: a translation after a scale-and-translate is another
--- scale-and-translate, with the same scale.
+-- In exact arithmetic @applyTransform (movedBy v t) p@ is
+-- @applyTransform t p ^+^ v@: a translation after a scale-and-translate is
+-- another scale-and-translate, with the same scale. In 'Double' the two add in
+-- different orders and can differ in the last bit, which at a rounding tie
+-- changes a digit "Senbazuru.Render.Svg" writes. So the writer always moves
+-- the transform, for an 'Senbazuru.Diagram.Offset' and a fanned point alike,
+-- and the two write the same bytes.
 --
 -- The displacement is in the transform's __destination__ space, which for the
 -- one transform this project builds means page units. That is the point of it:
