@@ -13,7 +13,7 @@ module Senbazuru.Render.CreasePatternSpec (spec) where
 
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
-import Senbazuru.Diagram (Diagram (..), Shape (..), Stroke (..), diagramWithExtent, shapePoints)
+import Senbazuru.Diagram (Diagram (..), Fan (..), FanPoint (..), Shape (..), Stroke (..), diagramWithExtent, shapePoints)
 import Senbazuru.Diagram.Style
   ( Notation (..),
     Theme (..),
@@ -110,6 +110,11 @@ shapeKinds theme notation fr =
       -- question from what it is, and the tests below that care ask about the
       -- displacements directly.
       Offset _ shape -> kind shape
+      -- Not reported as what it draws, as an Offset is. The offset view draws
+      -- with Offset and never Fanned (C142), so a fanned shape in a drawing
+      -- these tests read is a different picture, and its own tag says so.
+      Fanned (FanLine {}) -> "fanned line"
+      Fanned (FanFill {}) -> "fanned fill"
 
 -- | Close enough, for numbers that have been through a sine and a cosine.
 nearly :: Double -> Double -> Bool
@@ -125,6 +130,9 @@ ringsPerFill d = [length rings | Fill _ rings <- map unwrap (diagramShapes d)]
   where
     unwrap = \case
       Offset _ shape -> unwrap shape
+      -- A fanned fill's rings, where they lie: how many areas the paper was
+      -- drawn as is a separate question from how far each point was moved.
+      Fanned (FanFill c rings) -> Fill c (map (map fanAt) rings)
       shape -> shape
 
 -- | The last element, if there is one.
@@ -286,6 +294,14 @@ spec = do
       length (filter (== buried) widths) `shouldBe` 6
       filter (/= buried) widths `shouldSatisfy` all (> buried)
 
+    it "moves each layer whole, with Offset and never Fanned" $ do
+      -- C142: a fanned shape moves each point by its own amount, and the
+      -- offset view moves a face by its layer, so it has no use for one. The
+      -- tests here read the displacements off Offsets, and would pass over a
+      -- Fanned drawn in place of one; this is what says there is none.
+      d <- either (fail . show) pure (drawn (stepped 4) foldedDiagonal)
+      [() | Fanned _ <- diagramShapes d] `shouldBe` []
+
     it "leaves the ordinary picture of the same frame alone" $ do
       -- The offset view reaches for hidden-line removal to tell the model from
       -- the stack, and reads a second, more finely cut list of the same edges
@@ -328,6 +344,7 @@ spec = do
       -- theme's own offset is zero and the two are the same value.
       off <- either (fail . show) pure (drawn (stepped 0) foldedDiagonal)
       [() | Offset _ _ <- diagramShapes off] `shouldBe` []
+      [() | Fanned _ <- diagramShapes off] `shouldBe` []
       plain <- either (fail . show) pure (drawn defaultTheme foldedDiagonal)
       off `shouldBe` plain
 
@@ -393,7 +410,7 @@ spec = do
         motion a b = Motion {motionFaces = [], motionCreases = [], motionFrom = a, motionTo = b}
         arrowsIn = length . filter isArrow . diagramShapes
         -- A turn-over loop is an arrow to look at and not one here (06 R-06-7).
-        isArrow = \case Arrow _ -> True; Symbol {} -> False; _ -> False
+        isArrow = \case Arrow _ -> True; Symbol {} -> False; Fanned {} -> False; _ -> False
 
     it "adds one arrow per motion, after everything else" $ do
       let d = withArrows defaultTheme topDown [motion (V3 0.25 0.5 0) (V3 0.75 0.5 0)] square

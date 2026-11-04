@@ -67,6 +67,8 @@ import Senbazuru.Diagram
     Colour (..),
     Dash (..),
     Diagram (..),
+    Fan (..),
+    FanPoint (..),
     Glyph (..),
     Shape (..),
     Stroke (..),
@@ -146,6 +148,8 @@ renderSvg page d =
 -- the points, which is what makes its displacement a page-unit one: the shape
 -- inside is projected exactly as it would have been and then slid, so nothing
 -- inside it — a stroke width, an arrowhead, a type size — has any idea it moved.
+-- A 'Fanned' shape does the same once per point, which is why its bytes are an
+-- 'Offset''s when every point is moved alike.
 shapeToSvg :: Transform -> Shape -> Builder
 shapeToSvg toPage (Offset v s) = shapeToSvg (movedBy v toPage) s
 -- Text is emitted as <text> rather than as outlines, so the file stays small and
@@ -283,7 +287,28 @@ shapeToSvg toPage (Symbol st size anchor (TurnOverLoop axis))
     travel = perpendicular along
     point u w = pointText (at ^+^ ((size * u) *^ travel) ^+^ ((size * w) *^ along))
     pointText (V2 x y) = formatNumber x <> " " <> formatNumber y
-shapeToSvg toPage (Fill (Colour c) rings)
+shapeToSvg toPage (Fill colour rings) = filledPath colour id (applyTransform toPage) rings
+shapeToSvg toPage (Polyline stroke pts) = strokedPath stroke (applyTransform toPage) pts
+-- Each point through the transform its own displacement moves, as an Offset
+-- moves the transform for a whole shape. Adding the displacement to the point
+-- once it is on the page instead is the same sum in another order, which can
+-- differ in the last bit and so, at a rounding tie, in the bytes written.
+shapeToSvg toPage (Fanned (FanFill colour rings)) = filledPath colour fanAt (fannedOn toPage) rings
+shapeToSvg toPage (Fanned (FanLine stroke pts)) = strokedPath stroke (fannedOn toPage) pts
+
+-- | Where a fanned point is drawn: through the page transform, moved by its own
+-- displacement.
+fannedOn :: Transform -> FanPoint -> V2
+fannedOn toPage p = applyTransform (movedBy (fanBy p) toPage) (fanAt p)
+
+-- | A filled area's path, every ring in one path, each point drawn where
+-- @place@ puts it on the page; @model@ is where the point lies in the model.
+--
+-- Written once for 'Fill' and for 'Fanned', so that a ring dropped or turned
+-- round here takes each point's displacement with it: the displacement travels
+-- in the point, and nothing here can separate them.
+filledPath :: Colour -> (a -> V2) -> (a -> V2) -> [[a]] -> Builder
+filledPath (Colour c) model place rings
   -- Two points enclose no area, so a ring of them would paint nothing.
   -- 'frameFaces' rejects such a face outright; this guard is for diagrams built
   -- by hand.
@@ -292,7 +317,7 @@ shapeToSvg toPage (Fill (Colour c) rings)
       "    <path"
         -- Every ring in one path, which is what keeps an area of one colour
         -- free of seams where its pieces meet. See "Senbazuru.Diagram".
-        <> attr "d" (T.unwords (map (closedPathData . map (applyTransform toPage)) drawable))
+        <> attr "d" (T.unwords (map (closedPathData . map place) drawable))
         <> attr "fill" c
         <> "/>\n"
   where
@@ -301,15 +326,25 @@ shapeToSvg toPage (Fill (Colour c) rings)
     -- against each other would cut a hole in the paper. A 'Fill' means the
     -- union of its rings, so this is where that promise is kept -- and it has to
     -- be kept somewhere no producer can forget.
+    --
+    -- Judged on where the ring lies in the model, not where it is drawn, so a
+    -- fanned ring is turned exactly when the same ring unfanned would be. A
+    -- ring that fanning itself turns round is a face drawn inside out, and a
+    -- page does not draw that figure fanned at all
+    -- (docs/notes/fan-faults.md); turning it back here would hide the fault.
     drawable = map sameWayRound (filter ((>= 3) . length) rings)
-    sameWayRound ring = if signedArea ring < 0 then reverse ring else ring
-shapeToSvg toPage (Polyline stroke pts)
+    sameWayRound ring = if signedArea (map model ring) < 0 then reverse ring else ring
+
+-- | An open polyline's path, each point drawn where @place@ puts it on the
+-- page.
+strokedPath :: Stroke -> (a -> V2) -> [a] -> Builder
+strokedPath stroke place pts
   -- A polyline of fewer than two points has no length. Emitting it would
   -- produce a stray dot under a round line cap.
   | length pts < 2 = mempty
   | otherwise =
       "    <path"
-        <> attr "d" (pathData (map (applyTransform toPage) pts))
+        <> attr "d" (pathData (map place pts))
         <> attr "stroke" (colourText (strokeColour stroke))
         <> attrNum "stroke-width" (strokeWidth stroke)
         <> dashAttr (strokeDash stroke)
