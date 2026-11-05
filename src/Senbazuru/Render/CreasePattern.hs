@@ -81,6 +81,12 @@
 -- "Senbazuru.Origami.Visible" — so a twist has no offset view either, and says
 -- so rather than drawing one.
 --
+-- Nor can every model have its two weights. Telling the model from the
+-- stack takes the visible form, and "Senbazuru.Origami.Visible" declines a
+-- model with paper in the air or a concave face. The stack is then drawn
+-- alone: each face filled on its own, and every line at the model's weight,
+-- since none can be told apart as buried.
+--
 -- That refusal, and the choice between the stack with the model over it and
 -- the stack alone, are the offset view's. The painting is a separate function,
 -- @paintLayers@, which is told how to move each layer and refuses nothing. A
@@ -316,7 +322,8 @@ stretchLine e = (visibleAssignment e, visibleFrom e, visibleTo e)
 -- @depths@ is each face's layer, from 'layerDepths'. With a visible form, the
 -- stack is drawn fine and the model goes over it at full weight; without one
 -- -- paper in the air, or a face the region finder cannot clip -- every line is
--- drawn as the model. The caller decides which, and what to refuse: nothing
+-- drawn as the model, and each face is filled on its own rather than merged
+-- with the rest of its layer. The caller decides which, and what to refuse: nothing
 -- here can fail.
 paintLayers ::
   Theme ->

@@ -49,9 +49,10 @@ import Test.Hspec
 -- | Three faces with a corner lifted out of the plane, and an ordering that
 -- leaves two of them in the same layer.
 --
--- The one shape of frame that reaches the offset view's fallback: a folded form
--- "Senbazuru.Origami.Visible" declines, carrying @faceOrders@ of its own so
--- that there is still a stack to draw.
+-- One of the two shapes of frame that reach the offset view's fallback, where
+-- the stack is drawn alone: a folded form "Senbazuru.Origami.Visible"
+-- declines, carrying @faceOrders@ of its own so that there is still a stack to
+-- draw. 'concaveUnderSquare' is the other.
 threeInTheAir :: Frame
 threeInTheAir =
   twoFaceSquare
@@ -61,10 +62,12 @@ threeInTheAir =
       faceOrders = [FaceOrder (FaceId 2) (FaceId 0) Above]
     }
 
--- | A flat L of paper with a square lying on its corner, ordered above it.
+-- | A flat L of paper with a square over the L's corner cell, ordered above
+-- it. Not a model anyone folded: the smallest frame that is flat, has a layer
+-- order, and has a concave face.
 --
--- The L is a concave face, which "Senbazuru.Origami.Visible" declines to clip,
--- so this is the flat model that reaches the offset view's other fallback.
+-- The L is that face, which "Senbazuru.Origami.Visible" declines to clip, so
+-- this reaches the same fallback as 'threeInTheAir' by the other way in.
 --
 -- > 5 ---- 4
 -- > |      |
@@ -406,13 +409,17 @@ spec = do
       -- faces only, so there is no visible form to tell the model from the
       -- stack. A concave face is fine paper and the stack can still be drawn:
       -- each layer whole and a step apart, every line at the model's weight
-      -- because none can be told apart as buried. Nothing else reaches this
-      -- fallback; refusing here instead left every other test green.
+      -- because none can be told apart as buried. No other test reaches the
+      -- concave arm: refusing there instead left CreasePatternSpec, SvgSpec
+      -- and StepsSpec green. Eight lines, the L's six edges and the square's
+      -- two inner ones, each drawn once; counted, because a stack that drew
+      -- no lines would pass the weight check on an empty list.
       d <- either (fail . show) pure (drawn (stepped 4) concaveUnderSquare)
       let step = fromMaybe (V2 0 0) (layerStep (stepped 4))
           widths = [strokeWidth st | Offset _ (Polyline st _) <- diagramShapes d]
       nub (offsetsOf d) `shouldBe` [V2 0 0, step]
       ringsPerFill d `shouldBe` [1, 1]
+      length widths `shouldBe` 8
       widths `shouldSatisfy` all (> themeBuriedWidth defaultTheme)
 
     it "has nothing to step apart in a crease pattern" $
