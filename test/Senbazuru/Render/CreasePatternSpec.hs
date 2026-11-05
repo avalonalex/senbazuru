@@ -61,6 +61,36 @@ threeInTheAir =
       faceOrders = [FaceOrder (FaceId 2) (FaceId 0) Above]
     }
 
+-- | A flat L of paper with a square lying on its corner, ordered above it.
+--
+-- The L is a concave face, which "Senbazuru.Origami.Visible" declines to clip,
+-- so this is the flat model that reaches the offset view's other fallback.
+--
+-- > 5 ---- 4
+-- > |      |
+-- > 7 ---- 3 ---- 2
+-- > |  sq  |      |
+-- > 0 ---- 6 ---- 1
+concaveUnderSquare :: Frame
+concaveUnderSquare =
+  emptyFrame
+    { frameClasses = ["foldedForm"],
+      verticesCoords = [[0, 0], [2, 0], [2, 1], [1, 1], [1, 2], [0, 2], [1, 0], [0, 1]],
+      edgesVertices =
+        [ (VertexId 0, VertexId 1),
+          (VertexId 1, VertexId 2),
+          (VertexId 2, VertexId 3),
+          (VertexId 3, VertexId 4),
+          (VertexId 4, VertexId 5),
+          (VertexId 5, VertexId 0),
+          (VertexId 6, VertexId 3),
+          (VertexId 3, VertexId 7)
+        ],
+      edgesAssignment = replicate 6 Border <> [Valley, Valley],
+      facesVertices = [map VertexId [0, 1, 2, 3, 4, 5], map VertexId [0, 6, 3, 7]],
+      faceOrders = [FaceOrder (FaceId 1) (FaceId 0) Above]
+    }
+
 -- | 'twoFaceSquare' with a face pointing at a vertex that does not exist.
 broken :: Frame
 broken = twoFaceSquare {facesVertices = [map VertexId [0, 1, 9]]}
@@ -370,6 +400,20 @@ spec = do
       -- face 0 and sits at depth 1. One ring per fill is the whole assertion.
       d <- either (fail . show) pure (drawn (stepped 4) threeInTheAir)
       ringsPerFill d `shouldBe` [1, 1, 1]
+
+    it "draws the stack alone when a face is concave, rather than refusing" $ do
+      -- Flat, with its layers in order, but the region finder clips convex
+      -- faces only, so there is no visible form to tell the model from the
+      -- stack. A concave face is fine paper and the stack can still be drawn:
+      -- each layer whole and a step apart, every line at the model's weight
+      -- because none can be told apart as buried. Nothing else reaches this
+      -- fallback; refusing here instead left every other test green.
+      d <- either (fail . show) pure (drawn (stepped 4) concaveUnderSquare)
+      let step = fromMaybe (V2 0 0) (layerStep (stepped 4))
+          widths = [strokeWidth st | Offset _ (Polyline st _) <- diagramShapes d]
+      nub (offsetsOf d) `shouldBe` [V2 0 0, step]
+      ringsPerFill d `shouldBe` [1, 1]
+      widths `shouldSatisfy` all (> themeBuriedWidth defaultTheme)
 
     it "has nothing to step apart in a crease pattern" $
       -- Its faces do not overlap, so every one of them is layer zero. The flag

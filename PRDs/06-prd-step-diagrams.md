@@ -479,6 +479,10 @@ then.
   point that is no vertex, moves by the displacements of the two vertices of the
   face edge it lies on, mixed by where it lies between them. The offset view is
   the case where every point of a face moves by its layer times `layerStep`.
+  S16 built the painter as `Render.CreasePattern`'s `paintLayers`, which is told
+  how to move each layer by its number and refuses nothing; the offset view's
+  refusals stay with the offset view. Telling it a displacement per point is
+  S38's ([C151](decisions.md#changes-since-draft-v2)).
 - **R-06-28.** `Shape` gains `Fanned !Fan`: a polyline (`FanLine`) or a fill
   (`FanFill`) whose every point is a `FanPoint`, a model-space point paired with
   its own page-unit displacement, so the two cannot fall out of step. `Offset d s`
