@@ -204,11 +204,12 @@ data Theme = Theme
 -- | How a theme draws the layers of a folded model.
 --
 -- One field with a constructor per picture, rather than a field per picture,
--- because the pictures exclude one another. The offset view moves each whole
--- layer by one step; a fanned figure, which arrives as a third constructor
--- with the code that draws it, moves each corner of the paper by how many
--- sheets lie over it. Two fields would let a theme ask for both, and some
--- function would have to pick one without saying so.
+-- because the pictures exclude one another. The offset view moves each layer
+-- whole, one step further than the layer over it; a fanned figure, which
+-- arrives as a third constructor with the code that draws it, moves each
+-- corner of the paper on its own, by how many sheets lie over that corner.
+-- Two fields would let a theme ask for both, and some function would have to
+-- pick one without saying so.
 data Layering
   = -- | Every layer where the paper is, which is on top of one another.
     LaidFlat
@@ -318,11 +319,13 @@ strokeFor theme notation = \case
 -- else in senbazuru a positive @y@ is up, which is exactly why it is worth
 -- saying so here.
 --
--- Both pictures that open a stack out use it, so the two agree. The offset
--- view moves each layer /against/ it, the nearer layers up and to the right
--- ('layerStep'); a fanned figure moves each corner of the paper /along/ it, by
--- how many sheets lie over that corner. Either way the deeper paper ends up
--- toward the lower left.
+-- It is the one direction for both pictures that open a stack out, so that
+-- the two agree. The offset view moves each layer /against/ it, the nearer
+-- layers up and to the right ('layerStep'). A fanned figure, once there is
+-- code that draws one, is to move each corner of the paper /along/ it, by how
+-- many sheets lie over that corner. Either way the deeper paper ends up toward
+-- the lower left. The fan-faults study, which measured fanning before anything
+-- drew it, keeps its own copy of the direction, built from @1 \/ sqrt 2@.
 --
 -- Diagonal rather than along an axis because a fold line in a model folded
 -- flat is very often horizontal or vertical, and a stack stepped along one of

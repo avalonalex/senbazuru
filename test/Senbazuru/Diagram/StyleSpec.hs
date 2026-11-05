@@ -68,11 +68,12 @@ spec = do
       abs (norm towardDeeperPaper - 1) `shouldSatisfy` (< 1e-15)
 
     it "has parts of sqrt 0.5, the bits the offset view was drawn with" $
-      -- 1 / sqrt 2 is a different double, one unit in the last place lower,
-      -- and a step built from it is not exactly as long as asked, which the
-      -- test of a step's length below sees. No golden file sees it, so this
-      -- is what keeps the offset view on the bits it has always been drawn
-      -- with.
+      -- 1 / sqrt 2 is a different double, one unit in the last place lower.
+      -- A step of 4 built from it measures 3.9999999999999996, not the 4 the
+      -- length test below asks for; which lengths come out exact depends on
+      -- the length, from either constant. No golden file sees the difference,
+      -- so this test and that one keep the offset view on the bits it has
+      -- always been drawn with.
       towardDeeperPaper `shouldBe` V2 (negate (sqrt 0.5)) (sqrt 0.5)
 
   describe "layerStep" $ do
@@ -80,11 +81,10 @@ spec = do
       layerStep defaultTheme `shouldBe` Nothing
       steppedBy 0 `shouldBe` Nothing
 
-    it "steps against towardDeeperPaper, so the deeper paper ends up where a fan puts it" $
-      -- The offset view moves the nearer layers away from the deeper ones; a
-      -- fan moves the deeper corners along the direction. One constant, read
-      -- both ways, so the two pictures cannot open a stack in different
-      -- directions.
+    it "steps against towardDeeperPaper" $
+      -- The offset view moves the nearer layers away from the deeper ones, so
+      -- a step is the direction turned round. That a fan reads the same
+      -- constant is for the code that draws one to test.
       steppedBy 1 `shouldBe` Just (let V2 x y = towardDeeperPaper in V2 (negate x) (negate y))
 
     it "steps by the distance asked for, measured on the page" $
@@ -105,6 +105,12 @@ spec = do
       -- reporting a fault.
       steppedBy (0 / 0) `shouldBe` Nothing
       steppedBy (1 / 0) `shouldBe` Nothing
+
+    it "refuses a negative step, which no command line can ask for" $
+      -- The CLI refuses a negative --offset before a theme is built, so this
+      -- is the only place a theme built in code meets the rule: a distance is
+      -- not a direction, and a minus sign would open the stack the wrong way.
+      steppedBy (-4) `shouldBe` Nothing
   where
     steppedBy d = layerStep defaultTheme {themeLayers = OffsetBy d}
 

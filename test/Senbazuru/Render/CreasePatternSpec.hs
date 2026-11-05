@@ -341,9 +341,10 @@ spec = do
       -- Not merely "draws the same picture": a zero step would draw the same
       -- picture down the offset path too, every shape wrapped in a displacement
       -- of nothing. Asserting the wrappers are absent is what says the offset
-      -- view was not entered at all, and it is the assertion that can fail --
-      -- comparing `stepped 0` with `defaultTheme` cannot, since the default
-      -- theme's own offset is zero and the two are the same value.
+      -- view was not entered at all. Comparing with the default theme's
+      -- picture says it from the other side: `OffsetBy 0` and the default's
+      -- `LaidFlat` are different values, and only layerStep refusing a zero
+      -- step makes them draw alike.
       off <- either (fail . show) pure (drawn (stepped 0) foldedDiagonal)
       [() | Offset _ _ <- diagramShapes off] `shouldBe` []
       [() | Fanned _ <- diagramShapes off] `shouldBe` []
