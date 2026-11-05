@@ -14,7 +14,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
-import Senbazuru.Diagram.Style (ArrowKind (..), Notation (..), Theme (..), arrowFor, defaultTheme, withKind)
+import Senbazuru.Diagram.Style (ArrowKind (..), Layering (..), Notation (..), Theme (..), arrowFor, defaultTheme, withKind)
 import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames, soleFrame)
@@ -845,13 +845,13 @@ spec = do
     -- the order the solver found -- bottom-left quadrant lowest. The two paper
     -- colours alternate, because each quadrant turns over as it folds.
     it "renders the quarter fold with its layers stepped apart" $
-      renderFoldedWith (defaultTheme {themeLayerOffset = 4}) topDown "test/fixtures/quarter-fold.fold"
+      renderFoldedWith (defaultTheme {themeLayers = OffsetBy 4}) topDown "test/fixtures/quarter-fold.fold"
         >>= goldenText "test/golden/quarter-fold-offset.svg"
 
     -- The middle panel of the letter fold is buried whole, so the ordinary
     -- picture has two outlines in it and this one has three.
     it "renders the letter fold with its layers stepped apart" $
-      renderFoldedWith (defaultTheme {themeLayerOffset = 4}) topDown "test/fixtures/letter-fold.fold"
+      renderFoldedWith (defaultTheme {themeLayers = OffsetBy 4}) topDown "test/fixtures/letter-fold.fold"
         >>= goldenText "test/golden/letter-fold-offset.svg"
 
     -- The offset view's fallback, and the only golden that reaches it. simple.fold
@@ -864,7 +864,7 @@ spec = do
     -- among them and paints the far face over the near one.
     it "renders a folded form in the air with its layers stepped apart" $
       renderFixtureWith
-        (defaultTheme {themeLayerOffset = 8})
+        (defaultTheme {themeLayers = OffsetBy 8})
         FoldedFormNotation
         isometric
         "test/fixtures/simple.fold"

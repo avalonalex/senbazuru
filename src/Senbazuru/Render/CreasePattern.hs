@@ -44,8 +44,9 @@
 -- nothing about the four layers underneath — hidden-line removal cannot help,
 -- because there is nothing hidden that is not /entirely/ hidden.
 --
--- Books answer this by drawing the stack slightly opened, and so does
--- @themeLayerOffset@: every face is drawn whole, and each layer is nudged a
+-- Books answer this by drawing the stack slightly opened, and so does a theme
+-- whose @themeLayers@ is 'Senbazuru.Diagram.Style.OffsetBy' a distance: every
+-- face is drawn whole, and each layer is nudged a
 -- few points further across the page than the layer below it, the way an
 -- exploded engineering drawing separates the parts of an assembly. Which layer
 -- a face is in comes from 'Senbazuru.Origami.Layers.layerDepths'; how far one

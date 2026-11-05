@@ -52,12 +52,40 @@ spec = do
       forM_ [minBound .. maxBound] $ \k ->
         (k, (withKind k plain) {arrowHead = arrowHead plain}) `shouldBe` (k, plain)
 
+  describe "themeLayers" $
+    it "lays the paper flat in the default theme" $
+      -- An offset view is a cutaway, asked for on purpose, and so is a fan. A
+      -- drawing that moved its layers apart unasked would be saying the paper
+      -- is somewhere it is not. Asked of the field, not of layerStep, which
+      -- answers Nothing for OffsetBy 0 too.
+      themeLayers defaultTheme `shouldBe` LaidFlat
+
+  describe "towardDeeperPaper" $ do
+    it "points down the page and to the left, at unit length" $ do
+      -- Page y grows downwards, so down the page is positive.
+      let V2 x y = towardDeeperPaper
+      (x < 0, y > 0, x == negate y) `shouldBe` (True, True, True)
+      abs (norm towardDeeperPaper - 1) `shouldSatisfy` (< 1e-15)
+
+    it "has parts of sqrt 0.5, the bits the offset view was drawn with" $
+      -- 1 / sqrt 2 is a different double, one unit in the last place lower.
+      -- A step of 4 built from it measures 3.9999999999999996, not the 4 the
+      -- length test below asks for; which lengths come out exact depends on
+      -- the length, from either constant. No golden file sees the difference,
+      -- so this test and that one keep the offset view on the bits it has
+      -- always been drawn with.
+      towardDeeperPaper `shouldBe` V2 (negate (sqrt 0.5)) (sqrt 0.5)
+
   describe "layerStep" $ do
-    it "is off in the default theme" $
-      -- An offset view is a cutaway, asked for on purpose. A drawing that
-      -- stepped its layers apart unasked would be saying the paper is somewhere
-      -- it is not.
+    it "is off in the default theme, and for an offset of zero" $ do
       layerStep defaultTheme `shouldBe` Nothing
+      steppedBy 0 `shouldBe` Nothing
+
+    it "steps against towardDeeperPaper" $
+      -- The offset view moves the nearer layers away from the deeper ones, so
+      -- a step is the direction turned round. That a fan reads the same
+      -- constant is for the code that draws one to test.
+      steppedBy 1 `shouldBe` Just (let V2 x y = towardDeeperPaper in V2 (negate x) (negate y))
 
     it "steps by the distance asked for, measured on the page" $
       -- Not four points along each axis: four points apart, which is what
@@ -77,8 +105,14 @@ spec = do
       -- reporting a fault.
       steppedBy (0 / 0) `shouldBe` Nothing
       steppedBy (1 / 0) `shouldBe` Nothing
+
+    it "refuses a negative step, which no command line can ask for" $
+      -- The CLI refuses a negative --offset before a theme is built, so this
+      -- is the only place a theme built in code meets the rule: a distance is
+      -- not a direction, and a minus sign would open the stack the wrong way.
+      steppedBy (-4) `shouldBe` Nothing
   where
-    steppedBy d = layerStep defaultTheme {themeLayerOffset = d}
+    steppedBy d = layerStep defaultTheme {themeLayers = OffsetBy d}
 
     everyAssignment = [minBound .. maxBound] :: [Assignment]
     strokesUnder notation = mapMaybe (strokeFor defaultTheme notation) everyAssignment

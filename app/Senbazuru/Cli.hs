@@ -32,7 +32,7 @@ import Options.Applicative
 import Senbazuru.Diagram (Colour (..), Diagram)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid)
 import Senbazuru.Diagram.Page (FittedPage (..), Height (..))
-import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
+import Senbazuru.Diagram.Style (Layering (..), Theme (..), defaultTheme)
 import Senbazuru.Explain (Explain (..), decimal, tshow)
 import Senbazuru.Fold.Creasing (creaseAlong)
 import Senbazuru.Fold.Load (LoadError (..), encodeFoldFile, loadFile, readSequenceText, saveFoldFile)
@@ -1147,8 +1147,13 @@ themeFor o = hideFlat (noFill (offset defaultTheme))
     -- The one flag that adds rather than subtracts. Still a guard, because a
     -- flag left off has to defer to the theme -- and the Maybe is what lets it,
     -- since --offset 0 is a reader saying "not opened out" and has to override
-    -- a theme that would have opened it.
-    offset t = maybe t (\d -> t {themeLayerOffset = d}) (roOffset o)
+    -- a theme that would have opened it. Which is why 0 says LaidFlat rather
+    -- than OffsetBy 0: the two draw the same picture, but only one of them says
+    -- what the reader asked for.
+    offset t = maybe t (\d -> t {themeLayers = layering d}) (roOffset o)
+    layering d
+      | d == 0 = LaidFlat
+      | otherwise = OffsetBy d
 
 pageFor :: RenderOptions -> Maybe Text -> Page
 pageFor o title =

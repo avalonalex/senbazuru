@@ -70,6 +70,7 @@ module Senbazuru.Diagram.Style
   ( -- * Themes
     Theme (..),
     Paper (..),
+    Layering (..),
     defaultTheme,
 
     -- * Mapping fold semantics to ink
@@ -80,6 +81,7 @@ module Senbazuru.Diagram.Style
     withKind,
     buriedEdge,
     layerStep,
+    towardDeeperPaper,
 
     -- * Palette
     ink,
@@ -184,16 +186,9 @@ data Theme = Theme
     -- a black band. Drawn fine they read as what they are — the thickness of
     -- the paper — and leave the model the heaviest thing on the page.
     themeBuriedWidth :: !Double,
-    -- | Page units: how far apart to draw one layer of a folded model and the
-    -- next. Zero draws them where the paper actually is, which is on top of one
-    -- another.
-    --
-    -- A page-unit length rather than a model-unit one, and for the reason the
-    -- arrowhead is: how far apart two layers have to be drawn before a reader
-    -- can tell them apart is a fact about print, not about the sheet. See
-    -- 'layerStep' for the direction, and "Senbazuru.Render.CreasePattern" for
-    -- what an offset view is.
-    themeLayerOffset :: !Double,
+    -- | How the layers of a folded model are drawn: where the paper is, or
+    -- each layer stepped a distance from the next. See 'Layering'.
+    themeLayers :: !Layering,
     -- | Fill the paper with these two colours, or 'Nothing' to leave the sheet
     -- as a wireframe.
     --
@@ -204,6 +199,31 @@ data Theme = Theme
     -- "Senbazuru.Render.CreasePattern".
     themePaper :: !(Maybe Paper)
   }
+  deriving stock (Eq, Show)
+
+-- | How a theme draws the layers of a folded model.
+--
+-- One field with a constructor per picture, rather than a field per picture,
+-- because the pictures exclude one another. The offset view moves each layer
+-- whole, one step further than the layer over it; a fanned figure, which
+-- arrives as a third constructor with the code that draws it, moves each
+-- corner of the paper on its own, by how many sheets lie over that corner.
+-- Two fields would let a theme ask for both, and some function would have to
+-- pick one without saying so.
+data Layering
+  = -- | Every layer where the paper is, which is on top of one another.
+    LaidFlat
+  | -- | Page units: how far apart to draw one layer and the next, in the
+    -- offset view of "Senbazuru.Render.CreasePattern". See 'layerStep' for
+    -- the direction.
+    --
+    -- A page-unit length rather than a model-unit one, and for the reason the
+    -- arrowhead is: how far apart two layers have to be drawn before a reader
+    -- can tell them apart is a fact about print, not about the sheet.
+    --
+    -- @OffsetBy 0@ draws the paper where it is, as 'LaidFlat' does, and so
+    -- does any distance 'layerStep' refuses.
+    OffsetBy !Double
   deriving stock (Eq, Show)
 
 -- | A conservative default modelled on printed instruction books.
@@ -233,11 +253,11 @@ defaultTheme =
       -- A third of a crease. Fine enough that a dozen of them a few points
       -- apart stay separate, heavy enough to survive being printed.
       themeBuriedWidth = 0.35,
-      -- Off. An offset view is a deliberate cutaway of a model, drawn where it
-      -- would otherwise be a silhouette; it is not how a model is normally
-      -- shown, and a diagram that stepped its layers apart unasked would be
-      -- lying about where the paper is.
-      themeLayerOffset = 0,
+      -- Where the paper is. An offset view is a deliberate cutaway of a model,
+      -- drawn where it would otherwise be a silhouette; it is not how a model
+      -- is normally shown, and a diagram that stepped its layers apart unasked
+      -- would be lying about where the paper is.
+      themeLayers = LaidFlat,
       themePaper = Just (Paper paper paperUnderside)
     }
 
@@ -290,52 +310,74 @@ strokeFor theme notation = \case
       CreasePatternNotation -> Stroke (themeInk theme) (themeCreaseWidth theme) dash
       FoldedFormNotation -> solid (themeInk theme) (themeCreaseWidth theme)
 
--- | How far and which way one layer of an offset view is drawn from the layer
--- below it, in page units and __page axes__.
+-- | Which way, on the page, a deeper sheet of paper is drawn from the sheets
+-- over it: a unit vector in __page axes__.
 --
--- Up and to the right, at forty-five degrees, so that a stack of paper looked
--- at from directly above reads as a stack seen from slightly off to one side —
--- the same convention an exploded engineering drawing uses, and for the same
--- reason. Diagonal rather than along an axis because a fold line in a model
--- folded flat is very often horizontal or vertical, and a stack stepped along
--- one of those slides its layers along their own edges, where a layer's outline
--- lands exactly on top of the one below it and nothing is revealed.
+-- Down and to the left, at forty-five degrees, which is @(−1, +1)\/√2@. The
+-- @+1@ reads as a sign error and is not: this is a page direction, and page
+-- @y@ grows downwards, so down the page is the positive direction. Everywhere
+-- else in senbazuru a positive @y@ is up, which is exactly why it is worth
+-- saying so here.
 --
--- @y@ is __negated__, which reads as a sign error and is not: this is a page
--- displacement, and page @y@ grows downwards, so up the page is the negative
--- direction. Everywhere else in senbazuru a positive @y@ is up, which is
--- exactly why it is worth saying so here.
+-- It is the one direction for both pictures that open a stack out, so that
+-- the two agree. The offset view moves each layer /against/ it, the nearer
+-- layers up and to the right ('layerStep'). A fanned figure, once there is
+-- code that draws one, is to move each corner of the paper /along/ it, by how
+-- many sheets lie over that corner. Either way the deeper paper ends up toward
+-- the lower left. The fan-faults study, which measured fanning before anything
+-- drew it, keeps its own copy of the direction, built from @1 \/ sqrt 2@.
 --
--- The length of the step is 'themeLayerOffset' — the two components are each
--- @1\/sqrt 2@ of it, not all of it, so that "four points apart" means four
--- points measured on the page rather than four points in each direction.
+-- Diagonal rather than along an axis because a fold line in a model folded
+-- flat is very often horizontal or vertical, and a stack stepped along one of
+-- those slides its layers along their own edges, where a layer's outline lands
+-- exactly on top of the one below it and nothing is revealed. The same
+-- convention an exploded engineering drawing uses, and for the same reason: a
+-- stack of paper looked at from directly above reads as a stack seen from
+-- slightly off to one side.
 --
 -- A fixed direction rather than one taken from the model, because there is
 -- nothing in the model to take. The layers of a flat-folded form lie in one
 -- plane, and the direction the stack actually grows in — the plane's normal —
 -- projects to /nothing at all/ when the model is viewed face on, which is
--- precisely the view that needs an offset. So the direction is a convention of
--- the drawing, like the side an arrow bows to.
+-- precisely the view that needs the stack opened out. So the direction is a
+-- convention of the drawing, like the side an arrow bows to.
 --
--- 'Nothing' when the theme asks for no offset at all, which is the usual case,
--- and equally for a step that is not a length. A negative one is refused here
--- rather than only at the command line, so that the invariant holds wherever
--- the theme came from: 'themeLayerOffset' is how far apart to draw two layers,
--- which is a distance, and reading a minus sign as a direction would be a guess
--- about what someone meant. So are the two that are not numbers: @read@ for a
--- 'Double'
--- accepts @NaN@ and @Infinity@, and either would move every layer to the same
--- nowhere — 'Senbazuru.Render.Svg.formatNumber' writes both as @0@, so the
--- whole model would arrive stacked on one point with nothing reporting a fault.
--- Refusing here means a caller can ask \"is this an offset view?\" and \"how far
--- apart?\" with one question.
-layerStep :: Theme -> Maybe V2
-layerStep theme
-  | isNaN step || isInfinite step || step <= 0 = Nothing
-  | otherwise = Just (step *^ V2 diagonal (negate diagonal))
+-- Its parts are @sqrt 0.5@, not @1 \/ sqrt 2@: the two differ in the last bit,
+-- and @sqrt 0.5@ is the one the offset view has always been drawn with.
+towardDeeperPaper :: V2
+towardDeeperPaper = V2 (negate diagonal) diagonal
   where
-    step = themeLayerOffset theme
     diagonal = sqrt 0.5
+
+-- | How far and which way one layer of an offset view is drawn from the layer
+-- below it, in page units and __page axes__.
+--
+-- Against 'towardDeeperPaper', so up and to the right: each nearer layer moves
+-- away from the paper under it. The length of the step is the distance in
+-- 'OffsetBy' — the two components are each @√½@ of it, not all of it,
+-- so that "four points apart" means four points measured on the page rather
+-- than four points in each direction.
+--
+-- 'Nothing' when the theme lays the paper flat, which is the usual case, and
+-- equally for a step that is not a length. A negative one is refused here
+-- rather than only at the command line, so that the invariant holds wherever
+-- the theme came from: 'OffsetBy' says how far apart to draw two layers, which
+-- is a distance, and reading a minus sign as a direction would be a guess
+-- about what someone meant. So are the two that are not numbers: @read@ for a
+-- 'Double' accepts @NaN@ and @Infinity@, and either would move every layer to
+-- the same nowhere — 'Senbazuru.Render.Svg.formatNumber' writes both as @0@,
+-- so the whole model would arrive stacked on one point with nothing reporting
+-- a fault. Refusing here means a caller can ask \"is this an offset view?\"
+-- and \"how far apart?\" with one question.
+layerStep :: Theme -> Maybe V2
+layerStep theme = case themeLayers theme of
+  LaidFlat -> Nothing
+  OffsetBy step
+    | isNaN step || isInfinite step || step <= 0 -> Nothing
+    | otherwise -> Just (step *^ away)
+  where
+    V2 x y = towardDeeperPaper
+    away = V2 (negate x) (negate y)
 
 -- | The stroke for the edge of a sheet that is buried in an offset view.
 --
