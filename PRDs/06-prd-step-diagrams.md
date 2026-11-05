@@ -283,7 +283,8 @@ then.
   [`:302`](../test/Senbazuru/Render/CreasePatternSpec.hs#L302),
   [`:329`](../test/Senbazuru/Render/CreasePatternSpec.hs#L329) and
   [`LayoutSpec.hs:99`](../test/Senbazuru/Diagram/LayoutSpec.hs#L99), pass over a
-  `Fanned` drawn in place of an `Offset`; the PR adding `Fanned` updates them.
+  `Fanned` drawn in place of an `Offset`; S14 left them as they are and tests
+  instead that the offset view emits none (below).
   `LayoutSpec`'s `labels` (above) and `StepsSpec`'s `labelsOf`
   ([`StepsSpec.hs:97-98`](../test/Senbazuru/Render/StepsSpec.hs#L97-L98)) could
   not see a caption wrapped in an `Offset` (R-06-18); the PRs that place captions
@@ -291,6 +292,10 @@ then.
   S13 names `Symbol` in `LayoutSpec`'s two matchers, `labelsOf` and `isArrow`,
   each before its wildcard, which stays for `Fanned`, and gives
   `CreasePatternSpec`'s `kind` a case ([C145](decisions.md#changes-since-draft-v2)).
+  S14 names `Fanned` in `widths`, `labels`, `labelsOf`, `isArrow`, `kind` and
+  `unwrap`, before the wildcard where there is one, and tests that the offset
+  view emits none, which the comprehensions keeping `Offset`s cannot see
+  ([C149](decisions.md#changes-since-draft-v2)).
 
 **Views**
 
@@ -474,13 +479,18 @@ then.
   point that is no vertex, moves by the displacements of the two vertices of the
   face edge it lies on, mixed by where it lies between them. The offset view is
   the case where every point of a face moves by its layer times `layerStep`.
-- **R-06-28.** `Shape` gains `Fanned` (**SKETCH**): a polyline or a fill whose
-  every point is paired with its own page-unit displacement, so the two cannot
-  fall out of step. `Offset d s` is `Fanned` with every displacement `d`, and both
-  emit the same bytes. `shapePoints` returns the points alone and
-  `mapShapePoints` moves only the points, as for `Offset`. `Render.Svg` keeps
-  each displacement with its own point when it drops a ring shorter than three
-  points or turns a ring round.
+- **R-06-28.** `Shape` gains `Fanned !Fan`: a polyline (`FanLine`) or a fill
+  (`FanFill`) whose every point is a `FanPoint`, a model-space point paired with
+  its own page-unit displacement, so the two cannot fall out of step. `Offset d s`
+  and `Fanned` with every displacement `d` emit the same bytes. `shapePoints`
+  returns the points alone and `mapShapePoints` moves only the points, as for
+  `Offset`. `Render.Svg` keeps each displacement with its own point when it drops
+  a ring shorter than three points or turns a ring round, and judges which way a
+  ring runs where it lies, as for a `Fill`, not where it is drawn, so a face
+  that fanning turns inside out is not turned back. The offset view keeps
+  emitting `Offset`; `Fanned` is for the fan alone ([C142](decisions.md#changes-since-draft-v2)).
+  Built by S14 of [#639](https://github.com/avalonalex/senbazuru/issues/639)
+  ([C149](decisions.md#changes-since-draft-v2)), before anything draws one.
 - **R-06-29.** The theme carries the choice. `themeLayerOffset` becomes
   `themeLayers`, one of laid flat, offset by a distance, or fanned by a step and
   a cap (**SKETCH**), so no theme asks for both. `run -o x.svg` passes a fanning
@@ -641,7 +651,7 @@ fills its own inside and reads as a valley's.
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
 data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark
 data Shape = … | Symbol !Stroke !Double !V2 !Glyph   -- stroke, page-unit size, model anchor, glyph
-           | Fanned …                               -- points paired with page-unit displacements (§10, R-06-28)
+           | Fanned !Fan                            -- a line or a fill of FanPoints, each with its page-unit displacement (§10, R-06-28)
 ```
 
 A symbol is sized in page units because a loop sized to the model would change

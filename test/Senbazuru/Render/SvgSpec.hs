@@ -575,6 +575,86 @@ spec = do
       renderSvg page square
         `shouldSatisfy` T.isInfixOf "<title>Fish &amp; &lt;chips&gt;</title>"
 
+  -- 06's A24 and R-06-28: a fanned shape moves each point by its own
+  -- displacement, exactly as an Offset moves a whole shape.
+  describe "a fanned shape" $ do
+    let unit = Box (V2 0 0) (V2 1 1)
+        ink = Colour "#1a1a1a"
+        draw shape = renderSvg testPage (diagramWithExtent unit [shape])
+        -- Toward the lower left, as a fanned figure's moves are, so y is
+        -- positive. No fan moves 0.7 down; it is chosen because it puts a y on
+        -- a rounding tie, which no multiple of a fan's 1.5 does on this page.
+        d = V2 (-4.5) 0.7
+        fanAll = map (`FanPoint` d)
+        -- Every x but 0.9 is one where 180 x + 10, moved 4.5 left, lands on a
+        -- rounding tie, and so is the y 0.345925, where 190 - 180 y is moved
+        -- 0.7 down: the order the sum is done in decides the last digit
+        -- written. The fill's rings share the line's points or add their own.
+        line = [V2 0.300025 0.345925, V2 0.300175 0.5, V2 0.300275 0.75]
+        anticlockwise = [V2 0.300025 0.345925, V2 0.9 0.25, V2 0.300175 0.75]
+        clockwise = [V2 0.300375 0.1, V2 0.300325 0.9, V2 0.9 0.1]
+        -- No area in the model, exactly; moved alike, its corners round to an
+        -- area of about 9e-13 on the page, one that runs clockwise there.
+        flat = [V2 0.1 0.5, V2 0.2 0.6, V2 0.5 0.9]
+
+    it "is tested on points where moving the point and moving the page differ" $ do
+      -- What lets the next two tests fail: a writer that added the
+      -- displacement to each point once it was on the page would write these.
+      let toPage = pageTransform testPage (diagramWithExtent unit [])
+          xs place = [formatNumber x | V2 x _ <- map place (line <> take 2 clockwise)]
+          y place = [formatNumber v | V2 _ v <- map place (take 1 line)]
+      xs (applyTransform (movedBy d toPage)) `shouldBe` ["59.504", "59.532", "59.55", "59.568", "59.558"]
+      xs (\q -> applyTransform toPage q ^+^ d) `shouldBe` ["59.505", "59.531", "59.549", "59.567", "59.559"]
+      y (applyTransform (movedBy d toPage)) `shouldBe` ["128.433"]
+      y (\q -> applyTransform toPage q ^+^ d) `shouldBe` ["128.434"]
+
+    it "writes an Offset's bytes when every point moves alike, as a line" $
+      draw (Fanned (FanLine (solid ink 1) (fanAll line)))
+        `shouldBe` draw (Offset d (Polyline (solid ink 1) line))
+
+    it "writes an Offset's bytes when every point moves alike, as a fill of three rings" $ do
+      -- The second ring is clockwise, so the writer turns it round. The third
+      -- has no area in the model and is left as written, though on the page
+      -- it runs clockwise by a rounding: red if a ring whose points all move
+      -- alike were judged where it is drawn.
+      draw (Fanned (FanFill ink (map fanAll [anticlockwise, clockwise, flat])))
+        `shouldBe` draw (Offset d (Fill ink [anticlockwise, clockwise, flat]))
+
+    it "keeps each point's displacement when a ring is dropped or turned round" $ do
+      -- The first ring has two points and is dropped. The second is
+      -- clockwise, each corner moved its own way, and is written turned round:
+      -- (0, 0) at (10, 190) moved (1, 0), (0, 1) at (10, 10) moved (0, 2) and
+      -- (1, 1) at (190, 10) moved (-3, 0). Red if the points were turned round
+      -- without their displacements, or the dropped ring's displacements were
+      -- handed to the next ring's points.
+      let short = [FanPoint (V2 0.5 0.5) (V2 7 7), FanPoint (V2 0.6 0.6) (V2 8 8)]
+          turned = [FanPoint (V2 0 0) (V2 1 0), FanPoint (V2 0 1) (V2 0 2), FanPoint (V2 1 1) (V2 (-3) 0)]
+      draw (Fanned (FanFill ink [short, turned]))
+        `shouldSatisfy` T.isInfixOf "<path d=\"M 10 12 L 11 190 L 187 10 Z\" fill=\"#1a1a1a\"/>"
+
+    it "turns a ring round by where it lies, not by where it is drawn" $ do
+      -- An anticlockwise triangle whose apex, (100, 172) on the page, is moved
+      -- 30 down, past its base: drawn, the ring runs the other way, a face
+      -- fanning has turned inside out. It is written as it lies, not turned
+      -- back, which would hide that. Owner decision 79 has a page draw such a
+      -- figure unfanned, a guard S38 of #644 builds
+      -- (docs/notes/fan-faults.md).
+      let insideOut = [FanPoint (V2 0 0) (V2 0 0), FanPoint (V2 1 0) (V2 0 0), FanPoint (V2 0.5 0.1) (V2 0 30)]
+      draw (Fanned (FanFill ink [insideOut]))
+        `shouldSatisfy` T.isInfixOf "<path d=\"M 10 190 L 190 190 L 100 202 Z\""
+
+    it "judges a ring with no area in the model where it is drawn" $ do
+      -- Three corners on one line, the last moved 20 down the page: no way
+      -- round in the model, a triangle on the page. Written either way round
+      -- it comes out the same, turned to run as the square does, so it adds
+      -- to the paper rather than cutting a hole in it.
+      let square = [FanPoint p (V2 0 0) | p <- [V2 0 0, V2 1 0, V2 1 1, V2 0 1]]
+          sliver = [FanPoint (V2 0.2 0.5) (V2 0 0), FanPoint (V2 0.5 0.5) (V2 0 0), FanPoint (V2 0.8 0.5) (V2 0 20)]
+      draw (Fanned (FanFill ink [square, sliver]))
+        `shouldBe` draw (Fanned (FanFill ink [square, reverse sliver]))
+      draw (Fanned (FanFill ink [square, sliver]))
+        `shouldSatisfy` T.isInfixOf "M 10 10 L 10 190 L 190 190 L 190 10 Z M 100 100 L 46 100 L 154 120 Z"
+
   describe "end-to-end golden output" $ do
     it "renders unit-square.fold exactly as recorded" $
       renderFixture "test/fixtures/unit-square.fold"

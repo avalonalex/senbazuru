@@ -37,6 +37,9 @@ widths d = map spread (mapMaybe points (diagramShapes d))
       Offset _ shape -> points shape
       -- A mark at a point is no line, however wide it is drawn (06 R-06-7).
       Symbol {} -> Nothing
+      -- A fanned line is a line, measured where its points lie, as an
+      -- Offset's is without its nudge (06 R-06-7).
+      Fanned (FanLine _ ps) -> Just (map fanAt ps)
       _ -> Nothing
     spread ps = maximum (map xOf ps) - minimum (map xOf ps)
     xOf (V2 x _) = x
@@ -49,8 +52,10 @@ labels d = mapMaybe text (diagramShapes d)
     text = \case
       Label _ _ _ t -> Just (show t)
       Offset _ shape -> text shape
-      -- A mark has no words (06 R-06-7).
+      -- A mark has no words (06 R-06-7), and nor has a line or an area,
+      -- fanned or not.
       Symbol {} -> Nothing
+      Fanned {} -> Nothing
       _ -> Nothing
 
 plain :: Grid
@@ -126,6 +131,42 @@ spec = do
       page <- pageOf plain [square 1, marked]
       [(size, axis) | Symbol _ size _ (TurnOverLoop axis) <- diagramShapes page] `shouldBe` [(40, V2 0.5 1)]
       [p | Symbol _ _ p _ <- diagramShapes page] `shouldSatisfy` all (\(V2 x _) -> x > 1)
+
+  -- 06's R-06-28: a fanned shape's extent is its points, and laying figures
+  -- out moves each point and leaves its displacement alone, as for an Offset.
+  -- Red if a displacement, in page units, entered the extent or were moved by
+  -- the layout, or if a point and its displacement were parted.
+  describe "a fanned shape" $ do
+    let fanned =
+          Fanned
+            ( FanFill
+                ink
+                [ [FanPoint (V2 0 0) (V2 (-3) 3), FanPoint (V2 1 0) (V2 0 0), FanPoint (V2 1 1) (V2 (-9) 9)],
+                  [FanPoint (V2 0 0) (V2 (-1.5) 1.5), FanPoint (V2 0.5 0.5) (V2 (-6) 6)]
+                ]
+            )
+    it "stands at its points alone, however far they are moved on the page" $ do
+      shapePoints fanned `shouldBe` [V2 0 0, V2 1 0, V2 1 1, V2 0 0, V2 0.5 0.5]
+      shapesBounds [fanned] `shouldBe` Just (Box (V2 0 0) (V2 1 1))
+      mapShapePoints (^+^ V2 3 4) fanned
+        `shouldBe` Fanned
+          ( FanFill
+              ink
+              [ [FanPoint (V2 3 4) (V2 (-3) 3), FanPoint (V2 4 4) (V2 0 0), FanPoint (V2 4 5) (V2 (-9) 9)],
+                [FanPoint (V2 3 4) (V2 (-1.5) 1.5), FanPoint (V2 3.5 4.5) (V2 (-6) 6)]
+              ]
+          )
+
+    it "moves with its figure when laid out, its displacements as they were" $ do
+      let line = Fanned (FanLine (solid ink 1) [FanPoint (V2 0 0) (V2 (-3) 3), FanPoint (V2 1 0) (V2 0 0)])
+          fannedSquare = (square 1) {diagramShapes = [line]}
+      shapePoints line `shouldBe` [V2 0 0, V2 1 0]
+      shapesBounds [line] `shouldBe` Just (Box (V2 0 0) (V2 1 0))
+      page <- pageOf plain [square 1, fannedSquare]
+      [map fanBy ps | Fanned (FanLine _ ps) <- diagramShapes page] `shouldBe` [[V2 (-3) 3, V2 0 0]]
+      -- Measured in model units, where the first figure's square is 1 wide.
+      widths page `shouldBe` [1, 1]
+      [ps | Fanned (FanLine _ ps) <- diagramShapes page] `shouldSatisfy` all (all (\(FanPoint (V2 x _) _) -> x > 1))
 
   describe "numbering" $ do
     it "numbers from one, because that is what a reader counts from" $ do

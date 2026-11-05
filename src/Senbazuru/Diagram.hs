@@ -34,15 +34,16 @@
 -- from the start avoids the alternative, which is dividing by the viewport
 -- scale at emit time and getting it wrong.
 --
--- 'Offset' is the one thing here that is a /position/ in page units, and it is
--- a wrapper rather than a coordinate for exactly that reason: the shape inside
--- keeps its model coordinates, and the nudge is added after they have been
--- scaled.
+-- 'Offset' and 'Fanned' are the two things here that hold a /position/ in page
+-- units, and neither is a coordinate, for exactly that reason. An 'Offset'
+-- wraps a shape that keeps its model coordinates, and a 'Fanned' shape pairs
+-- each model point with its own page-unit displacement; either way the nudge
+-- is added after the model coordinates have been scaled.
 --
 -- 'Arrow', 'Label' and 'Symbol' need both units too: an arrow's curve is in
 -- model units and its head's size in page units, a label is a model-space
 -- point with a page-unit type size, and a symbol is a page-unit mark at one
--- model-space point. All four are finished by the backend /after/ projection,
+-- model-space point. All five are finished by the backend /after/ projection,
 -- which is the only place both units are in scope. That is what
 -- lets "Senbazuru.Diagram.Layout" combine figures by shifting their
 -- coordinates without recomputing how anything is inked.
@@ -57,6 +58,9 @@ module Senbazuru.Diagram
     ArrowPath (..),
     ArrowHead (..),
     Glyph (..),
+    Fan (..),
+    FanPoint (..),
+    fanPoints,
     mapShapePoints,
     shapePoints,
     shapesBounds,
@@ -253,7 +257,61 @@ data Shape
     -- be is the same size in print whatever the model measures, so only the
     -- point it stands at is the model's.
     Symbol !Stroke !Double !V2 !Glyph
+  | -- | A polyline or a fill whose every point moves across the page by a
+    -- displacement of its own, in __page units and page axes__ as an
+    -- 'Offset''s is, so @y@ grows downwards.
+    --
+    -- The fifth shape to need both units, and the second whose page-unit part
+    -- is a position. It exists for a fanned figure (docs\/glossary.md, and
+    -- PRDs\/06-prd-step-diagrams.md §10), where each corner
+    -- of the paper is drawn toward the lower left by an amount that depends on
+    -- how many sheets lie over it there: two corners of one face can move by
+    -- different amounts, so no one 'Offset' around the face can say it.
+    --
+    -- Each point carries its displacement, rather than the shape carrying a
+    -- list of displacements beside its list of points, so that nothing which
+    -- drops a point or turns a ring round can leave the two out of step. A
+    -- 'Fanned' shape whose every displacement is @d@ draws exactly what
+    -- @'Offset' d@ around the same polyline or fill draws, byte for byte.
+    --
+    -- The displacements stay out of 'shapePoints' and are left alone by
+    -- 'mapShapePoints', for the reasons an 'Offset''s nudge is.
+    Fanned !Fan
   deriving stock (Eq, Show)
+
+-- | What a 'Fanned' shape draws: a polyline, or a fill of closed rings, each
+-- point with its own displacement. The two shapes a fanned figure is made of,
+-- its paper and its lines, and so the two that are worth moving point by point.
+data Fan
+  = -- | An open polyline, as 'Polyline'.
+    FanLine !Stroke ![FanPoint]
+  | -- | An area of one colour, as 'Fill': the union of its rings, whichever
+    -- way round each is written where it lies in the model.
+    --
+    -- With one exception the backend does not mend. Which way a ring runs is
+    -- judged where it lies, not where it is drawn, so a ring its displacements
+    -- turn round on the page, a face drawn inside out, stays turned, and cuts a
+    -- hole where it overlaps another ring. Whoever fans a figure has to keep
+    -- such a face off the page; "Senbazuru.Render.Svg"'s @runsClockwise@ says
+    -- why the backend does not.
+    FanFill !Colour ![[FanPoint]]
+  deriving stock (Eq, Show)
+
+-- | A model-space point and how far across the page it is drawn from where it
+-- lies.
+data FanPoint = FanPoint
+  { -- | Where the point is, in __model units__.
+    fanAt :: !V2,
+    -- | How far it is moved once on the page, in __page units and page axes__.
+    fanBy :: !V2
+  }
+  deriving stock (Eq, Show)
+
+-- | Every point a 'Fan' passes through, with its displacement, ring after ring.
+fanPoints :: Fan -> [FanPoint]
+fanPoints = \case
+  FanLine _ ps -> ps
+  FanFill _ rings -> concat rings
 
 -- | The marks a 'Symbol' draws. A newtype while it has one, which the slices
 -- adding the edge-on, rotate and repeat marks make a data type again.
@@ -285,6 +343,9 @@ shapePoints = \case
   -- The point alone: the mark around it is in page units, as an Offset's
   -- nudge is, and a page that grew to admit it would rescale the drawing.
   Symbol _ _ p _ -> [p]
+  -- The points without their displacements, as an Offset's shape without its
+  -- nudge.
+  Fanned fan -> map fanAt (fanPoints fan)
 
 -- | Move every model-space point of a shape.
 --
@@ -309,6 +370,12 @@ mapShapePoints f = \case
   -- because the one caller, laying figures out on a page, only shifts them; a
   -- caller that turned a figure would have to turn the axis too.
   Symbol s size p glyph -> Symbol s size (f p) glyph
+  -- Each point moves and keeps its own displacement, as an Offset's shape
+  -- moves inside its nudge.
+  Fanned (FanLine s ps) -> Fanned (FanLine s (map moved ps))
+  Fanned (FanFill c rings) -> Fanned (FanFill c (map (map moved) rings))
+  where
+    moved p = p {fanAt = f (fanAt p)}
 
 -- | The tightest box containing every point of every shape, or 'Nothing' if
 -- there is nothing to draw.
