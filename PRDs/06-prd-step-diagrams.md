@@ -502,7 +502,11 @@ then.
   `--no-fill` (which asks for no layer order, as for `--offset`), and is refused
   with W1's `--lines` as `--offset` is ([08](08-prd-realistic-rendering.md)
   R-08-21). Every golden of this file but this section's two new ones is drawn
-  unfanned.
+  unfanned. The theme field is built by S15 of
+  [#639](https://github.com/avalonalex/senbazuru/issues/639)
+  ([C150](decisions.md#changes-since-draft-v2)): `themeLayers :: Layering`,
+  `LaidFlat | OffsetBy Double`, with `LaidFlat` in `defaultTheme` and for
+  `render --offset 0`; `FannedBy` arrives with its first drawer, S38.
 
 ## Design
 
@@ -1135,7 +1139,9 @@ over them, as in the offset view, whose `layerStep` moves each upper layer up an
 to the right ([`Style.hs:291-336`](../src/Senbazuru/Diagram/Style.hs#L291-L336)).
 The fan needs the direction without the offset view's step, which is `Nothing`
 whenever no offset is asked for, so the unit direction becomes a constant both
-use. In page axes it is (−1, +1)/√2. **The + is not a sign slip:** page y grows
+use, built by S15 as `Style.towardDeeperPaper`, which `layerStep` reads the
+other way ([C150](decisions.md#changes-since-draft-v2)). In page axes it is
+(−1, +1)/√2. **The + is not a sign slip:** page y grows
 downwards.
 
 **One painter.** A fanned figure is painted by the offset view's painter, with a

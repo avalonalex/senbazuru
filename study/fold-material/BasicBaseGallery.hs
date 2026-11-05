@@ -15,7 +15,7 @@ import Data.Text.IO qualified as TIO
 import FoldMaterial
 import Senbazuru.Diagram (Colour (..), Diagram (..), Shape (..), diagramWithExtent)
 import Senbazuru.Diagram.Layout (defaultGrid)
-import Senbazuru.Diagram.Style (Theme (..), defaultTheme)
+import Senbazuru.Diagram.Style (Layering (..), Theme (..), defaultTheme)
 import Senbazuru.Explain (Explain, explain)
 import Senbazuru.Fold.Query (Face (..), frameFaces)
 import Senbazuru.Fold.Types
@@ -58,7 +58,7 @@ writeBase destination base = do
   draw "cp" defaultTheme topDown original
   forM_ [("front", topDown), ("reverse", bottomUp)] $ \(view, basis) -> do
     draw view defaultTheme basis paper
-    draw (view ++ "-layers") defaultTheme {themeLayerOffset = 4} basis paper
+    draw (view ++ "-layers") defaultTheme {themeLayers = OffsetBy 4} basis paper
   pure (card base count (count * (count - 1) `div` 2), measurements)
   where
     path suffix = destination </> baseId base ++ "-base-" ++ suffix

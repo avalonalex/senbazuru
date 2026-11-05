@@ -15,7 +15,8 @@ import Data.List (nub)
 import Data.Maybe (fromMaybe)
 import Senbazuru.Diagram (Diagram (..), Fan (..), FanPoint (..), Shape (..), Stroke (..), diagramWithExtent, shapePoints)
 import Senbazuru.Diagram.Style
-  ( Notation (..),
+  ( Layering (..),
+    Notation (..),
     Theme (..),
     defaultTheme,
     layerStep,
@@ -263,7 +264,7 @@ spec = do
         `shouldBe` Right ["fill", "line", "line", "line", "line", "line"]
 
   describe "the offset view" $ do
-    let stepped d = defaultTheme {themeLayerOffset = d}
+    let stepped d = defaultTheme {themeLayers = OffsetBy d}
         drawn theme = creasePatternFrom theme defaultBudget FoldedFormNotation topDown
         offsetsOf d = [v | Offset v _ <- diagramShapes d]
 
