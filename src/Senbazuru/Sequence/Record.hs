@@ -118,6 +118,24 @@
 -- errors', so the types of the sense and of the two presentation moves,
 -- 'Sense', 'PageAxis' and 'Turning', are re-exported here.
 --
+-- == The line a turn-over or a rotate turned about
+--
+-- A page draws a turn-over's loop across the line the model was turned
+-- about (PRDs\/06-prd-step-diagrams.md, R-06-11), and a record gives that
+-- line ('presentationAxis'). It stores none: the line runs through the
+-- middle of the model as the reader saw it before the turn, 'recordBefore'
+-- under 'displayBefore', in the direction the move names. The rule that
+-- finds the middle ('middleOf'), and the turns the runner makes about it
+-- ('turnOverAbout', 'eighthTurnsAbout'), are defined here rather than in
+-- "Senbazuru.Sequence.Run", the runner, because a renderer may import this
+-- module and not that one, and a second copy of the rule in a renderer
+-- could drift from the one the run turned by.
+--
+-- The middle is the model's as shown, not as folded, and the two are not
+-- the same point. Once a run has re-anchored onto paper lying face down, the
+-- model as folded is placed by a half turn before it is shown, and its
+-- middle as folded can lie half a sheet from the middle the reader sees.
+--
 -- == The mistake to avoid
 --
 -- 'recordAfter' is the paper at the end of the move, but it is not where a
@@ -156,6 +174,7 @@ module Senbazuru.Sequence.Record
     recordResolved,
     recordSense,
     recordUnfolds,
+    presentationAxis,
     recordCost,
     recordAngles,
     ResolvedReference (..),
@@ -166,6 +185,10 @@ module Senbazuru.Sequence.Record
     Sense (..),
     PageAxis (..),
     Turning (..),
+
+    -- * The turn a presentation makes
+    turnOverAbout,
+    eighthTurnsAbout,
 
     -- * Making one
     hingeTurn,
@@ -203,7 +226,7 @@ import Senbazuru.Fold.Query (assignmentAtRest)
 import Senbazuru.Fold.Types (Assignment (..), EdgeId (..), FaceId (..), FaceOrder (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
 import Senbazuru.Geometry.Polygon (distanceToSegment, signedArea)
-import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, rotationAboutDegrees)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (CheckedFlap, FlapError, flapAt, flapCheck, flapMovingFaces, flapRefolds, flapStationaryFace)
@@ -499,6 +522,77 @@ recordSense record = case originWritten (theOrigin record) of
 -- names the step it turns back ('ResolvedTurnedBack').
 recordUnfolds :: MoveRecord -> Bool
 recordUnfolds record = not (null [() | ResolvedTurnedBack {} <- theResolved record])
+
+-- | The line a turn-over or a rotate turned the model about, as a point and
+-- a direction, where the reader saw the model before the turn: the middle
+-- ('middleOf') of 'recordBefore' under 'displayBefore', and the direction
+-- the turn as written names, along y for @left-right@, along x for
+-- @top-bottom@ and along +z, towards the reader, for a rotate. 'Nothing' for
+-- every other move.
+--
+-- It is the line the runner turned about, found the same way, so turning
+-- the model shown before by the written amount about it, 180° for a
+-- turn-over and 45° for each eighth anticlockwise, negative clockwise, gives
+-- the presentation after. The point is the middle as shown, not as folded:
+-- once a run has re-anchored onto paper lying face down, the two lie apart,
+-- and a page draws its turn-over loop on the model it shows.
+presentationAxis :: MoveRecord -> Maybe (V3, V3)
+presentationAxis record = case theKind record of
+  Presentation turn -> Just (middleOf shown, directionOf turn)
+  _ -> Nothing
+  where
+    shown = [V3 x y z | [x, y, z] <- verticesCoords (displayedFrame (theBefore record) (displayBefore record))]
+
+-- | Which way the line a presentation turns about runs: along the page axis
+-- a turn-over names, or out of the page, towards the reader, for a rotate.
+directionOf :: Presenting -> V3
+directionOf = \case
+  TurnedOver LeftRight -> V3 0 1 0
+  TurnedOver TopBottom -> V3 1 0 0
+  Rotated {} -> V3 0 0 1
+
+-- | A turn-over about the model's own middle (decisions D5): a half turn
+-- about the line through the middle ('middleOf') along y for left-right,
+-- which maps (x, y, z) to (2cx - x, y, 2cz - z), and along x for top-bottom,
+-- which maps it to (x, 2cy - y, 2cz - z). About the middle, so the model
+-- stays where it is on the page; about the origin it would be carried off
+-- it. At 180° 'rotationAboutDegrees' takes the cosine and sine as -1 and 0,
+-- so the turn's entries are 0, 1 and -1, which a 'Double' holds exactly:
+-- applying it multiplies nothing inexactly, and only the additions round.
+turnOverAbout :: PageAxis -> [V3] -> Rigid
+turnOverAbout axis points = rotationAboutDegrees (middleOf points) (directionOf (TurnedOver axis)) 180
+
+-- | A turn on the page about the model's own middle (decisions D5), by
+-- eighths of a turn, anticlockwise as the reader sees it when positive:
+-- about the line parallel to +z through (cx, cy), so the side shown stays
+-- the side shown. A quarter turn anticlockwise, two eighths, maps (x, y) to
+-- (cx + cy - y, cy - cx + x).
+--
+-- It is 'rotationAboutDegrees' about that line, by 45° for each eighth, so
+-- its cosine and sine take nothing from the platform's trigonometry: for a
+-- whole number of quarter turns 0, 1 and -1, which a 'Double' holds exactly,
+-- and for an odd number of eighths ±√½ as @sqrt 0.5@, which IEEE 754
+-- requires to be correctly rounded (owner decision 10). 'cos' and 'sin' are
+-- not used even there, since they disagree with each other at π/4: with GHC
+-- 9.6.7 on macOS, @cos (pi / 4)@ is 0.7071067811865476 and @sin (pi / 4)@
+-- is 0.7071067811865475, so a turn built from them would not even be
+-- symmetric. An odd eighth's √½ is rounded, so its products are too, and a
+-- turn there and back lands within rounding of where it began, which need not
+-- be exactly.
+eighthTurnsAbout :: Int -> [V3] -> Rigid
+eighthTurnsAbout eighths points = rotationAboutDegrees (middleOf points) (directionOf (Rotated eighths Anticlockwise)) (45 * fromIntegral eighths)
+
+-- | The middle of the points: (cx, cy) the centre of their xy box and cz the
+-- middle of their z range. Not their mean, which follows the vertices to
+-- wherever they crowd: the quarter fold's four sheet corners lie on one
+-- corner of the folded square, which puts the mean of its vertices at
+-- (0.8333, 0.1667) and the middle at (3/4, 1/4) (decisions C129).
+middleOf :: [V3] -> V3
+middleOf points = V3 (mid v3x) (mid v3y) (mid v3z)
+  where
+    mid along = case map along points of
+      [] -> 0
+      values -> (minimum values + maximum values) / 2
 
 -- | Every crease's angle before the move and after it, in degrees as FOLD
 -- writes them, one for each edge of 'recordBefore'. Read from the two

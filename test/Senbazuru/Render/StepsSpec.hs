@@ -272,7 +272,7 @@ quarterThree =
 -- table would, and @rotate 4/8 turn@ spins it half a turn on the page.
 -- Neither moves any paper, and the runner makes both about the model's own
 -- middle, the centre of its bounding box (@middleOf@ in
--- "Senbazuru.Sequence.Run"). Seen from straight above or below, a left-right
+-- "Senbazuru.Sequence.Record"). Seen from straight above or below, a left-right
 -- turn-over mirrors the drawing across the line through that centre along the
 -- model's y axis, a top-bottom one across the line along its x axis, and a
 -- half turn spins it about the centre: each sends the model's box onto
