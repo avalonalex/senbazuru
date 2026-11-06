@@ -752,6 +752,21 @@ data MoveFailure
   | -- | @unfold@ of a step whose crease a later move changed, so turning it
     -- back would undo that move too: the crease.
     UnfoldChangedSince EdgeId
+  | -- | A move after a step's first turns paper that an earlier move of the
+    -- same step left somewhere else, so it is not where the step's figure,
+    -- the state the step starts from, draws it, and its arrow would point at
+    -- paper the figure does not show there (decisions D22): a point of that
+    -- paper, inside a face it turns, as it lay on the sheet, in sheet
+    -- lengths. A 'V2' and not a material point, since that type lives in
+    -- "Senbazuru.Sequence.Record", which imports this module.
+    MoveLeavesFigure V2
+  | -- | A move after a turn-over or a rotate in the same step (owner decision
+    -- 78): a step may end with one, and go on after none, since its figure
+    -- shows the model before the turn and every arrow on it is drawn as the
+    -- model was seen then. The turn-over or rotate, as written. Decided by
+    -- the moves' kinds alone and not by the paper, so it has no kind
+    -- @expect refused@ could name.
+    MoveAfterPresentation Text
   | -- | A move, or a part of one, this runner does not make yet.
     MoveNotRunYet Text
   | -- | @not modelled \"…\"@: a step the author says senbazuru cannot fold,
@@ -802,6 +817,8 @@ instance Explain MoveFailure where
     JoinBroken what -> "folding the paper afresh from what the move accepted moved it: " <> what
     NotModelledStop what -> "\"" <> what <> "\" is not modelled, so the run stops here and keeps the moves before it"
     UnfoldChangedSince (EdgeId e) -> "(internal edge " <> tshow e <> ") has been folded again since, so turning it back would undo that fold too"
+    MoveLeavesFigure (V2 x y) -> "this move turns the paper at (" <> num x <> ", " <> num y <> ") on the sheet, which an earlier move of the same step left somewhere else, so the step's figure does not show it where the move starts from; start a new step for this move"
+    MoveAfterPresentation turned -> "this move comes after " <> quote turned <> " in the same step, and a step may end with one turn over or rotate but go on after none; start a new step for this move"
     MoveNotRunYet what -> what <> " cannot be run yet"
     RefusalNotRaised (RefusalKind kind) -> "the move was expected to be refused as " <> kind <> ", and was made"
     RefusedDifferently (RefusalKind expected) (RefusalKind raised) -> "the move was expected to be refused as " <> expected <> ", and was refused as " <> raised
@@ -900,6 +917,10 @@ refusalKindOf =
       ReanchorNotFlat {} -> Just "ReanchorNotFlat"
       JoinBroken {} -> Just "JoinBroken"
       UnfoldChangedSince {} -> Just "UnfoldChangedSince"
+      MoveLeavesFigure {} -> Just "MoveLeavesFigure"
+      -- How the steps are written, not the paper: no expect refused can
+      -- name it, so one wrapped round such a move passes it on.
+      MoveAfterPresentation {} -> Nothing
       MoveNotRunYet {} -> Nothing
       -- A stop, not a refusal of the paper: no expect refused can name it,
       -- so one wrapped round it passes it on and the run stops there.

@@ -599,7 +599,7 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 | `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75); until S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner refuses it as not run yet ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174), [`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)) |
 | `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, from its before surface to its folded surface (§7), and an unfold arrow back, the same pair reversed, both under `displayBefore` (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
 | `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). The page reads the line from the record, `presentationAxis`, a point and that direction ([decisions C152](decisions.md#changes-since-draft-v2), S18b of [#640](https://github.com/avalonalex/senbazuru/issues/640)). No record stores the point: it is the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)), found by `middleOf`, which `Sequence.Record` defines with the turns the runner makes about it, `turnOverAbout` and `eighthTurnsAbout`. `Sequence.Run` still exports `turnOverAbout` for `StepsSpec`'s turn tests, A7 and A8 ([decisions C129](decisions.md#changes-since-draft-v2)) |
-| A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78), so a figure carries at most one presentation mark |
+| A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78; refused as `MoveAfterPresentation`, [decisions C154](decisions.md#changes-since-draft-v2)), so a figure carries at most one presentation mark |
 | `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | `checkpoint` (M4) | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
 | `not modelled` | Caption, `NoArrows`. The run stops there and keeps every state before it, so this is the last figure ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -849,10 +849,10 @@ line lies on the diagonal. [D22](decisions.md#d22-figures-holding-several-moves)
 admits a move to a figure only if its moving paper is where the figure draws it,
 and a pre-crease is one move there like any other ([02
 §6.5](02-language-semantics.md#65-figures-holding-several-moves)). That makes
-the fold arrow true on the drawn state. The runner does not check this yet:
-`MoveLeavesFigure`, the refusal D22 names, is a name `expect refused` accepts
-([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)) with no constructor
-until S19 ([#640](https://github.com/avalonalex/senbazuru/issues/640)). The
+the fold arrow true on the drawn state. The runner checks it, and refuses a
+move whose paper an earlier move of the step left elsewhere as
+`MoveLeavesFigure`, the refusal D22 names ([decisions
+C154](decisions.md#changes-since-draft-v2)). The
 unfold arrow is drawn from the folded pose back to where the paper started
 (R-06-16). The runner computes that pose, the turned record's after, and the
 `Precrease` record keeps it behind one accessor, `recordFoldedPose`
@@ -1450,9 +1450,10 @@ Each has a recommended default in
   asked](https://github.com/avalonalex/senbazuru/issues/635#issuecomment-6486583488)):
   a step may end with one turn-over or rotate, and any move after it in the
   same step is refused, a second turn-over or rotate, `anchor` and `mark`
-  included, by an error S19
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names. It
-  settles §2's "a fold then a turn" row and D22's.
+  included, as `MoveAfterPresentation`, which S19
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) named
+  ([decisions C154](decisions.md#changes-since-draft-v2)). It settles §2's "a
+  fold then a turn" row and D22's.
 - **79**, whether `run` still fans by default now that S9 has measured fanning,
   **decided 2026-11-02** as recommended ([the question as
   asked](https://github.com/avalonalex/senbazuru/issues/644#issuecomment-6596674251),

@@ -222,7 +222,9 @@ kindOf named
 -- | The refusals with no kind: a reference or a move not run yet, the
 -- runner's own creasing and a step not modelled, which had none before #580;
 -- owner decision 49's 23 library refusals that are not refusals of the paper;
--- and decision 50's two expectations not met.
+-- decision 50's two expectations not met; and a move after a turn-over or a
+-- rotate (owner decision 78), which is how the steps are written and not the
+-- paper.
 noKind :: [String]
 noKind =
   [ "NotRunYet",
@@ -253,7 +255,8 @@ noKind =
     "FlapSweep",
     "FlapWrongSide",
     "RefusalNotRaised",
-    "RefusedDifferently"
+    "RefusedDifferently",
+    "MoveAfterPresentation"
   ]
 
 -- | One refusal of every constructor 'refusalKindOf' looks at, as a run
@@ -309,6 +312,8 @@ moveSamples =
     CreasingRefused NoVertices,
     JoinBroken "",
     UnfoldChangedSince (EdgeId 0),
+    MoveLeavesFigure (V2 (1 / 6) (1 / 3)),
+    MoveAfterPresentation "turn over left-right",
     MoveNotRunYet "\"turn over\"",
     NotModelledStop "an inside reverse fold",
     RefusalNotRaised (RefusalKind "NoSolution"),
