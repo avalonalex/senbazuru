@@ -81,6 +81,20 @@
 -- "Senbazuru.Origami.Visible" — so a twist has no offset view either, and says
 -- so rather than drawing one.
 --
+-- Nor can every model have its two weights. Telling the model from the
+-- stack takes the visible form, and "Senbazuru.Origami.Visible" declines a
+-- model with paper in the air or a concave face. The stack is then drawn
+-- alone: each face filled on its own, and every line at the model's weight,
+-- since none can be told apart as buried.
+--
+-- That refusal, and the choice between the stack with the model over it and
+-- the stack alone, are the offset view's. The painting is a separate function,
+-- @paintLayers@, which is told how to move each layer and refuses nothing. A
+-- picture that paints the same stack a layer at a time but moves it some other
+-- way can share the painter without inheriting the refusals. Moving whole
+-- layers is all it can be told so far: a fan, which moves each point by its
+-- own amount (PRDs\/06, R-06-27), needs more from it than a layer's number.
+--
 -- This module is deliberately short. All it does is choose between those and
 -- join pieces that are each tested on their own: "Senbazuru.Fold.Query" for
 -- validated geometry, "Senbazuru.Diagram.Style" for the line conventions, and
@@ -239,14 +253,12 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
   where
     withCreases fills = (fills <>) <$> everyCrease
 
-    towardsViewer = (-1) *^ basisForward basis
+    towardsViewer = towardsViewerOf basis
 
     everyCrease =
-      mapMaybe (edgeOf theme notation basis . asDrawn)
+      mapMaybe (edgeOf theme notation basis . creaseLine)
         . sortOn (creaseOrder . creaseAssignment)
         <$> frameCreases fr
-
-    asDrawn c = (creaseAssignment c, creaseStart c, creaseEnd c)
 
     spatial colours orders fallback = do
       seen <- projectedForm basis fr orders
@@ -271,158 +283,201 @@ picture theme budget notation basis fr = case (notation, themePaper theme) of
     -- the stack up, each layer nudged a little further across the page than the
     -- one below it. See the module header for what it is for.
     --
-    -- The layers are walked by number rather than by grouping the faces,
-    -- because a picture is what comes of it and a picture has to be in an
-    -- order. Costing one pass over the faces and one over the creases per layer
-    -- is nothing next to the folding that produced them.
+    -- What is decided here is whether there is an offset view to draw, and what
+    -- it refuses; how one is painted is 'paintLayers'. The refusals are the
+    -- offset view's own. It is asked for outright, so a model it cannot draw is
+    -- refused rather than drawn some other way, and a painter that carried those
+    -- refusals with it would make them for any picture it painted.
     steppedApart step colours orders = do
       faces <- frameFaces fr
       creases <- frameCreases fr
       depths <- layerDepths towardsViewer faces orders
-      let byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
-          depthOf = layerOf depths
-          deepest = maximum (0 : map snd depths)
-
-          -- In the order layerDepths gave them, which is the painting order, so
-          -- that two faces of one layer are drawn in a defined order and a
-          -- reproducible one. The lookup cannot miss -- layerDepths returns
-          -- exactly the faces it was handed, once each -- so this skips rather
-          -- than growing the error path that 'backToFront' needs for the same
-          -- reason and does not use either.
-          facesAt d = [f | (fid, e) <- depths, e == d, Just f <- [IM.lookup (unFaceId fid) byId]]
-
-          -- Every face along each edge of the sheet, grouped here rather than
-          -- by 'facesAlongEdges', which refuses an edge with three faces on it.
-          -- That refusal is right for folding and for stacking, which both ask
-          -- \"what is the face across this crease\" and have no answer when there
-          -- are two of them. This asks \"which sheets is this crease an edge
-          -- of\", which is answerable for any number -- so using the strict one
-          -- would let --offset decide that a file the renderer draws happily
-          -- without it is unacceptable with it.
-          alongEdges =
-            M.fromListWith
-              (<>)
-              [ (edgeKey a b, [faceId f])
-                | f <- faces,
-                  (a, b) <- ringEdges (faceVertexIds f)
-              ]
-
-          -- Which layers a crease is drawn in: one per face along it, so the
-          -- crease between two faces at different depths is drawn twice, and
-          -- the crease between two faces of one layer is drawn once. A crease
-          -- along no face at all belongs to no layer, and is drawn where the
-          -- paper is, which is layer zero.
-          layersOf c = case M.findWithDefault [] (edgeKey (creaseFrom c) (creaseTo c)) alongEdges of
-            [] -> [0]
-            along -> map depthOf along
-
-          -- Every crease bucketed by the layers it is drawn in, in one pass and
-          -- in the order 'everyCrease' uses, so that a faint reference line does
-          -- not paint over the outline of the sheet it is drawn on. Bucketed
-          -- rather than filtered per layer because both the sort and the lookup
-          -- are the same work for every layer, and there are as many layers as
-          -- the model is deep.
-          creasesByLayer =
-            IM.fromListWith
-              (flip (<>))
-              [ (d, [asDrawn c])
-                | c <- sortOn (creaseOrder . creaseAssignment) creases,
-                  d <- nub (layersOf c)
-              ]
-
-          linesAt d = IM.findWithDefault [] d creasesByLayer
-
-          -- Two fills at most per layer, one per side of the sheet, each
-          -- gathering that layer's faces into one area for the reason
-          -- 'whatIsVisible' does: faces of one layer abut, and drawn separately
-          -- they would be criss-crossed with pale seams where they meet.
-          --
-          -- Sound only because faces of one layer do not overlap: a pair that
-          -- did would have a @faceOrders@ entry between them and so would be at
-          -- different depths. That holds for a model folded flat, which is the
-          -- only kind this variant is used for.
-          mergedFills d =
-            [ fill basis colour group
-              | (colour, side) <- [(paperFront colours, True), (paperBack colours, False)],
-                let group = [f | f <- facesAt d, showsTopSide towardsViewer f == side],
-                not (null group)
-            ]
-
-          -- One area per face, in the layer's own painting order. For a model
-          -- with paper in the air the reasoning above fails: two faces of one
-          -- layer are unordered because they do not overlap /on the paper/, and
-          -- they can still cover the same patch of page once projected, one
-          -- simply being nearer the camera. Merging them into one area throws
-          -- away the depth order 'layerDepths' put them in, and the nearer one
-          -- stops covering the further one.
-          separateFills d =
-            [ fill basis (if showsTopSide towardsViewer f then paperFront colours else paperBack colours) [f]
-              | f <- facesAt d
-            ]
-
-          -- One layer of the picture: its paper, then the fine edges of that
-          -- sheet, then whatever of the model itself belongs to it. All three
-          -- move together, and a later layer's paper covers all three, which is
-          -- what keeps a sheet from drawing its lines over the sheet above it.
-          layer fills ink' model d =
-            map
-              (Offset (fromIntegral d *^ step))
-              (fills d <> mapMaybe (ink' basis) (linesAt d) <> model d)
-
-          -- Every sheet, drawn fine. What survives of a layer is the sliver the
-          -- layer above does not cover, and at the model's own line weight a
-          -- dozen of those a few points apart add up to a black band rather
-          -- than to a stack -- so the stack is drawn as a stack is engraved,
-          -- and the drawing proper goes over the top of it.
-          stacked model =
-            concatMap (layer mergedFills (edgeWith (buriedEdge theme notation)) model) [0 .. deepest]
-
-          -- No visible form to be had -- paper in the air, or a face the region
-          -- finder cannot clip. Then there is no telling the model from the
-          -- stack it stands on, so every line is drawn as the model, which is
-          -- what the offset view did before it could tell.
-          wholeStack =
-            concatMap (layer separateFills (edgeWith (strokeFor theme notation)) (const [])) [0 .. deepest]
-
-          -- The stretches of the model's own drawing that belong to sheet @d@,
-          -- bucketed in one pass for the reason the creases are.
-          --
-          -- From 'formSheetEdges' rather than 'formEdges', which is the same
-          -- answer joined up across the changes of sheet this needs to keep,
-          -- and across a face's straight corner, which this therefore draws as
-          -- two abutting strokes.
-          modelByLayer seen =
-            IM.fromListWith
-              (flip (<>))
-              [ (maybe 0 depthOf nearest, [shape])
-                | SheetEdge nearest e _ <- sortOn (creaseOrder . visibleAssignment . sheetEdgeLine) (formSheetEdges seen),
-                  -- A stretch with paper on neither side belongs to no sheet --
-                  -- it is a crease bounding nothing -- so it is drawn where the
-                  -- paper is.
-                  Just shape <- [edgeOf theme notation basis (asVisible e)]
-              ]
-
-          asVisible e = (visibleAssignment e, visibleFrom e, visibleTo e)
-
-      -- What the model would look like without the offset, laid over the stack
-      -- at full weight, each stretch at the offset of the sheet whose edge it
-      -- is. That is the whole of the design: the reader sees the drawing they
-      -- would have seen, with the layers it stands on showing behind it.
-      --
-      -- The visibility is worked out on the model as it lies, not as it is
-      -- drawn, and the two differ. A sheet @k@ layers above the one a stretch
-      -- belongs to is drawn @k@ steps away from where it was judged, so it
-      -- covers, or stops covering, a band that wide along the stretch: a few
-      -- points on a shallow model and most of the drawing on a deep one. The
-      -- alternative is a second arrangement, computed in page space after every
-      -- sheet has moved, which is a hidden-line problem of its own.
+      let paint = paintLayers theme notation colours basis (\d -> Offset (fromIntegral d *^ step)) faces creases depths
       case visibleForm (seenFromAbove basis) fr orders of
-        Right seen ->
-          let byLayer = modelByLayer seen
-           in Right (stacked (\d -> IM.findWithDefault [] d byLayer))
-        Left (PaperInTheAir _) -> Right wholeStack
-        Left (ConcaveFace _) -> Right wholeStack
+        Right seen -> Right (paint (Just seen))
+        -- No visible form to be had -- paper in the air, or a face the region
+        -- finder cannot clip -- is not a refusal: the stack can still be
+        -- drawn, only without the model over it.
+        Left (PaperInTheAir _) -> Right (paint Nothing)
+        Left (ConcaveFace _) -> Right (paint Nothing)
         Left (FlatRefused err) -> Left err
+
+-- | Which way the viewer is from the model, the way 'layerDepths' and
+-- 'showsTopSide' are asked it: against the direction the camera looks.
+towardsViewerOf :: Basis -> V3
+towardsViewerOf basis = (-1) *^ basisForward basis
+
+-- | A crease, and a stretch of one, as 'edgeOf' and 'edgeWith' take them.
+creaseLine :: Crease -> (Assignment, V3, V3)
+creaseLine c = (creaseAssignment c, creaseStart c, creaseEnd c)
+
+stretchLine :: VisibleEdge -> (Assignment, V3, V3)
+stretchLine e = (visibleAssignment e, visibleFrom e, visibleTo e)
+
+-- | A stack painted a layer at a time, from the bottom up, each layer moved by
+-- what @move@ makes of its number. The offset view hands it
+-- @'Offset' (layer × step)@. Nothing here looks at what @move@ does, so a
+-- picture moving whole layers by other amounts could be painted by it too.
+--
+-- @depths@ is each face's layer, from 'layerDepths'. With a visible form, the
+-- stack is drawn fine and the model goes over it at full weight; without one
+-- -- paper in the air, or a face the region finder cannot clip -- every line is
+-- drawn as the model, and each face is filled on its own rather than merged
+-- with the rest of its layer. The caller decides which, and what to refuse: nothing
+-- here can fail.
+paintLayers ::
+  Theme ->
+  Notation ->
+  Paper ->
+  Basis ->
+  (Int -> Shape -> Shape) ->
+  [Face] ->
+  [Crease] ->
+  [(FaceId, Int)] ->
+  Maybe VisibleForm ->
+  [Shape]
+paintLayers theme notation colours basis move faces creases depths visible = case visible of
+  -- What the model would look like without the offset, laid over the stack
+  -- at full weight, each stretch at the offset of the sheet whose edge it
+  -- is. That is the whole of the design: the reader sees the drawing they
+  -- would have seen, with the layers it stands on showing behind it.
+  --
+  -- The visibility is worked out on the model as it lies, not as it is
+  -- drawn, and the two differ. A sheet @k@ layers above the one a stretch
+  -- belongs to is drawn @k@ steps away from where it was judged, so it
+  -- covers, or stops covering, a band that wide along the stretch: a few
+  -- points on a shallow model and most of the drawing on a deep one. The
+  -- alternative is a second arrangement, computed in page space after every
+  -- sheet has moved, which is a hidden-line problem of its own.
+  Just seen ->
+    let byLayer = modelByLayer seen
+     in stacked (\d -> IM.findWithDefault [] d byLayer)
+  -- No telling the model from the stack it stands on, so every line is drawn
+  -- as the model, which is what the offset view did before it could tell.
+  Nothing -> wholeStack
+  where
+    towardsViewer = towardsViewerOf basis
+    byId = IM.fromList [(unFaceId (faceId f), f) | f <- faces]
+    depthOf = layerOf depths
+    deepest = maximum (0 : map snd depths)
+
+    -- The layers are walked by number rather than by grouping the faces,
+    -- because a picture is what comes of it and a picture has to be in an
+    -- order. Costing one pass over the faces and one over the creases per layer
+    -- is nothing next to the folding that produced them.
+    --
+    -- In the order layerDepths gave them, which is the painting order, so
+    -- that two faces of one layer are drawn in a defined order and a
+    -- reproducible one. The lookup cannot miss -- layerDepths returns
+    -- exactly the faces it was handed, once each -- so this skips rather
+    -- than growing the error path that 'backToFront' in 'picture' needs for
+    -- the same reason and does not use either.
+    facesAt d = [f | (fid, e) <- depths, e == d, Just f <- [IM.lookup (unFaceId fid) byId]]
+
+    -- Every face along each edge of the sheet, grouped here rather than
+    -- by 'facesAlongEdges', which refuses an edge with three faces on it.
+    -- That refusal is right for folding and for stacking, which both ask
+    -- \"what is the face across this crease\" and have no answer when there
+    -- are two of them. This asks \"which sheets is this crease an edge
+    -- of\", which is answerable for any number -- so using the strict one
+    -- would let --offset decide that a file the renderer draws happily
+    -- without it is unacceptable with it.
+    alongEdges =
+      M.fromListWith
+        (<>)
+        [ (edgeKey a b, [faceId f])
+          | f <- faces,
+            (a, b) <- ringEdges (faceVertexIds f)
+        ]
+
+    -- Which layers a crease is drawn in: one per face along it, so the
+    -- crease between two faces at different depths is drawn twice, and
+    -- the crease between two faces of one layer is drawn once. A crease
+    -- along no face at all belongs to no layer, and is drawn where the
+    -- paper is, which is layer zero.
+    layersOf c = case M.findWithDefault [] (edgeKey (creaseFrom c) (creaseTo c)) alongEdges of
+      [] -> [0]
+      along -> map depthOf along
+
+    -- Every crease bucketed by the layers it is drawn in, in one pass and
+    -- in the order 'picture' draws every crease in, so that a faint reference
+    -- line does not paint over the outline of the sheet it is drawn on.
+    -- Bucketed rather than filtered per layer because both the sort and the
+    -- lookup are the same work for every layer, and there are as many layers
+    -- as the model is deep.
+    creasesByLayer =
+      IM.fromListWith
+        (flip (<>))
+        [ (d, [creaseLine c])
+          | c <- sortOn (creaseOrder . creaseAssignment) creases,
+            d <- nub (layersOf c)
+        ]
+
+    linesAt d = IM.findWithDefault [] d creasesByLayer
+
+    -- Two fills at most per layer, one per side of the sheet, each
+    -- gathering that layer's faces into one area for the reason
+    -- 'whatIsVisible' does: faces of one layer abut, and drawn separately
+    -- they would be criss-crossed with pale seams where they meet.
+    --
+    -- Sound only because faces of one layer do not overlap: a pair that
+    -- did would have a @faceOrders@ entry between them and so would be at
+    -- different depths. That holds for a model folded flat, which is the
+    -- only kind this variant is used for.
+    mergedFills d =
+      [ fill basis colour group
+        | (colour, side) <- [(paperFront colours, True), (paperBack colours, False)],
+          let group = [f | f <- facesAt d, showsTopSide towardsViewer f == side],
+          not (null group)
+      ]
+
+    -- One area per face, in the layer's own painting order. For a model
+    -- with paper in the air the reasoning above fails: two faces of one
+    -- layer are unordered because they do not overlap /on the paper/, and
+    -- they can still cover the same patch of page once projected, one
+    -- simply being nearer the camera. Merging them into one area throws
+    -- away the depth order 'layerDepths' put them in, and the nearer one
+    -- stops covering the further one.
+    separateFills d =
+      [ fill basis (if showsTopSide towardsViewer f then paperFront colours else paperBack colours) [f]
+        | f <- facesAt d
+      ]
+
+    -- One layer of the picture: its paper, then the fine edges of that
+    -- sheet, then whatever of the model itself belongs to it. All three
+    -- move together, and a later layer's paper covers all three, which is
+    -- what keeps a sheet from drawing its lines over the sheet above it.
+    layer fills ink' model d =
+      map (move d) (fills d <> mapMaybe (ink' basis) (linesAt d) <> model d)
+
+    -- Every sheet, drawn fine. What survives of a layer is the sliver the
+    -- layer above does not cover, and at the model's own line weight a
+    -- dozen of those a few points apart add up to a black band rather
+    -- than to a stack -- so the stack is drawn as a stack is engraved,
+    -- and the drawing proper goes over the top of it.
+    stacked model =
+      concatMap (layer mergedFills (edgeWith (buriedEdge theme notation)) model) [0 .. deepest]
+
+    wholeStack =
+      concatMap (layer separateFills (edgeWith (strokeFor theme notation)) (const [])) [0 .. deepest]
+
+    -- The stretches of the model's own drawing that belong to sheet @d@,
+    -- bucketed in one pass for the reason the creases are.
+    --
+    -- From 'formSheetEdges' rather than 'formEdges', which is the same
+    -- answer joined up across the changes of sheet this needs to keep,
+    -- and across a face's straight corner, which this therefore draws as
+    -- two abutting strokes.
+    modelByLayer seen =
+      IM.fromListWith
+        (flip (<>))
+        [ (maybe 0 depthOf nearest, [shape])
+          | SheetEdge nearest e _ <- sortOn (creaseOrder . visibleAssignment . sheetEdgeLine) (formSheetEdges seen),
+            -- A stretch with paper on neither side belongs to no sheet --
+            -- it is a crease bounding nothing -- so it is drawn where the
+            -- paper is.
+            Just shape <- [edgeOf theme notation basis (stretchLine e)]
+        ]
 
 -- | Is the viewer on the @+z@ side of the model?
 --
@@ -452,7 +507,7 @@ whatIsVisible theme notation colours basis seen =
       let rings = paperOf side,
       not (null rings)
   ]
-    <> mapMaybe (edgeOf theme notation basis . asDrawn) (sortOn (creaseOrder . visibleAssignment) (formEdges seen))
+    <> mapMaybe (edgeOf theme notation basis . stretchLine) (sortOn (creaseOrder . visibleAssignment) (formEdges seen))
   where
     paperOf side =
       [ map (project basis) piece
@@ -460,8 +515,6 @@ whatIsVisible theme notation colours basis seen =
           regionTopSide r == side,
           piece <- regionPieces r
       ]
-
-    asDrawn e = (visibleAssignment e, visibleFrom e, visibleTo e)
 
 -- | One area of paper: a colour and the faces that make it up.
 fill :: Basis -> Colour -> [Face] -> Shape
