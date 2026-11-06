@@ -837,7 +837,7 @@ south-east`" on `sheet square`, where `in front` means a valley as seen
 lands on (1/3, 2/3) (`python3` arithmetic). `RecordSpec` runs this pre-crease
 and finds (2/3, 1/3) in its record's folded pose (`recordFoldedPose`) within
 1e-12 of (1/3, 2/3), while the record's after still equals its before
-([decisions C153](decisions.md#changes-since-draft-v2)) [ran].
+([decisions C153](decisions.md#changes-since-draft-v2)).
 
 The figure's before and after frames are identical, so inference draws nothing.
 The move's one record draws a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold
