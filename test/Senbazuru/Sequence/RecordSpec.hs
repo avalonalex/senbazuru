@@ -12,8 +12,10 @@
 -- turn moved the paper. So do the tests of a surface as the reader sees it
 -- ('displayedFrame'), which hold each record's surfaces, under the record's
 -- own displays, to the states the run writes on either side of its step,
--- and the tests of the line a turn-over or a rotate turned about
--- ('presentationAxis'), which hold it to the presentations the run recorded.
+-- the tests of the line a turn-over or a rotate turned about
+-- ('presentationAxis'), which hold it to the presentations the run recorded,
+-- and the tests of a pre-crease's folded pose ('recordFoldedPose'), which
+-- hold it to the end of the pre-crease's own checked turn.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
 import Control.Monad (forM_)
@@ -261,6 +263,50 @@ spec = describe "a move record" $ do
       length others `shouldBe` 2 + 5 + 4 + 1
       sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Precrease", "Turn"]
       map presentationAxis others `shouldBe` map (const Nothing) others
+
+  describe "a pre-crease's folded pose" $ do
+    -- 06 §7's pre-crease on sheet square: the moving triangle (0, 0),
+    -- (1, 0), (1, 1) has corner mean (2/3, 1/3), and folded flat across
+    -- y = x it lies on (1/3, 2/3). Red if the pose were the paper laid flat
+    -- again, or the record's after kept the fold's end.
+    it "takes the moving triangle's middle across the diagonal, and still ends where it began" $ do
+      run <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Crease a diagonal." (move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (CornerOf NorthEast)) FlapOfFirstArgument (Just (CornerOf SouthEast)))))))
+      record <- case runRecords run of
+        [r] -> pure r
+        found -> fail ("expected one record, got " <> show (length found))
+      recordKind record `shouldBe` Precrease
+      pose <- maybe (fail "a pre-crease with no folded pose") pure (recordFoldedPose record)
+      case placedAt pose (V2 (2 / 3) (1 / 3)) of
+        Just p -> norm (p ^-^ V3 (1 / 3) (2 / 3) 0) `shouldSatisfy` (< 1e-12)
+        Nothing -> expectationFailure "(2/3, 1/3) is in no face of the folded pose"
+      recordAfter record `shouldBe` recordBefore record
+
+    -- The crane opening's four pre-creases, two of them after a turn-over,
+    -- and every other kind of record. Red if the pose were rebuilt from
+    -- anything but the record's own turn, numbered afresh, or given to a
+    -- move that is not a pre-crease.
+    it "is the end of the pre-crease's own turn, numbered as its before, and only a pre-crease has one" $ do
+      quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
+      blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
+      crane <- right (runOn M.empty openingWithAMountain)
+      held <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Hold it here." (anchor (at (1 / 4) (1 / 4))))))
+      let found = [r | each <- [quarter, blintzRun, crane, held], r <- runRecords each]
+          precreases = [r | r <- found, recordKind r == Precrease]
+          others = [r | r <- found, recordKind r /= Precrease]
+      (length precreases, length others) `shouldBe` (4, 5 + 5 + 1 + 1)
+      forM_ precreases $ \record -> do
+        turn <- turnOf record
+        pose <- maybe (fail "a pre-crease with no folded pose") pure (recordFoldedPose record)
+        Right pose `shouldBe` flapAt turn 1
+        facesVertices (surfaceFrame pose) `shouldBe` facesVertices (surfaceFrame (recordBefore record))
+      sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Presentation (Rotated 1 Anticlockwise)", "Presentation (Rotated 3 Clockwise)", "Presentation (TurnedOver LeftRight)", "Presentation (TurnedOver TopBottom)", "Turn"]
+      map recordFoldedPose others `shouldBe` map (const Nothing) others
+
+    -- Red if a second 'asPrecrease' took the paper laid flat as the pose.
+    it "keeps the fold's pose when made a pre-crease twice" $
+      forM_ records $ \record -> do
+        recordFoldedPose record `shouldBe` Nothing
+        recordFoldedPose (asPrecrease (asPrecrease record)) `shouldBe` Just (recordAfter record)
   where
     -- The fixture's corners, in the order both blintzes fold them; the
     -- creases that cut each one off (edges 8 to 11 of
@@ -335,6 +381,33 @@ turnedAbout record = case (recordKind record, presentationAxis record) of
       TurnedOver _ -> 180
       Rotated k Anticlockwise -> 45 * fromIntegral k
       Rotated k Clockwise -> -45 * fromIntegral k
+
+-- | Where a point of paper, named by its material coordinates, lies in a
+-- surface: in the first face whose corners, on the sheet, hold it, carried
+-- by the one affine map that takes three of that face's corners to where
+-- they lie. Each face is split into a fan of triangles from its first
+-- corner, which covers it when it is convex, as every face of a square
+-- creased along straight lines is. 'Nothing' if no face holds the point.
+placedAt :: Surface V2 -> V2 -> Maybe V3
+placedAt surface point = case [p | face <- facesVertices (surfaceFrame surface), Just p <- map within (fan face)] of
+  p : _ -> Just p
+  [] -> Nothing
+  where
+    corners = [(sampleMaterial s, position s) | s <- surfaceSamples surface]
+    fan = \case
+      a : rest -> [(a, b, c) | (b, c) <- zip rest (drop 1 rest)]
+      [] -> []
+    within (VertexId a, VertexId b, VertexId c) = case (drop a corners, drop b corners, drop c corners) of
+      ((ma, pa) : _, (mb, pb) : _, (mc, pc) : _) ->
+        let cross (V2 x1 y1) (V2 x2 y2) = x1 * y2 - y1 * x2
+            whole = cross (mb ^-^ ma) (mc ^-^ ma)
+            u = cross (point ^-^ ma) (mc ^-^ ma) / whole
+            v = cross (mb ^-^ ma) (point ^-^ ma) / whole
+            slack = 1e-12
+         in if whole /= 0 && u >= -slack && v >= -slack && u + v <= 1 + slack
+              then Just (pa ^+^ (u *^ (pb ^-^ pa)) ^+^ (v *^ (pc ^-^ pa)))
+              else Nothing
+      _ -> Nothing
 
 isPresentation :: MoveKind -> Bool
 isPresentation = \case

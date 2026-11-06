@@ -290,7 +290,8 @@ precreasing = describe "a pre-crease" $ do
   -- The crane's first step, on a plain square: two records, each a
   -- pre-crease ending where it began, each leaving its crease U at 0. Turns
   -- red if the paper were left folded, the crease lettered by the sense, or
-  -- the record kept the fold's end.
+  -- the record's after kept the fold's end, which the record keeps instead
+  -- as its folded pose ('recordFoldedPose').
   it "creases the crane's diagonals on a plain square, in two records that end where they began" $ do
     run <- right (onSquare (void diagonals))
     let records = runRecords run

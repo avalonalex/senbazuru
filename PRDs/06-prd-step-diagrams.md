@@ -371,14 +371,12 @@ then.
   before and after surfaces are one flat state, so its arrows come from its
   folded surface: the arrow out from its before surface to the surface its fold
   reached, both under `displayBefore`, and the unfold arrow the same pair
-  reversed. The runner has that surface, as the after of the turn's record
-  ([`Run.hs:697-699`](../src/Senbazuru/Sequence/Run.hs#L697-L699)), until
-  `asPrecrease` sets the after to the before
-  ([`Record.hs:518`](../src/Senbazuru/Sequence/Record.hs#L518)). By the
-  decision record's choice, not the owner's, the `Precrease` record keeps it
-  behind one accessor (**SKETCH** `recordFoldedPose`; S18c,
-  [#640](https://github.com/avalonalex/senbazuru/issues/640)). `recordPoseAt`,
-  `PoseOnRoute` and `Origami.Route` do not exist ([decisions
+  reversed. The runner has that surface, as the after of the turn's record,
+  and `asPrecrease`, which sets a pre-crease record's after to its before,
+  keeps it. By the decision record's choice, not the owner's, a page reads it
+  through one accessor, `recordFoldedPose`, numbered as `recordBefore` and
+  unpresented ([decisions C153](decisions.md#changes-since-draft-v2)).
+  `recordPoseAt`, `PoseOnRoute` and `Origami.Route` do not exist ([decisions
   C90](decisions.md#changes-since-draft-v2)).
 - **R-06-17.** A pre-crease draws its fold arrow, with the sense the author wrote,
   its unfold arrow and one fold-here line, although its figure's frames are
@@ -836,11 +834,10 @@ caller that states the kind, as `InferFoldLines` (S28,
 south-east`" on `sheet square`, where `in front` means a valley as seen
 ([02 §5.1](02-language-semantics.md#51-the-readers-side)): the moving triangle
 (0, 0), (1, 0), (1, 1) has corner mean (2/3, 1/3); folded flat across y = x it
-lands on (1/3, 2/3) (`python3` arithmetic). `RunSpec` runs this pre-crease
-([`RunSpec.hs:285-287`](../test/Senbazuru/Sequence/RunSpec.hs#L285-L287)) but
-checks no folded position, since the record keeps none, so the numbers stay
-**UNVERIFIED** through the runner until S18c
-([#640](https://github.com/avalonalex/senbazuru/issues/640)) pins them.
+lands on (1/3, 2/3) (`python3` arithmetic). `RecordSpec` runs this pre-crease
+and finds (2/3, 1/3) in its record's folded pose (`recordFoldedPose`) within
+1e-12 of (1/3, 2/3), while the record's after still equals its before
+([decisions C153](decisions.md#changes-since-draft-v2)).
 
 The figure's before and after frames are identical, so inference draws nothing.
 The move's one record draws a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold
@@ -857,13 +854,11 @@ the fold arrow true on the drawn state. The runner does not check this yet:
 ([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)) with no constructor
 until S19 ([#640](https://github.com/avalonalex/senbazuru/issues/640)). The
 unfold arrow is drawn from the folded pose back to where the paper started
-(R-06-16). The runner computes that pose, the turned record
-([`Run.hs:697-699`](../src/Senbazuru/Sequence/Run.hs#L697-L699)), and
-`asPrecrease` discards it
-([`Record.hs:518`](../src/Senbazuru/Sequence/Record.hs#L518)). S18c has the
-`Precrease` record keep it behind one accessor (**SKETCH** `recordFoldedPose`),
-a choice of the decision record's own, since `recordPoseAt` and `PoseOnRoute`
-do not exist ([C90](decisions.md#changes-since-draft-v2)).
+(R-06-16). The runner computes that pose, the turned record's after, and the
+`Precrease` record keeps it behind one accessor, `recordFoldedPose`
+([C153](decisions.md#changes-since-draft-v2)), a choice of the decision
+record's own, since `recordPoseAt` and `PoseOnRoute` do not exist
+([C90](decisions.md#changes-since-draft-v2)).
 
 ### 8. Captions and the gutter
 
@@ -1274,7 +1269,7 @@ since #512 and is grouped above; test 2's page comes at M4
 
 | On | For |
 | --- | --- |
-| M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)), though `displayedFrame`, which shows a surface under one as a frame, came at M3 from S18a ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C143](decisions.md#changes-since-draft-v2)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; which turn a `turn over` or `rotate` record was, `Presenting` ([C82](decisions.md#changes-since-draft-v2); below the table), though not its axis point, `presentationAxis`, which came at M3 from S18b ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C152](decisions.md#changes-since-draft-v2)) |
+| M2 ([02](02-language-semantics.md), [04](04-prd-sequence-source-and-cli.md)) | Records carrying `recordPresentation` and `recordPlacement`, each before and after, with `displayBefore` and `displayAfter` computed from them ([D14](decisions.md#d14-material-consumption)), though `displayedFrame`, which shows a surface under one as a frame, came at M3 from S18a ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C143](decisions.md#changes-since-draft-v2)); `Run` and `writtenStates` in `Sequence.Record` ([D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)); the state-rule writer; which turn a `turn over` or `rotate` record was, `Presenting` ([C82](decisions.md#changes-since-draft-v2); below the table), though not its axis point, `presentationAxis`, which came at M3 from S18b ([#640](https://github.com/avalonalex/senbazuru/issues/640), [C152](decisions.md#changes-since-draft-v2)); a pre-crease's record, though not its folded pose, `recordFoldedPose`, which came at M3 from S18c ([C153](decisions.md#changes-since-draft-v2)) |
 | [05](05-prd-library-additions.md) L16 | `fanCounts`, and stretches that keep the face edge they lie on, at M3 (§10) |
 | [05](05-prd-library-additions.md) | `motionsAcross`, `creasesToCome`, `fitRigid` and `Step` classification with the `Origami.Step` header rewrite ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 13, written out in [01 §4.13](01-architecture.md#413-srcsenbazuruorigamistephs30-34)) |
 | M0 ([10 §1](10-roadmap-risks-questions.md#1-milestones)) | Amended done-when of [#36](https://github.com/avalonalex/senbazuru/issues/36) (reflection as turn-over cannot be met) and #94 ([decisions §3](decisions.md#3-recorded-text-this-design-changes) row 7; [§10](decisions.md#10-corrections) items 2 and 3). Met 2026-10-27 by S0b's comments on [#36](https://github.com/avalonalex/senbazuru/issues/36#issuecomment-6458546164) and [#94](https://github.com/avalonalex/senbazuru/issues/94#issuecomment-6458546438) ([#635](https://github.com/avalonalex/senbazuru/issues/635)) |
