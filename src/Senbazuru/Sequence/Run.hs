@@ -86,6 +86,26 @@
 -- is named only on a flat state; an unfold can, once a later fold has stood
 -- up the paper beside the hinge it turns back.
 --
+-- == One figure a step
+--
+-- A step's moves are all drawn on one /figure/, the state the step starts
+-- from (decisions D22), so a page can draw each move's arrow there only if
+-- the move's paper is where that figure shows it. A move after the step's
+-- first is refused as @MoveLeavesFigure@ if an earlier move of the step left
+-- any of the paper it turns somewhere else. A pre-crease puts its paper
+-- back, so the crane's two diagonal pre-creases share a figure; the
+-- blintz's four corners turn four triangles no other corner moves, so they
+-- do too; the helmet's diagonal and then a corner of the doubled triangle do
+-- not. The paper is found by where it lay on the sheet, never by face id,
+-- since creasing and re-anchoring renumber faces ('leavesFigure').
+--
+-- A step may end with one turn-over or rotate, and go on after none (owner
+-- decision 78): its figure shows the model as it was seen before the turn,
+-- and an arrow drawn on it for a move made after would be on the side the
+-- reader no longer sees. Any move after one is refused as
+-- @MoveAfterPresentation@, decided by the moves' kinds, since a turn-over
+-- moves no paper for the first rule to see.
+--
 -- == What a fold state holds
 --
 -- The /working pattern/: the sheet's crease pattern, cut at every crossing,
@@ -188,10 +208,11 @@ import Control.Monad (foldM, unless, when)
 import Data.Bifunctor (first)
 import Data.Either (isRight)
 import Data.IntMap.Strict qualified as IM
-import Data.List (nub, sort, sortOn)
+import Data.List (maximumBy, nub, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Senbazuru.Explain (explain)
@@ -201,7 +222,7 @@ import Senbazuru.Fold.Faces (sheetOf, tolerance, toleranceOf)
 import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVertices, ringEdges)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
-import Senbazuru.Geometry.Polygon (distanceToSegment, edges, insideRing, largestLowestLeftmost, pointsInside, signedArea)
+import Senbazuru.Geometry.Polygon (cross2, distanceToSegment, edges, insideRing, largestLowestLeftmost, pointInside, pointsInside, signedArea)
 import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
@@ -210,10 +231,10 @@ import Senbazuru.Origami.Flap (CheckedFlap, FlapError, Toward (..), checkFlap, p
 import Senbazuru.Origami.Folding (Folded (..), FoldingError, foldFrameWith)
 import Senbazuru.Origami.HingeSweep (SweepSettings, defaultSweepSettings)
 import Senbazuru.Origami.Stacking (Budget, defaultBudget)
-import Senbazuru.Origami.Surface (Surface, surfaceFrame, surfaceFromFolded)
+import Senbazuru.Origami.Surface (Sample (..), Surface, surfaceFrame, surfaceFromFolded, surfaceSamples)
 import Senbazuru.Sequence.Elaborate (Core (..), CoreMove (..), Elaborated (..), ElaboratedStep (..), Origin (..))
 import Senbazuru.Sequence.Error (FoldedBy (..), MoveFailure (..), Place (..), ResolveProblem (..), SelectionError (..), SequenceError (..), SheetProblem (..), refusalKindOf)
-import Senbazuru.Sequence.Pretty (prettyLine, prettyPoint)
+import Senbazuru.Sequence.Pretty (prettyLine, prettyMove, prettyPoint)
 import Senbazuru.Sequence.Record hiding (PageAxis (..), Sense (..), Turning (..))
 import Senbazuru.Sequence.Resolve
 import Senbazuru.Sequence.SheetLengths (inSheetLengths)
@@ -471,7 +492,7 @@ runStep settings (Progress state done named expected surface outcomes) (n, step)
   where
     go st made got = \case
       [] -> Right (Going (progress st made got (outcome st made : outcomes)))
-      (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named st (after made) core of
+      (i, CoreMove origin core) : rest -> case runMove settings (Here n (elaboratedName step) (elaboratedCaption step) i origin) named (Figure state surface (presentedIn made)) st (after made) core of
         Left (StepRefused _ _ at (NotModelledStop what)) -> Right (Stopped (progress st made got outcomes) (RunStop n (elaboratedName step) (elaboratedCaption step) at what))
         Left err -> Left err
         Right (Made st' records refused) -> go st' (made ++ records) (got ++ refused) rest
@@ -481,6 +502,10 @@ runStep settings (Progress state done named expected surface outcomes) (n, step)
     after made = case reverse made of
       record : _ -> recordAfter record
       [] -> surface
+    -- The turn-over or rotate the step has made so far, as written: a step
+    -- may end with one, and go on after none (owner decision 78). One
+    -- inside an expect refused made no record, and turned nothing.
+    presentedIn made = listToMaybe [prettyMove (originWritten (recordOrigin r)) | r <- made, Presentation _ <- [recordKind r]]
     -- A step of nothing but expect refused moved no paper, and writes no
     -- state (PRDs/decisions.md, D24).
     outcome st made = StepOutcome n (elaboratedName step) (elaboratedCaption step) (if all expectation (elaboratedMoves step) then Nothing else Just (after made)) (thePresentation st) (thePlacement st)
@@ -501,8 +526,39 @@ data Here = Here
     placeOrigin :: !Origin
   }
 
-runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> FoldState -> Surface V2 -> Core -> Either SequenceError Made
-runMove settings place named state surface = \case
+-- | One move, from the state the last one left and the paper as it lies
+-- there, held to the step's figure (decisions D22, owner decision 78): after
+-- a turn-over or a rotate no move is made at all, and a move after the
+-- step's first that turns paper an earlier move of the step left somewhere
+-- else is refused once it has been made ('leavesFigure'). Both are held
+-- here rather than in 'runStep', because an @expect refused@ runs the move
+-- it holds through this function and keeps none of its records, so a check
+-- in 'runStep' would never see that move.
+--
+-- The first move of a step starts from the figure itself, so it is not
+-- checked against it.
+runMove :: RunSettings -> Here -> Map Name [MoveRecord] -> Figure -> FoldState -> Surface V2 -> Core -> Either SequenceError Made
+runMove settings place named figure state surface core = do
+  maybe (Right ()) (Left . refusedAt place . MoveAfterPresentation) (figurePresented figure)
+  made@(Made _ records _) <- makeMove settings place named figure state surface core
+  when (placeMove place > 1) $
+    case [p | r <- records, Just p <- [leavesFigure figure state surface r]] of
+      Right p : _ -> Left (refusedAt place (MoveLeavesFigure p))
+      Left what : _ -> Left (refusedAt place (JoinBroken what))
+      [] -> Right ()
+  pure made
+
+-- | The paper a step's moves are drawn on: the state the step starts from
+-- and its surface, and the turn-over or rotate the step has made so far, as
+-- written, if it has made one.
+data Figure = Figure
+  { figureState :: !FoldState,
+    figureSurface :: !(Surface V2),
+    figurePresented :: !(Maybe Text)
+  }
+
+makeMove :: RunSettings -> Here -> Map Name [MoveRecord] -> Figure -> FoldState -> Surface V2 -> Core -> Either SequenceError Made
+makeMove settings place named figure state surface = \case
   CoreFold sense amount line layers seed -> moved <$> foldMove settings place named state Turn sense amount line layers seed
   -- A pre-crease is the fold, checked over its whole path, laid flat again:
   -- one move and one record, its crease left without a direction.
@@ -514,7 +570,7 @@ runMove settings place named state surface = \case
   -- as itself.
   CoreExpectRefused kind inner -> case inner of
     Nothing -> Left (refusedAt place (RefusalNotRaised kind))
-    Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named state surface core of
+    Just (CoreMove origin core) -> case runMove settings place {placeOrigin = origin} named figure state surface core of
       Right _ -> Left (refusedAt place (RefusalNotRaised kind))
       Left err -> case refusalKindOf err of
         Just raised
@@ -940,6 +996,74 @@ undoOne settings place (state, made) earlier = do
     _ -> Right (state, made)
 
 -- | The record of a checked turn, at this place.
+-- | Whether a record's move turns paper that is not where the step's figure
+-- draws it: the first point of such paper found, in sheet lengths, or
+-- 'Nothing' if all of it is where the figure shows it. A record that turns
+-- no paper turns none away from the figure.
+--
+-- The paper is the record's moving faces, named by their corners on the
+-- sheet, since the move may have creased the paper and re-anchored, which
+-- renumbers faces but never moves a material point. Each face is compared
+-- where the paper lay as the move began, the state and surface it started
+-- from, and where the figure shows it, both as displayed. In each, the face
+-- is found by a point clear of its outline ('pointInside'), never by a
+-- point on it, where the corners of several faces can meet; the face found
+-- there holds the whole of the record's face, since within a step faces are
+-- only ever cut, never joined. Its corners are then placed by that face's
+-- own placement and compared, within the sheet's tolerance. A sliver too
+-- thin to hold such a point is not compared.
+--
+-- Compared where the move began, not in the record's own before, because
+-- an @unfold@ of several moves makes a record for each, and a later one
+-- starts from paper an earlier one of the same move turned; that is one
+-- move, drawn on the figure as one, and only paper earlier moves of the
+-- step left elsewhere is what this asks about.
+--
+-- 'Left' says the paper could not be found in one of the two at all, which
+-- is the runner's fault and not the move's.
+leavesFigure :: Figure -> FoldState -> Surface V2 -> MoveRecord -> Maybe (Either Text V2)
+leavesFigure figure state surface record = case recordEvidence record of
+  SweptHinge _ -> listToMaybe [problem | ring <- moving, Just problem <- [check ring]]
+  _ -> Nothing
+  where
+    before = recordBefore record
+    material = [sampleMaterial s | s <- surfaceSamples before]
+    room = toleranceOf material
+    moving = [ring | FaceId f <- concatMap snd (recordMoving record), face <- take 1 (drop f (facesVertices (surfaceFrame before))), let ring = [m | VertexId v <- face, m <- take 1 (drop v material)]]
+    check ring = do
+      p <- pointInside room ring
+      case (shownAt room (displayOf state) surface p ring, shownAt room (displayOf (figureState figure)) (figureSurface figure) p ring) of
+        (Just now, Just drawn)
+          | and (zipWith (\a b -> norm (a ^-^ b) <= room) now drawn) -> Nothing
+          | otherwise -> Just (Right (maybe p (`inSheetLengths` p) (boxFromPoints material)))
+        _ -> Just (Left "the paper a move turns is in no face of the paper it started from, or of its step's figure")
+
+-- | Where material points lie in a surface, as displayed: placed by the one
+-- face that holds the first of them clear of its outline, through the
+-- affine map that takes that face's corners on the sheet to where they lie.
+-- 'Nothing' if no face holds it, or the face found has no three corners
+-- that are not in a line.
+shownAt :: Double -> Rigid -> Surface V2 -> V2 -> [V2] -> Maybe [V3]
+shownAt room display surface p points = case [corners | face <- facesVertices (surfaceFrame surface), let corners = [(m, x) | VertexId v <- face, (m, x) <- take 1 (drop v placed)], insideRing room (map fst corners) p] of
+  corners : _ -> do
+    ((ma, xa), (mb, xb), (mc, xc)) <- widest corners
+    let whole = cross2 (mb ^-^ ma) (mc ^-^ ma)
+        at m =
+          let u = cross2 (m ^-^ ma) (mc ^-^ ma) / whole
+              v = cross2 (mb ^-^ ma) (m ^-^ ma) / whole
+           in applyRigid display (xa ^+^ (u *^ (xb ^-^ xa)) ^+^ (v *^ (xc ^-^ xa)))
+    Just (map at points)
+  [] -> Nothing
+  where
+    placed = zip [sampleMaterial s | s <- surfaceSamples surface] (surfacePositions surface)
+    -- The three corners spanning the largest triangle, so that the map
+    -- divides by as little rounding as the face allows.
+    widest corners = case [(abs (cross2 (b ^-^ a) (c ^-^ a)), (ca, cb, cc)) | (i, ca@(a, _)) <- zip [0 :: Int ..] corners, (j, cb@(b, _)) <- zip [0 ..] corners, i < j, (k, cc@(c, _)) <- zip [0 ..] corners, j < k] of
+      [] -> Nothing
+      triples -> case maximumBy (comparing fst) triples of
+        (area, corner3) | area > 0 -> Just corner3
+        _ -> Nothing
+
 recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> (MaterialPoint, MaterialPoint) -> Rigid -> Rigid -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 

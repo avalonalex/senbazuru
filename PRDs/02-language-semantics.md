@@ -960,21 +960,22 @@ starts from ([D24](decisions.md#d24-states-figures-and-their-numbers),
   first move, so move *k* is accepted only if the paper it moves is still where
   that drawing shows it, compared by material identity. In practice none of that
   paper may have been left somewhere else by moves 1 to *k* − 1. Otherwise the
-  move is refused as `MoveLeavesFigure`, with a hint to start a new `step`.
-  Nothing raises it yet: `expect refused` accepts the name
-  ([`Error.hs:860`](../src/Senbazuru/Sequence/Error.hs#L860)), but it has no
-  constructor until S19
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)), so `expect
-  refused MoveLeavesFigure` cannot be met. A step may end with one `turn over`
-  or `rotate`, and any move after it in the same step is refused, a second
-  turn-over or rotate, `anchor` and `mark` included, by an error S19
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) names (owner
-  decision 78, [decisions §9](decisions.md#9-owner-decisions)).
+  move is refused as `MoveLeavesFigure`, naming a point of that paper on the
+  sheet, with a hint to start a new `step`, and `expect refused
+  MoveLeavesFigure` meets it ([decisions C154](decisions.md#changes-since-draft-v2)).
+  A step may end with one `turn over` or `rotate`, and any move after it in
+  the same step is refused, a second turn-over or rotate, `anchor` and `mark`
+  included, as `MoveAfterPresentation`, which names the turn-over or rotate
+  as written (owner decision 78, [decisions §9](decisions.md#9-owner-decisions)).
+  That is decided by the moves' kinds, not by the paper, so it has no kind
+  for `expect refused` to name.
   - A pre-crease is one move here, like any other, and it puts its paper back:
     the crane's two diagonal pre-creases share a figure although their moving
     triangles overlap.
   - All four blintz corners in one step pass.
-  - "Fold the corner to the centre, then fold that flap in half" fails.
+  - "Fold the corner to the centre, then fold that flap in half" would fail,
+    but today it is refused before that, as not run yet: its second fold
+    creases folded paper, which waits for M4.
 - **Batching stays inside one step, from M4**
   ([D22](decisions.md#d22-figures-holding-several-moves),
   [C16](decisions.md#changes-since-draft-v2); [owner decision
@@ -1574,7 +1575,8 @@ lives in `Sequence.Error` with its `Explain` instance, which is also where
 | `LineStopsOnTheModel` | `ThroughError` ([`ThroughLayers.hs:155`](../src/Senbazuru/Origami/ThroughLayers.hs#L155)) in `MoveFailure` | a line end inside a face while creasing through layers | the point given, after the flag-leak fix ([05](05-prd-library-additions.md)) |
 | `ReanchorNotFlat` | `MoveFailure` | §2.3 | the face, as a material point |
 | `JoinBroken` | `MoveFailure` | invariant 6 | which quantity differed, and by how much |
-| `MoveLeavesFigure` | `MoveFailure`, from S19 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) | §6.5 | the move; a point of the paper; "start a new step". The point cannot be a `MaterialPoint` while that type lives in `Sequence.Record`, which imports `Sequence.Error` ([`Record.hs:187`](../src/Senbazuru/Sequence/Record.hs#L187), [`:193`](../src/Senbazuru/Sequence/Record.hs#L193)): S19 moves the type below, as [C75](decisions.md#changes-since-draft-v2) plans, or holds a `V2` in sheet lengths, as `ReanchorNotFlat` does ([C96](decisions.md#changes-since-draft-v2)) |
+| `MoveLeavesFigure` | `MoveFailure` ([C154](decisions.md#changes-since-draft-v2)) | §6.5 | the move; a point of the paper, inside a face the move turns, on the sheet in sheet lengths, as `ReanchorNotFlat` holds its point ([C96](decisions.md#changes-since-draft-v2)), since `MaterialPoint` lives in `Sequence.Record`, which imports `Sequence.Error`; "start a new step" |
+| `MoveAfterPresentation` | `MoveFailure`, with no kind for `expect refused` to name ([C154](decisions.md#changes-since-draft-v2)) | §6.5, owner decision 78: a move after a turn-over or rotate in the same step | the move; the turn-over or rotate as written; "start a new step" |
 | `RepeatNotSymmetric`, `CheckpointOutlineDiffers` | `MoveFailure` | §9 | the first differing crease, hinge turn or outline point |
 | `UnfoldChangedSince` | `MoveFailure` | §6.4: a later move changed a crease the unfold would turn back | the crease's material segment |
 | `NotModelled` | `MoveFailure`, reaching the CLI through `runRefusal` from a run that returned `Right` | §9 | the quoted text |

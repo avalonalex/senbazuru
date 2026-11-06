@@ -1964,6 +1964,16 @@ senbazuru: quarter-stop.foldseq:10:3: step 2 (quarter): "fold in quarters" is no
 Any other refusal writes nothing. What a run can fold so far, and what it
 refuses as not run yet, is in `Senbazuru.Sequence.Run`'s header.
 
+A step is one figure, and every move in it is drawn on the state the step
+starts from, so a run refuses two things a figure could not show. A move that
+turns paper an earlier move of the same step left somewhere else is refused as
+`MoveLeavesFigure`, naming a point of that paper on the sheet: the helmet's
+diagonal fold and then its first corner, written as one step, are refused, and
+its two steps run. And a step may end with one `turn over` or `rotate`, and any
+move after one in the same step is refused as `MoveAfterPresentation`. Either
+way the message ends "start a new step for this move". A fold then a turn-over
+is one step; a turn-over then a fold is two.
+
 The flag rules and every line `run` prints are functions of
 `Senbazuru.Sequence.RunPlan`, tested there, since the command line is not.
 

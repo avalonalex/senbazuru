@@ -45,6 +45,7 @@ spec = do
   pointingElsewhere
   creasing
   precreasing
+  holdingToTheFigure
   turningOver
   rotating
   reanchoring
@@ -270,6 +271,92 @@ pointingElsewhere = describe "a nearest P pointing away from the answer taken" $
     run <- right (runOn (foldOnto (ExpectRefused (RefusalKind "NearestDisagrees"))))
     runRecords run `shouldBe` []
     runExpected run `shouldBe` [ExpectedRefusal 1 1 (RefusalKind "NearestDisagrees")]
+
+-- A step's moves are all drawn on one figure, the state the step starts
+-- from (decisions D22, PRDs/02-language-semantics.md, §6.5), so a move after
+-- the first is refused if the paper it turns is not where that figure shows
+-- it, as MoveLeavesFigure, and so is any move after a turn-over or a rotate
+-- (owner decision 78), as MoveAfterPresentation. The sources are written out
+-- as text, the helmet's lines as helmet.foldseq has them.
+holdingToTheFigure :: Spec
+holdingToTheFigure = describe "a step's moves, held to the step's figure" $ do
+  helmetSheet <- runIO (loadFoldFile "examples/helmet-base.fold" >>= right)
+  blintzSheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  craneSource <- runIO (T.pack <$> readFile "examples/traditional-crane.foldseq")
+  let sheets = M.fromList [("examples/helmet-base.fold", helmetSheet), ("examples/blintz-base.fold", blintzSheet)]
+      runText lines' = parseSequence "figure.foldseq" (T.unlines lines') >>= checkSequence >>= runSequence defaultRunSettings sheets . elaborate
+      helmet steps = runText (["foldseq 1", "title \"The helmet base\"", "sheet \"examples/helmet-base.fold\"", "anchor (3/4, 1/4)"] ++ steps)
+      blintz' steps = runText (["foldseq 1", "title \"A blintz\"", "sheet \"examples/blintz-base.fold\"", "anchor centre"] ++ steps)
+      square steps = runText (["foldseq 1", "title \"A square\"", "sheet square"] ++ steps)
+      diagonal = "fold in front [corner south-west, corner north-east] moving corner north-west"
+      firstCorner = "fold in front corner south-west to corner south-east"
+
+  -- Written as one step, the helmet's second fold turns the north-west half,
+  -- which its first fold laid across the diagonal: the figure shows that
+  -- paper where it lay on the sheet. The point named is the mean of the
+  -- corners of the north-west triangle (0, 1/2), (0, 0), (1/2, 1/2) the
+  -- second fold turns. Red if a move after the first were not held to the
+  -- figure, or the paper were compared where the second fold leaves it.
+  it "refuses helmet.foldseq's first two moves written as one step, naming a point of the north-west half" $
+    case helmet ["step { " <> diagonal <> "; " <> firstCorner <> " }"] of
+      Left err@(StepRefused 1 _ _ (MoveLeavesFigure (V2 x y))) -> do
+        norm (V2 x y ^-^ V2 (1 / 6) (1 / 3)) `shouldSatisfy` (< 1e-12)
+        y `shouldSatisfy` (> x)
+        refusalKindOf err `shouldBe` Just (RefusalKind "MoveLeavesFigure")
+        explain err `shouldSatisfy` T.isInfixOf "start a new step"
+      other -> expectationFailure ("expected MoveLeavesFigure at step 1, got " <> either (T.unpack . explain) (const "a run") other)
+
+  -- And so expect refused can name it: the step keeps its first fold's
+  -- record and the refusal it expected.
+  it "meets expect refused MoveLeavesFigure around the second fold" $ do
+    run <- right (helmet ["step { " <> diagonal <> "; expect refused MoveLeavesFigure { " <> firstCorner <> " } }"])
+    length (runRecords run) `shouldBe` 1
+    runExpected run `shouldBe` [ExpectedRefusal 1 2 (RefusalKind "MoveLeavesFigure")]
+
+  -- The blintz's four corners turn four triangles no other corner moves, and
+  -- the crane's two diagonal pre-creases each put their paper back. Red if
+  -- the check compared paper by face id, which creasing and re-anchoring
+  -- renumber, or by where a record's after leaves it.
+  it "runs the blintz's four corners in one step, and the crane's two diagonal pre-creases in one step" $ do
+    corners <- right (blintz' ["step c1 { " <> T.intercalate "; " ["fold behind corner " <> c <> " to centre" | c <- ["south-east", "north-east", "north-west", "south-west"]] <> " }", "step { unfold c1 }"])
+    [(recordStep r, recordKind r) | r <- runRecords corners] `shouldBe` replicate 4 (1, Turn) ++ replicate 4 (2, Turn)
+    crane <- right (square ["step { pre-crease in front [corner south-west, corner north-east] moving corner south-east; pre-crease in front [corner south-east, corner north-west] moving corner south-west }"])
+    map recordKind (runRecords crane) `shouldBe` [Precrease, Precrease]
+
+  -- An unfold of two steps is one move that makes two records, and its
+  -- second, turning the diagonal back, moves paper its first, turning the
+  -- corner back, has just moved. As the step's second move, after an anchor
+  -- that moves no paper, it is compared where the move began, which is the
+  -- figure. Red if each record were compared in its own before.
+  it "runs an unfold of two steps as a step's second move, though its second record turns paper its first moved" $ do
+    run <- right (helmet ["step s1 { " <> diagonal <> " }", "step s2 { " <> firstCorner <> " }", "step { anchor (3/4, 1/4); unfold s1 s2 }"])
+    [(recordStep r, recordKind r) | r <- runRecords run] `shouldBe` [(1, Turn), (2, Turn), (3, Anchoring), (3, Turn), (3, Turn)]
+
+  -- Owner decision 78: a step may end with one turn-over or rotate, and go on
+  -- after none. Red if the rule were dropped, or were read off the paper,
+  -- which a turn-over does not move.
+  it "lets a step end with a turn-over, and refuses any move after a turn-over or a rotate" $ do
+    ended <- right (square ["step { fold in front edge north to edge south; turn over left-right }"])
+    map recordKind (runRecords ended) `shouldBe` [Turn, Presentation (TurnedOver LeftRight)]
+    forM_
+      [ ("turn over left-right", "fold in front edge north to edge south"),
+        ("rotate 2/8 turn clockwise", "turn over left-right"),
+        ("turn over top-bottom", "anchor (1/4, 1/4)"),
+        ("turn over left-right", "expect refused SeedMissing { fold in front [midpoint of edge south, midpoint of edge north] }")
+      ]
+      $ \(turn, after') -> case square ["step { " <> turn <> "; " <> after' <> " }"] of
+        Left err@(StepRefused 1 _ _ (MoveAfterPresentation written)) -> do
+          written `shouldBe` turn
+          refusalKindOf err `shouldBe` Nothing
+        other -> expectationFailure (T.unpack (turn <> "; " <> after') <> ": expected MoveAfterPresentation, got " <> either (T.unpack . explain) (const "a run") other)
+
+  -- The crane's source makes its first three steps, two pairs of
+  -- pre-creases and a turn-over, and is refused at the fourth, a macro move,
+  -- as it was before either refusal existed. Red if either refused a pair.
+  it "still runs the traditional crane to its fourth step" $
+    case parseSequence "examples/traditional-crane.foldseq" craneSource >>= checkSequence >>= runSequence defaultRunSettings M.empty . elaborate of
+      Left (StepRefused 4 (Just (Name "square-base")) _ (MoveNotRunYet "a macro move")) -> pure ()
+      other -> expectationFailure ("expected the crane refused at step 4 as a macro move, got " <> either (T.unpack . explain) (const "a run") other)
 
 -- A pre-crease (#496, owner decision 14): the paper folded along a line,
 -- checked over the whole path, and laid flat again, in one move and one
