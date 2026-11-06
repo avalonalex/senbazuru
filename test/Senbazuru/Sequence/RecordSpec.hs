@@ -11,22 +11,26 @@
 -- take the run's own records, and hold each sense to the way its own checked
 -- turn moved the paper. So do the tests of a surface as the reader sees it
 -- ('displayedFrame'), which hold each record's surfaces, under the record's
--- own displays, to the states the run writes on either side of its step.
+-- own displays, to the states the run writes on either side of its step,
+-- and the tests of the line a turn-over or a rotate turned about
+-- ('presentationAxis'), which hold it to the presentations the run recorded.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
 import Control.Monad (forM_)
 import Data.List (sort, sortOn, zip5)
 import Data.Map.Strict qualified as M
+import Data.Text (Text)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..))
-import Senbazuru.Geometry.Rigid (applyRigid, identity)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, rotationAboutDegrees)
+import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, flapAt)
 import Senbazuru.Origami.Surface
-import Senbazuru.Sequence.Build (at, behind, fold, header, inFront, move, rotate, sequenceOf, sheetFile, sheetSquare, step_, turnOver)
+import Senbazuru.Sequence.Build (Build, at, behind, fold, header, inFront, move, rotate, sequenceOf, sheetFile, sheetSquare, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate
 import Senbazuru.Sequence.Error (SequenceError)
@@ -214,6 +218,45 @@ spec = describe "a move record" $ do
         `shouldBe` map (verticesCoords . stateFrame) (take 5 states)
       [(recordStep r, Just (verticesCoords (displayedFrame (recordAfter r) (displayAfter r)))) | r <- runRecords run]
         `shouldBe` [(recordStep r, M.lookup (recordStep r) byStep) | r <- runRecords run]
+
+  -- 06 §2's turn-over and rotate row: a page draws a turn-over's loop on the
+  -- line the turn was about, and a rotate's mark at its middle, from the
+  -- record alone. Each case turns the presentation before by the amount
+  -- written, about the record's line, and must land exactly on the
+  -- presentation after, which the runner computed by its own route.
+  describe "the line a presentation turns about" $ do
+    -- The quarter fold re-anchors onto (1/4, 1/4) at step 2, a quarter lying
+    -- face down, so the model as folded from it is placed by a half turn
+    -- about x = 1/2: its middle as folded is (1/4, 1/4), and as shown
+    -- (3/4, 1/4), half a sheet away. Red if the line ran through the middle
+    -- as folded, or the direction were not the one the move names.
+    it "runs through the middle of the model as shown, after re-anchoring, for a turn-over and a rotate" $ do
+      forM_ [(turnOver LeftRight, V3 0 1 0), (rotate 2 Anticlockwise, V3 0 0 1)] $ \(turn, along) -> do
+        run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) (reanchoredQuarter "A quarter fold, presented" (step_ "Present it." turn)))
+        case [r | r <- runRecords run, recordStep r == 3] of
+          [presenting] -> do
+            presentationAxis presenting `shouldBe` Just (V3 0.75 0.25 0, along)
+            turnedAbout presenting `shouldBe` Just (snd (recordPresentation presenting))
+          found -> expectationFailure ("expected one record at step 3, got " <> show (length found))
+
+    -- After an eighth, a turn-over top to bottom and three eighths back, so
+    -- each presentation but the first starts from one already turned, by an
+    -- odd eighth whose entries are rounded. Red if a clockwise rotate's line
+    -- pointed away from the reader while its amount stayed negative.
+    it "turns each presentation before onto the one after, by the amount written" $ do
+      run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
+      let presentings = [r | r <- runRecords run, Presentation _ <- [recordKind r]]
+      map recordKind presentings `shouldBe` [Presentation (Rotated 1 Anticlockwise), Presentation (TurnedOver TopBottom), Presentation (Rotated 3 Clockwise)]
+      [turnedAbout r | r <- presentings] `shouldBe` [Just (snd (recordPresentation r)) | r <- presentings]
+
+    -- Red if a fold, a pre-crease, an unfold or an anchor gave a line.
+    it "gives no line for a move that is not a change of presentation" $ do
+      run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
+      blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
+      crane <- right (runOn M.empty openingWithAMountain)
+      let others = [r | each <- [run, blintzRun, crane], r <- runRecords each, not (isPresentation (recordKind r))]
+      length others `shouldBe` 2 + 5 + 4
+      map presentationAxis others `shouldBe` map (const Nothing) others
   where
     -- The fixture's corners, in the order both blintzes fold them; the
     -- creases that cut each one off (edges 8 to 11 of
@@ -261,12 +304,38 @@ openingWithAMountain = sequenceOf (header "A square" sheetSquare Nothing) $ do
 -- half turn about x = 1/2; then turned on the page by an eighth, over top to
 -- bottom, and back by three eighths.
 oddEighths :: Sequence
-oddEighths = sequenceOf (header "A quarter fold, turned on the page" (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (3 / 4)))) $ do
-  step_ "Fold the left half behind." (fold behind (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
-  step_ "Fold the top half down in front." (fold inFront (LineOnto (EdgeOf North) (EdgeOf South) Nothing))
+oddEighths = reanchoredQuarter "A quarter fold, turned on the page" $ do
   step_ "Turn the model an eighth." (rotate 1 Anticlockwise)
   step_ "Turn the model over." (turnOver TopBottom)
   step_ "Turn it back three eighths." (rotate 3 Clockwise)
+
+-- | The quarter fold anchored at (3/4, 3/4), so that its second fold turns
+-- the anchor's quarter and the run re-anchors onto (1/4, 1/4), placing the
+-- model by a half turn about x = 1/2; then the steps given.
+reanchoredQuarter :: Text -> Build () -> Sequence
+reanchoredQuarter title rest = sequenceOf (header title (sheetFile "examples/quarter-fold-steps.fold") (Just (at (3 / 4) (3 / 4)))) $ do
+  step_ "Fold the left half behind." (fold behind (LineOnto (EdgeOf West) (EdgeOf East) Nothing))
+  step_ "Fold the top half down in front." (fold inFront (LineOnto (EdgeOf North) (EdgeOf South) Nothing))
+  rest
+
+-- | A change of presentation's record, its presentation before turned by
+-- the amount the author wrote about the record's line: 180° for a
+-- turn-over, and 45° for each eighth, anticlockwise positive, as the reader
+-- sees it. 'Nothing' for a record with no line.
+turnedAbout :: MoveRecord -> Maybe Rigid
+turnedAbout record = case (recordKind record, presentationAxis record) of
+  (Presentation turn, Just (point, along)) -> Just (rotationAboutDegrees point along (written turn) `Rigid.after` fst (recordPresentation record))
+  _ -> Nothing
+  where
+    written = \case
+      TurnedOver _ -> 180
+      Rotated k Anticlockwise -> 45 * fromIntegral k
+      Rotated k Clockwise -> -45 * fromIntegral k
+
+isPresentation :: MoveKind -> Bool
+isPresentation = \case
+  Presentation _ -> True
+  _ -> False
 
 -- | Which way a record's own checked turn carried the paper, as the reader
 -- sees it: the total change in z, under the record's display before, of the

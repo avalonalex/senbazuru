@@ -121,7 +121,10 @@
 -- now sees the model, which seen from the coloured side is clockwise. The
 -- placement and presentation together, the /display/, decide the /reader's
 -- side/, which @valley@ and @mountain@ are read from, and the states a run
--- writes are displayed.
+-- writes are displayed. The turns themselves, 'turnOverAbout' and
+-- 'eighthTurnsAbout', are "Senbazuru.Sequence.Record"'s, so that a page
+-- drawing a turn finds the line the run turned about by the same rule
+-- ('presentationAxis'); this module exports 'turnOverAbout' on as well.
 --
 -- == How a sheet becomes a starting state
 --
@@ -176,7 +179,7 @@ module Senbazuru.Sequence.Run
     defaultRunSettings,
     runSequence,
 
-    -- * The turn a turn-over makes
+    -- * The turn a turn-over makes, from "Senbazuru.Sequence.Record"
     turnOverAbout,
   )
 where
@@ -199,7 +202,7 @@ import Senbazuru.Fold.Query (FrameKind (..), atRest, edgeKey, frameKind, frameVe
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), boxFromPoints)
 import Senbazuru.Geometry.Polygon (distanceToSegment, edges, insideRing, largestLowestLeftmost, pointsInside, signedArea)
-import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear, rotationAboutDegrees)
+import Senbazuru.Geometry.Rigid (Rigid, applyRigid, identity, matApply, rigidLinear)
 import Senbazuru.Geometry.Rigid qualified as Rigid
 import Senbazuru.Geometry.V3 (V3 (..), hasRelief, modelSpan, zSpan)
 import Senbazuru.Geometry.VectorSpace
@@ -261,50 +264,6 @@ frontOf state = case matApply (rigidLinear (displayOf state)) (V3 0 0 1) of
 -- | How the paper as folded is shown: placed, then presented.
 displayOf :: FoldState -> Rigid
 displayOf state = thePresentation state `Rigid.after` thePlacement state
-
--- | A turn-over about the model's own middle (decisions D5): a half turn
--- about the line through the middle ('middleOf') along y for left-right,
--- which maps (x, y, z) to (2cx - x, y, 2cz - z), and along x for top-bottom,
--- which maps it to (x, 2cy - y, 2cz - z). About the middle, so the model
--- stays where it is on the page; about the origin it would be carried off
--- it. At 180° 'rotationAboutDegrees' takes the cosine and sine as -1 and 0,
--- so the turn's entries are 0, 1 and -1, which a 'Double' holds exactly:
--- applying it multiplies nothing inexactly, and only the additions round.
-turnOverAbout :: PageAxis -> [V3] -> Rigid
-turnOverAbout axis points = rotationAboutDegrees (middleOf points) hinge 180
-  where
-    hinge = case axis of
-      LeftRight -> V3 0 1 0
-      TopBottom -> V3 1 0 0
-
--- | A turn on the page about the model's own middle (decisions D5), by
--- eighths of a turn, anticlockwise as the reader sees it when positive:
--- about the line parallel to +z through (cx, cy), so the side shown stays
--- the side shown. A quarter turn anticlockwise, two eighths, maps (x, y) to
--- (cx + cy - y, cy - cx + x).
---
--- It is 'rotationAboutDegrees' about that line, by 45° for each eighth, so
--- its cosine and sine take nothing from the platform's trigonometry: for a
--- whole number of quarter turns 0, 1 and -1, which a 'Double' holds exactly,
--- and for an odd number of eighths ±√½ as @sqrt 0.5@, which IEEE 754
--- requires to be correctly rounded (owner decision 10). 'cos' and 'sin' are
--- not used even there, since they disagree with each other at π/4: with GHC
--- 9.6.7 on macOS, @cos (pi / 4)@ is 0.7071067811865476 and @sin (pi / 4)@
--- is 0.7071067811865475, so a turn built from them would not even be
--- symmetric. An odd eighth's √½ is rounded, so its products are too, and a
--- turn there and back lands within rounding of where it began, which need not
--- be exactly.
-eighthTurnsAbout :: Int -> [V3] -> Rigid
-eighthTurnsAbout eighths points = rotationAboutDegrees (middleOf points) (V3 0 0 1) (45 * fromIntegral eighths)
-
--- | The middle of the points: (cx, cy) the centre of their xy box and cz the
--- middle of their z range.
-middleOf :: [V3] -> V3
-middleOf points = V3 (mid v3x) (mid v3y) (mid v3z)
-  where
-    mid along = case map along points of
-      [] -> 0
-      values -> (minimum values + maximum values) / 2
 
 -- | Where a surface's vertices are, as folded.
 surfacePositions :: Surface V2 -> [V3]
