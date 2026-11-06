@@ -51,9 +51,10 @@
 --   faces lies on top by whether each face's normal points up, along +z, and
 --   it solves for contact along +z; a model turned over for the page flips
 --   every normal, so every above-and-below would be read the wrong way round.
--- * __One numbering.__ Both surfaces number faces and edges alike, so the ids
---   in 'recordHinge', 'recordMoving' and 'recordStationary' mean the same
---   paper in either. A turn about a hinge never cuts the paper, so it never
+-- * __One numbering.__ Both surfaces number faces and edges alike, and so
+--   does a pre-crease's folded pose ('recordFoldedPose'), so the ids in
+--   'recordHinge', 'recordMoving' and 'recordStationary' mean the same paper
+--   in each. A turn about a hinge never cuts the paper, so it never
 --   renumbers it.
 -- * __Nothing stored twice.__ What the surfaces already hold is read from them:
 --   the layer orders, and the crease angles ('recordAngles').
@@ -68,7 +69,10 @@
 -- describes the record's own move. The same reasoning made
 -- 'Senbazuru.Sequence.Check.Checked' opaque. The two other makers,
 -- 'presented' and 'anchoring', take a single surface for both, so they pair
--- nothing, and their evidence says that no paper moved.
+-- nothing, and their evidence says that no paper moved. 'asPrecrease' makes
+-- a pre-crease's record from its fold's, and moves no surface in from
+-- outside: the fold's after becomes the folded pose, and its before the
+-- after too.
 --
 -- Two parts are the runner's word, not the turn's: the hinge as stretches on
 -- the sheet, and the seed. A turn does not say how its hinge edges group into
@@ -87,7 +91,9 @@
 -- * the stacking chosen, with layer-selective folds; and the macro bindings,
 --   with macro moves;
 -- * a pose part-way along the move (@recordPoseAt@ in the design), with its
---   first reader, the material study's grips or the animated export;
+--   first reader, the material study's grips or the animated export. A
+--   pre-crease's end, the one pose a page needs that neither surface holds,
+--   does not wait for it: the record keeps that surface ('recordFoldedPose');
 -- * the evidence for a state with no route, or a sampled macro move.
 --
 -- Four of the sketch's fields change. Its @recordLabel@, the step's caption
@@ -160,6 +166,7 @@ module Senbazuru.Sequence.Record
     recordOrigin,
     recordBefore,
     recordAfter,
+    recordFoldedPose,
     recordEvidence,
     recordHinge,
     recordNewCreases,
@@ -219,6 +226,7 @@ import Data.Aeson.KeyMap qualified as KM
 import Data.IntMap.Strict qualified as IM
 import Data.List (sort, sortOn)
 import Data.Map.Strict qualified as M
+import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Explain (Explain (..), decimal, tshow)
@@ -277,6 +285,7 @@ data MoveRecord = MoveRecord
     theOrigin :: !Origin,
     theBefore :: !(Surface V2),
     theAfter :: !(Surface V2),
+    theFoldedPose :: !(Maybe (Surface V2)),
     theEvidence :: !RouteEvidence,
     theHinge :: ![(MaterialSegment, [EdgeId])],
     theNewCreases :: ![(MaterialSegment, [EdgeId], Assignment)],
@@ -313,8 +322,9 @@ data MoveKind
   | -- | A pre-crease (owner decision 14): the paper is folded along a line
     -- and laid flat again, so it ends where it began, creased along the
     -- line. Its record keeps the fold's evidence, which was checked over its
-    -- whole path. The kind carries no sense, since a crease it draws has
-    -- none; the sense the author wrote is the record's 'recordSense'.
+    -- whole path, and the surface the fold reached ('recordFoldedPose'). The
+    -- kind carries no sense, since a crease it draws has none; the sense the
+    -- author wrote is the record's 'recordSense'.
     Precrease
   | -- | A change of presentation (decisions D5): the whole model is shown
     -- turned, and no paper moves. Its two surfaces are one; its presentation
@@ -396,6 +406,21 @@ recordBefore = theBefore
 -- paper with the new creases, lying at rest, and numbered afresh.
 recordAfter :: MoveRecord -> Surface V2
 recordAfter = theAfter
+
+-- | A pre-crease's folded pose: the surface its fold reached before the
+-- paper was laid flat again, numbered as 'recordBefore' and unpresented as
+-- both are. 'Nothing' for every other move: a turn's end is its
+-- 'recordAfter', and a change of presentation or an @anchor@ folds nothing.
+--
+-- A pre-crease's 'recordAfter' is its 'recordBefore', so this is the one
+-- place its fold's end can be read, which a page needs for the pre-crease's
+-- fold arrow and its unfold arrow, both drawn under 'displayBefore'
+-- (PRDs\/06-prd-step-diagrams.md, R-06-16). It is the surface the fold's
+-- own record was made with, kept, so a reader takes it without folding the
+-- pattern again and without a 'FlapError' to handle, as rebuilding it from
+-- the record's 'SweptHinge' evidence with 'flapAt' would bring.
+recordFoldedPose :: MoveRecord -> Maybe (Surface V2)
+recordFoldedPose = theFoldedPose
 
 -- | How the move is known to be possible.
 recordEvidence :: MoveRecord -> RouteEvidence
@@ -657,6 +682,7 @@ hingeTurn step move name caption origin hinge newCreases anchor shown placed see
         theOrigin = origin,
         theBefore = before,
         theAfter = after,
+        theFoldedPose = Nothing,
         theEvidence = SweptHinge turn,
         theHinge = hinge,
         theNewCreases = newCreases,
@@ -673,10 +699,21 @@ hingeTurn step move name caption origin hinge newCreases anchor shown placed see
 
 -- | A pre-crease's record from its fold's (owner decision 14): the fold was
 -- checked over its whole path, and the paper is laid flat again, so the
--- record ends where it began and keeps the fold's evidence. Its new creases
--- were drawn without a direction, as the runner draws a pre-crease's.
+-- record ends where it began and keeps the fold's evidence. The surface the
+-- fold reached, the fold's record's after, is kept as the record's folded
+-- pose ('recordFoldedPose') rather than thrown away. Its new creases were
+-- drawn without a direction, as the runner draws a pre-crease's.
+--
+-- A record made into a pre-crease twice keeps the first fold's pose: by
+-- then its after is its before, and taking that as the pose would lose the
+-- fold.
 asPrecrease :: MoveRecord -> MoveRecord
-asPrecrease record = record {theKind = Precrease, theAfter = theBefore record}
+asPrecrease record =
+  record
+    { theKind = Precrease,
+      theAfter = theBefore record,
+      theFoldedPose = Just (fromMaybe (theAfter record) (theFoldedPose record))
+    }
 
 -- | The record of a change of presentation, a turn-over or a rotate: the
 -- paper as it lies, held still in both surfaces, shown one way before and
@@ -752,6 +789,7 @@ unturned step move name caption origin evidence kind anchor surface shown placed
       theOrigin = origin,
       theBefore = surface,
       theAfter = surface,
+      theFoldedPose = Nothing,
       theEvidence = evidence,
       theHinge = [],
       theNewCreases = [],
