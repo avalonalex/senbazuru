@@ -301,7 +301,6 @@ holdingToTheFigure = describe "a step's moves, held to the step's figure" $ do
     case helmet ["step { " <> diagonal <> "; " <> firstCorner <> " }"] of
       Left err@(StepRefused 1 _ _ (MoveLeavesFigure (V2 x y))) -> do
         norm (V2 x y ^-^ V2 (1 / 6) (1 / 3)) `shouldSatisfy` (< 1e-12)
-        y `shouldSatisfy` (> x)
         refusalKindOf err `shouldBe` Just (RefusalKind "MoveLeavesFigure")
         explain err `shouldSatisfy` T.isInfixOf "start a new step"
       other -> expectationFailure ("expected MoveLeavesFigure at step 1, got " <> either (T.unpack . explain) (const "a run") other)
@@ -327,10 +326,21 @@ holdingToTheFigure = describe "a step's moves, held to the step's figure" $ do
   -- second, turning the diagonal back, moves paper its first, turning the
   -- corner back, has just moved. As the step's second move, after an anchor
   -- that moves no paper, it is compared where the move began, which is the
-  -- figure. Red if each record were compared in its own before.
+  -- figure. The anchor, (1/6, 5/6), is on the half the diagonal laid over, so
+  -- holding it re-anchors and the model is placed afresh inside the step,
+  -- while it stays where it stood on the page. Red if each record were
+  -- compared in its own before, or the paper were compared as folded rather
+  -- than as displayed.
   it "runs an unfold of two steps as a step's second move, though its second record turns paper its first moved" $ do
-    run <- right (helmet ["step s1 { " <> diagonal <> " }", "step s2 { " <> firstCorner <> " }", "step { anchor (3/4, 1/4); unfold s1 s2 }"])
+    run <- right (helmet ["step s1 { " <> diagonal <> " }", "step s2 { " <> firstCorner <> " }", "step { anchor (1/6, 5/6); unfold s1 s2 }"])
     [(recordStep r, recordKind r) | r <- runRecords run] `shouldBe` [(1, Turn), (2, Turn), (3, Anchoring), (3, Turn), (3, Turn)]
+
+  -- The same re-anchoring before a fold: holding (1/6, 5/6) places the
+  -- model afresh, and the corner fold's paper is where the figure shows it
+  -- once both are displayed. Red if the paper were compared as folded.
+  it "runs a fold after an anchor that places the model afresh in the same step" $ do
+    run <- right (helmet ["step s1 { " <> diagonal <> " }", "step { anchor (1/6, 5/6); " <> firstCorner <> " }"])
+    [(recordStep r, recordKind r) | r <- runRecords run] `shouldBe` [(1, Turn), (2, Anchoring), (2, Turn)]
 
   -- Owner decision 78: a step may end with one turn-over or rotate, and go on
   -- after none. Red if the rule were dropped, or were read off the paper,

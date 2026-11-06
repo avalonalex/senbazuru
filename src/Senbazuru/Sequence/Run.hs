@@ -995,7 +995,6 @@ undoOne settings place (state, made) earlier = do
           pure (next, made ++ [refoldsSince state next record])
     _ -> Right (state, made)
 
--- | The record of a checked turn, at this place.
 -- | Whether a record's move turns paper that is not where the step's figure
 -- draws it: the first point of such paper found, in sheet lengths, or
 -- 'Nothing' if all of it is where the figure shows it. A record that turns
@@ -1039,9 +1038,11 @@ leavesFigure figure state surface record = case recordEvidence record of
         _ -> Just (Left "the paper a move turns is in no face of the paper it started from, or of its step's figure")
 
 -- | Where material points lie in a surface, as displayed: placed by the one
--- face that holds the first of them clear of its outline, through the
--- affine map that takes that face's corners on the sheet to where they lie.
--- 'Nothing' if no face holds it, or the face found has no three corners
+-- face that holds the point @p@ clear of its outline, through the affine map
+-- that takes that face's corners on the sheet to where they lie. The points
+-- placed are a face's corners, which lie on outlines and so cannot find a
+-- face themselves; @p@, a point inside the same face, finds it for them.
+-- 'Nothing' if no face holds @p@, or the face found has no three corners
 -- that are not in a line.
 shownAt :: Double -> Rigid -> Surface V2 -> V2 -> [V2] -> Maybe [V3]
 shownAt room display surface p points = case [corners | face <- facesVertices (surfaceFrame surface), let corners = [(m, x) | VertexId v <- face, (m, x) <- take 1 (drop v placed)], insideRing room (map fst corners) p] of
@@ -1064,6 +1065,7 @@ shownAt room display surface p points = case [corners | face <- facesVertices (s
         (area, corner3) | area > 0 -> Just corner3
         _ -> Nothing
 
+-- | The record of a checked turn, at this place.
 recordOf :: Here -> [(MaterialSegment, [EdgeId])] -> [(MaterialSegment, [EdgeId], Assignment)] -> (MaterialPoint, MaterialPoint) -> Rigid -> Rigid -> MaterialPoint -> [ResolvedReference] -> CheckedFlap -> Either FlapError MoveRecord
 recordOf place = hingeTurn (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place)
 
