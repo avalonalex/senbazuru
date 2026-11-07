@@ -18,7 +18,7 @@
 -- hold it to the end of the pre-crease's own checked turn.
 module Senbazuru.Sequence.RecordSpec (spec) where
 
-import Control.Monad (forM_)
+import Control.Monad (forM_, void)
 import Data.List (nub, sort, sortOn, zip5)
 import Data.Map.Strict qualified as M
 import Data.Text (Text)
@@ -32,7 +32,7 @@ import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Geometry.VectorSpace
 import Senbazuru.Origami.Flap (CheckedFlap, flapAt)
 import Senbazuru.Origami.Surface
-import Senbazuru.Sequence.Build (Build, anchor, at, behind, fold, header, inFront, move, rotate, sequenceOf, sheetFile, sheetSquare, step_, turnOver)
+import Senbazuru.Sequence.Build (Build, anchor, at, behind, fold, header, inFront, mark, move, rotate, sequenceOf, sheetFile, sheetSquare, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate
 import Senbazuru.Sequence.Error (SequenceError)
@@ -251,17 +251,17 @@ spec = describe "a move record" $ do
       map recordKind presentings `shouldBe` [Presentation (Rotated 1 Anticlockwise), Presentation (TurnedOver TopBottom), Presentation (Rotated 3 Clockwise)]
       [turnedAbout r | r <- presentings] `shouldBe` [Just (snd (recordPresentation r)) | r <- presentings]
 
-    -- Red if a fold, a pre-crease, an unfold or an anchor gave a line: the
-    -- runs hold each of those kinds, the last from a square anchored afresh
-    -- with @anchor P@.
+    -- Red if a fold, a pre-crease, an unfold, an anchor or a mark gave a
+    -- line: the runs hold each of those kinds, the last two from a square
+    -- anchored afresh with @anchor P@ and then marked.
     it "gives no line for a move that is not a change of presentation" $ do
       run <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
       blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
       crane <- right (runOn M.empty openingWithAMountain)
-      held <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Hold it here." (anchor (at (1 / 4) (1 / 4))))))
+      held <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Hold it here, and mark its centre." (anchor (at (1 / 4) (1 / 4)) >> void (mark "m" Centre Nothing)))))
       let others = [r | each <- [run, blintzRun, crane, held], r <- runRecords each, not (isPresentation (recordKind r))]
-      length others `shouldBe` 2 + 5 + 4 + 1
-      sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Precrease", "Turn"]
+      length others `shouldBe` 2 + 5 + 4 + 2
+      sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Marking (Name \"m\") (MaterialPoint (V2 {v2x = 0.5, v2y = 0.5}))", "Precrease", "Turn"]
       map presentationAxis others `shouldBe` map (const Nothing) others
 
   describe "a pre-crease's folded pose" $ do
@@ -282,24 +282,24 @@ spec = describe "a move record" $ do
       recordAfter record `shouldBe` recordBefore record
 
     -- The crane opening's four pre-creases, two of them after a turn-over,
-    -- and every other kind of record. Red if the pose were rebuilt from
+    -- and every other kind of record, a mark's among them. Red if the pose were rebuilt from
     -- anything but the record's own turn, numbered afresh, or given to a
     -- move that is not a pre-crease.
     it "is the end of the pre-crease's own turn, numbered as its before, and only a pre-crease has one" $ do
       quarter <- right (runOn (M.singleton "examples/quarter-fold-steps.fold" quarterSheet) oddEighths)
       blintzRun <- right (runOn (M.singleton "examples/blintz-base.fold" source) blintz)
       crane <- right (runOn M.empty openingWithAMountain)
-      held <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Hold it here." (anchor (at (1 / 4) (1 / 4))))))
+      held <- right (runOn M.empty (sequenceOf (header "A square" sheetSquare Nothing) (step_ "Hold it here, and mark its centre." (anchor (at (1 / 4) (1 / 4)) >> void (mark "m" Centre Nothing)))))
       let found = [r | each <- [quarter, blintzRun, crane, held], r <- runRecords each]
           precreases = [r | r <- found, recordKind r == Precrease]
           others = [r | r <- found, recordKind r /= Precrease]
-      (length precreases, length others) `shouldBe` (4, 5 + 5 + 1 + 1)
+      (length precreases, length others) `shouldBe` (4, 5 + 5 + 1 + 2)
       forM_ precreases $ \record -> do
         turn <- turnOf record
         pose <- maybe (fail "a pre-crease with no folded pose") pure (recordFoldedPose record)
         Right pose `shouldBe` flapAt turn 1
         facesVertices (surfaceFrame pose) `shouldBe` facesVertices (surfaceFrame (recordBefore record))
-      sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Presentation (Rotated 1 Anticlockwise)", "Presentation (Rotated 3 Clockwise)", "Presentation (TurnedOver LeftRight)", "Presentation (TurnedOver TopBottom)", "Turn"]
+      sort (nub [show (recordKind r) | r <- others]) `shouldBe` ["Anchoring", "Marking (Name \"m\") (MaterialPoint (V2 {v2x = 0.5, v2y = 0.5}))", "Presentation (Rotated 1 Anticlockwise)", "Presentation (Rotated 3 Clockwise)", "Presentation (TurnedOver LeftRight)", "Presentation (TurnedOver TopBottom)", "Turn"]
       map recordFoldedPose others `shouldBe` map (const Nothing) others
 
     -- Red if a second 'asPrecrease' took the paper laid flat as the pose.

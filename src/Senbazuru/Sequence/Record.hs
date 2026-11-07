@@ -269,7 +269,9 @@ data RouteEvidence
     -- paper moved, so there was no path to check.
     Presented
   | -- | No paper moved and nothing was shown differently: @anchor P@, which
-    -- changes only which paper is held still. There was no path to check.
+    -- changes only which paper is held still, or @mark A = P@, which changes
+    -- nothing and names a point of paper ('Marking'). There was no path to
+    -- check. Which of the two a record is, its kind says.
     NoMotion
   deriving stock (Eq, Show)
 

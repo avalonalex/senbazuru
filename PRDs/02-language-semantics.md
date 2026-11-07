@@ -567,7 +567,7 @@ Worked cases [py, checks [B](#check-b), [S](#check-s), [C](#check-c)]:
   corner, an edge's midpoint, `centre`, `(u, v)`, or a point between two of
   them, §4.2) names one material point, and the mark pins it. The resolver
   works each such form out on the sheet
-  ([`Resolve.hs:163-201`](../src/Senbazuru/Sequence/Resolve.hs#L163-L201)), so
+  ([`Resolve.hs:165-203`](../src/Senbazuru/Sequence/Resolve.hs#L165-L203)), so
   it says which paper is meant wherever that paper now lies. A point measured
   where the paper lies now (`meet`, from M4) is only a place, and several
   layers can lie there. It is taken to its folded position and the distinct
@@ -596,11 +596,13 @@ Worked cases [py, checks [B](#check-b), [S](#check-s), [C](#check-c)]:
   [C155](decisions.md#changes-since-draft-v2)): the mark leaves one record of
   kind `Marking`, holding its name and the pinned material point, with
   evidence `NoMotion`. The point must be paper (`OffThePaper` otherwise) and is
-  named on a flat state, as `anchor P` is. Beside a point named on the sheet,
+  named on a flat state, as `anchor P` is. A typed `(u, v)` is read as a
+  position reads it (§4.4): within the sheet's tolerance of a vertex it is
+  that vertex, and a little further off it is a `NearMiss`. Beside a point named on the sheet,
   `in face containing S` has nothing to pick, and is refused as not run yet
   until `meet` gives it something to. `meet`
-  ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174)), and a mark
-  used as a reference ([`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)),
+  ([`Resolve.hs:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)), and a mark
+  used as a reference ([`:178`](../src/Senbazuru/Sequence/Resolve.hs#L178)),
   stay not run yet until M4.
 - **A slot needing a material point, filled by a folded position**
   ([D2](decisions.md#d2-references-named-on-the-sheet-and-resolved-by-slot)).

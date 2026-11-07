@@ -601,7 +601,8 @@ makeMove settings place named figure state surface = \case
   -- @mark A = P@ pins the point of paper P names on the sheet
   -- (PRDs\/02-language-semantics.md, §4.5): one material point, whatever
   -- now lies on it, so nothing is collected. It must be paper, and is named
-  -- on a flat state, as an anchor is. @in face containing S@ picks one of
+  -- on a flat state, as an anchor is; a typed @(u, v)@ near a vertex is read
+  -- as a position reads it ('typedPoint'), the vertex or a near miss. @in face containing S@ picks one of
   -- several layers lying at a point measured where the paper is now, which
   -- only @meet@ names, from milestone M4, so beside a point named on the
   -- sheet it is refused as not run yet rather than checked against the
@@ -611,7 +612,7 @@ makeMove settings place named figure state surface = \case
     (folding, folded) <- first (refusedAt place . FoldingRefused) (foldNow state)
     let naming = resolvingAt place (prettyPoint point)
     flat <- first naming (flatState folded)
-    m <- first naming (materialPoint flat point)
+    m <- first naming (typedPoint (runNearMissBand settings) flat point)
     _ <- first naming (placedAt flat m)
     Right (Made folding [refoldsSince state folding (marking (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) name (MaterialPoint m) (theAnchor state) surface (thePresentation state) (thePlacement state))] [])
   -- A rotate turns the model on the page, the same side up, so the reader's

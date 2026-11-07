@@ -11,7 +11,7 @@ import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
 import Data.Text qualified as T
 import Senbazuru.Explain (explain)
-import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Load (loadFile, loadFoldFile)
 import Senbazuru.Fold.Query (frameVertices)
 import Senbazuru.Fold.Types
 import Senbazuru.Geometry (V2 (..), norm, (^-^))
@@ -449,10 +449,6 @@ precreasing = describe "a pre-crease" $ do
         [a | EdgeId e <- concatMap snd (recordHinge folded), a <- take 1 (drop e (snd (recordAngles folded)))] `shouldSatisfy` (\angles -> not (null angles) && all (== 180) angles)
       other -> expectationFailure ("expected two records, got " <> show (length other))
 
--- A turn-over (#95, decisions D5): the whole model shown from its other side,
--- about an axis through its own middle. No paper moves; the state's
--- presentation changes, and with it the reader's side and the states a run
--- writes.
 -- @mark A = P@ (PRD 02 §4.5) at M3, named by a point the resolver works out on
 -- the sheet: it pins that one point of paper, and moves none.
 marking :: Spec
@@ -477,18 +473,21 @@ marking = describe "mark A = P" $ do
   -- After step quarter the sheet's four corners all lie at (1, 0), folded
   -- onto one another, and corner south-east, vertex 1, is the one of them
   -- that never moved. A point named on the sheet names one point of paper,
-  -- so the mark pins that corner and nothing collects the other three. Red
-  -- if the mark pinned the position, or every point of paper lying there.
+  -- so the mark pins that corner and nothing collects the other three; and
+  -- corner north-west, folded twice to lie there, is pinned as itself, (0,
+  -- 1), not as the spot it lies on. Red if the mark pinned the position, or
+  -- every point of paper lying there.
   it "pins corner south-east's paper after step quarter, though all four corners lie at (1, 0)" $ do
-    run <- right (quarter ["step { mark A = corner south-east }"])
+    run <- right (quarter ["step { mark A = corner south-east; mark B = corner north-west }"])
     case reverse (runRecords run) of
-      r : _ -> do
+      b : r : _ -> do
         recordKind r `shouldBe` Marking (Name "A") (MaterialPoint (V2 1 0))
+        recordKind b `shouldBe` Marking (Name "B") (MaterialPoint (V2 0 1))
         let corners = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
             atCorners = [applyRigid (displayBefore r) (position s) | s <- surfaceSamples (recordBefore r), any (\c -> norm (sampleMaterial s ^-^ c) < 1e-12) corners]
         length atCorners `shouldBe` 4
         atCorners `shouldSatisfy` all (\(V3 x y z) -> abs (x - 1) < 1e-12 && abs y < 1e-12 && abs z < 1e-12)
-      [] -> expectationFailure "expected records"
+      _ -> expectationFailure "expected records"
 
   -- The mark's record holds the paper as the step before left it, held and
   -- shown as it was, with no hinge and no moving paper, and evidence that no
@@ -535,6 +534,29 @@ marking = describe "mark A = P" $ do
       Just (ConstructionInTheAir _) -> pure ()
       other -> expectationFailure ("expected ConstructionInTheAir, got " <> show other)
 
+  -- A typed point is read as a position reads it, so it names the same
+  -- paper in a mark as in a fold: within the sheet's tolerance of a vertex
+  -- it is that vertex, exactly, and a little further off it is a near miss,
+  -- the vertex almost certainly meant. Red if a mark took a typed point as
+  -- written.
+  it "reads a typed point near a vertex as a position does" $ do
+    snapped <- right (quarter ["step { mark A = (1, 1/10000000000000) }"])
+    map recordKind (drop 2 (runRecords snapped)) `shouldBe` [Marking (Name "A") (MaterialPoint (V2 1 0))]
+    case resolving (quarter ["step { mark A = (1, 1/2000) }"]) of
+      Just (NearMiss _ vertex at' apart) -> (vertex, at', abs (apart - 5e-4) < 1e-12) `shouldBe` (1, V2 1 0, True)
+      other -> expectationFailure ("expected a near miss, got " <> show other)
+
+  -- The record keeps the point where it lay in the file's own units, and the
+  -- report gives it in sheet lengths, the author's: on the 400-unit square of
+  -- bird-base.cp, centred on the origin, corner south-east is (200, -200) in
+  -- the file and (1, 0) on the sheet. Red if either were written in the
+  -- other's units.
+  it "keeps the point in the file's units and reports it in sheet lengths" $ do
+    birdSheet <- loadFile "examples/bird-base.cp" >>= right
+    run <- right (parseSequence "bird.foldseq" (T.unlines ["foldseq 1", "title \"A bird base\"", "sheet \"examples/bird-base.cp\"", "step { mark A = corner south-east }"]) >>= checkSequence >>= runSequence defaultRunSettings (M.singleton "examples/bird-base.cp" birdSheet) . elaborate)
+    map recordKind (runRecords run) `shouldBe` [Marking (Name "A") (MaterialPoint (V2 200 (-200)))]
+    renderRunReport run `shouldContain` ["  mark A: the paper at (1, 0)"]
+
   -- What waits for milestone M4: a point measured where the paper is now,
   -- meet, which can find several layers; in face containing S, which picks
   -- one of them and has nothing to pick beside a point named on the sheet;
@@ -543,6 +565,11 @@ marking = describe "mark A = P" $ do
     resolving (quarter ["step { mark A = meet edge east edge south }"]) `shouldBe` Just (NotRunYet "\"meet L1 L2\", which is measured where the paper is now,")
     refusal (quarter ["step { mark A = corner south-east in face containing (3/4, 1/4) }"]) `shouldBe` Just (MoveNotRunYet "\"in face containing\", which picks one of the layers at a point measured where the paper is now,")
     resolving (quarter ["step { mark A = corner south-east; mark B = A }"]) `shouldBe` Just (NotRunYet "the mark A")
+
+-- A turn-over (#95, decisions D5): the whole model shown from its other side,
+-- about an axis through its own middle. No paper moves; the state's
+-- presentation changes, and with it the reader's side and the states a run
+-- writes.
 
 turningOver :: Spec
 turningOver = describe "a turn-over" $ do

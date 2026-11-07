@@ -1981,7 +1981,8 @@ quarter fold `mark A = corner south-east` names that corner, not the three
 folded onto it. A mark moves no paper. A step holding only a mark writes a
 state, the state before it again, and the report gives the point in sheet
 lengths, `mark A: the paper at (1, 0)`. A point off the paper is refused as
-`OffThePaper`. A point measured where the paper lies now, `meet`, and
+`OffThePaper`, and a typed `(u, v)` near a vertex is the vertex or a near
+miss, as it is in a fold. A point measured where the paper lies now, `meet`, and
 `in face containing S`, which picks one of the layers lying there, are
 refused as not run yet until milestone M4, as is a mark used as a point. No
 page labels a mark yet.

@@ -57,6 +57,7 @@ module Senbazuru.Sequence.Resolve
 
     -- * Points
     materialPoint,
+    typedPoint,
     positionOf,
     placedAt,
     toSheetLengths,
@@ -203,15 +204,22 @@ materialPoint st = \case
 
 -- | Where the point is now: the position slot. The point must lie on paper,
 -- and every face whose outline holds it must fold it to one place. A typed
--- @(u, v)@ near a vertex, within @band@ sheet lengths and not within the
--- sheet's tolerance, is a near miss; within the tolerance it is the vertex.
+-- @(u, v)@ is read as 'typedPoint' reads it.
 positionOf :: Double -> FlatState -> Point -> Either ResolveProblem V2
-positionOf band st point = do
+positionOf band st point = typedPoint band st point >>= placedAt st
+
+-- | The material point a point names, with a typed @(u, v)@ read as an author
+-- means it: near a vertex, within @band@ sheet lengths and not within the
+-- sheet's tolerance, it is a near miss; within the tolerance it is the
+-- vertex, exactly. Every other form is 'materialPoint'. A position reads its
+-- point this way, and so does a @mark@, so that one typed point names the
+-- same paper in both.
+typedPoint :: Double -> FlatState -> Point -> Either ResolveProblem V2
+typedPoint band st point = do
   m <- materialPoint st point
-  m' <- case point of
+  case point of
     AtSheet u v -> literal (u, v) m
     _ -> Right m
-  placedAt st m'
   where
     literal written m = case [(norm (p ^-^ m), i, p) | (i, p) <- IM.toList (flatMaterial st)] of
       [] -> Right m
