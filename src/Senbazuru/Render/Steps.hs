@@ -44,17 +44,33 @@
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
 -- each figure, from whoever knows it ('stepFigures'). A note says three
--- things so far: whether to infer arrows to the next figure, which fold-here
--- lines to draw on it, and what caption to print under it.
+-- things so far: which arrows the figure carries, inferred to the next
+-- figure or given, which fold-here lines to draw on it, and what caption to
+-- print under it.
 --
 -- == Kinds as the page sees them
 --
--- A fold-here line, the dashed line a book draws where the paper is about to
--- fold, comes with its kind, valley or mountain, stated as the move was
--- written: from the reader's side. A valley fold seen from behind the paper is
--- a mountain fold, so a page that shows the opposite side swaps the two
--- before drawing ('asSeen'); an unfold is an unfold from either side, and a
--- page seen edge on draws the kind as stated.
+-- An arrow or a fold-here line, the dashed line a book draws where the paper
+-- is about to fold, can come with its kind, valley, mountain or unfold,
+-- stated as the move was written: from the reader's side. A valley fold seen
+-- from behind the paper is a mountain fold, so a page that shows the
+-- opposite side swaps the two before drawing ('asSeen'), in an arrow's head
+-- and a line's dash alike; an unfold is an unfold from either side.
+--
+-- An arrow inferred from two frames alone ('InferArrows') states no kind,
+-- and keeps the solid head from every side. The frames say where paper went,
+-- not whether it was folded towards the reader, and pages drawn from below
+-- with such arrows already exist and must not change.
+--
+-- A page seen edge on, looking along the paper's plane, shows neither side,
+-- so it draws each kind as stated and puts an eye over every figure's step
+-- number to say so ('edgeOnMark'). Every figure, because a mark on one alone
+-- would read as that figure's own view; and only when some figure draws a
+-- valley or a mountain, the kinds whose look depends on the side, so a page
+-- of inferred arrows, as every @render --steps@ page is, gets none. Edge on
+-- is a fact about the camera alone, its line of sight lying exactly in the
+-- plane ("Senbazuru.Render.Camera", @seenFrom@): a model standing in the air
+-- seen from the front is edge on too, and a camera tilted by a hair is not.
 --
 -- The kind is never read off the crease a line lies along. In
 -- @examples/quarter-fold-steps.fold@ the second fold is one valley fold seen
@@ -119,15 +135,16 @@ where
 
 import Data.Bifunctor (first)
 import Data.Text (Text)
-import Senbazuru.Diagram (Diagram)
+import Senbazuru.Diagram (Diagram (..), Glyph (..), Shape (..), solid)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
-import Senbazuru.Diagram.Style (ArrowKind (..), Theme)
+import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..))
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
+import Senbazuru.Geometry (Box (..), V2 (..))
 import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Origami.Stacking (Budget)
-import Senbazuru.Origami.Step (motionsBetween)
+import Senbazuru.Origami.Step (Motion (..), motionsBetween)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, seenFrom)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
@@ -135,6 +152,7 @@ import Senbazuru.Render.CreasePattern
     defaultNotationFor,
     withArrows,
     withFoldLines,
+    withKindedArrows,
   )
 
 -- | Something wrong with one frame of a sequence, and which frame it was.
@@ -179,8 +197,19 @@ data StepNote = StepNote
 -- | Which arrows a figure carries.
 data Arrows
   = -- | The ones 'motionsBetween' finds from this figure's frame to the next
-    -- figure's, as @render --steps --arrows@ draws them.
+    -- figure's, as @render --steps --arrows@ draws them. They state no kind,
+    -- so each has the solid head from either side of the paper.
     InferArrows
+  | -- | The same arrows, each of this kind as the move was written, from the
+    -- reader's side, and drawn as the page sees it ('asSeen'). None on the
+    -- last figure, as for 'InferArrows': there is no next frame to infer from.
+    InferArrowsAs !ArrowKind
+  | -- | These, each a kind as the move was written and its two ends, in the
+    -- frame's own coordinates, drawn as the page sees each kind. Drawn on the
+    -- figure whichever place it has, the last included, since nothing is
+    -- inferred, and projected as an inferred arrow between the same two
+    -- points is, so the two differ at most in their heads.
+    GivenArrows ![(ArrowKind, V3, V3)]
   | -- | None.
     NoArrows
   deriving stock (Eq, Show)
@@ -247,9 +276,14 @@ stepFigures theme budget view notes = do
   -- Numbered by their place in the sequence too, so "the next step" skips
   -- over a metadata-only key frame rather than tripping on it.
   let order = [fr | (_, fr, _, _) <- resolved]
-  traverse (figure basis order) (zip [0 ..] resolved)
+  let side = seenFrom basis
+      -- Seen edge on, every figure says so, when any figure draws a kind
+      -- that depends on the side the page shows: one figure marked alone
+      -- would read as that figure's own view.
+      marked = side == EdgeOn && or [statesSidedKind note (position + 1 < length order) | (position, (_, _, note, _)) <- zip [0 :: Int ..] resolved]
+  traverse (figure basis side marked order) (zip [0 ..] resolved)
   where
-    figure basis order (position, (i, fr, note, verts)) = do
+    figure basis side marked order (position, (i, fr, note, verts)) = do
       paper <-
         first
           (StepError i)
@@ -258,15 +292,59 @@ stepFigures theme budget view notes = do
       let lined = case noteFoldLines note of
             NoFoldLines -> paper
             GivenFoldLines foldLines ->
-              withFoldLines theme basis [(asSeen (seenFrom basis) kind, a, b) | (kind, a, b) <- foldLines] paper
-      drawn <- case (noteArrows note, drop (position + 1) order) of
-        -- The last figure of a sequence is the finished model, and a book draws
-        -- no arrow on it, whatever its note asks for.
+              withFoldLines theme basis [(asSeen side kind, a, b) | (kind, a, b) <- foldLines] paper
+      arrowed <- case (noteArrows note, drop (position + 1) order) of
         (InferArrows, next : _) -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withArrows theme basis motions lined)
-        _ -> pure lined
+        (InferArrowsAs kind, next : _) -> do
+          motions <- first (StepError i) (motionsBetween fr next)
+          pure (withKindedArrows theme basis [(asSeen side kind, motionFrom m, motionTo m) | m <- motions] lined)
+        (GivenArrows arrows, _) ->
+          pure (withKindedArrows theme basis [(asSeen side kind, a, b) | (kind, a, b) <- arrows] lined)
+        -- The last figure of a sequence is the finished model, and a book draws
+        -- no arrow on it, whatever its note asks it to infer.
+        (InferArrows, []) -> pure lined
+        (InferArrowsAs _, []) -> pure lined
+        (NoArrows, _) -> pure lined
+      let drawn
+            | marked = arrowed {diagramShapes = diagramShapes arrowed <> [edgeOnMark theme paper]}
+            | otherwise = arrowed
       pure (drawn, noteCaption note)
+
+-- | Whether a note draws a kind whose look depends on the side the page
+-- shows: a valley or a mountain, stated in its arrows or its fold-here lines.
+-- An unfold looks the same from either side, so it does not count, nor does
+-- an empty list, nor arrows inferred on the last figure, which draws none.
+statesSidedKind :: StepNote -> Bool -> Bool
+statesSidedKind note hasNext = arrows || foldLines
+  where
+    sided kind = kind /= UnfoldArrow
+    arrows = case noteArrows note of
+      InferArrowsAs kind -> hasNext && sided kind
+      GivenArrows given -> any (\(kind, _, _) -> sided kind) given
+      InferArrows -> False
+      NoArrows -> False
+    foldLines = case noteFoldLines note of
+      GivenFoldLines given -> any (\(kind, _, _) -> sided kind) given
+      NoFoldLines -> False
+
+-- | The eye that marks a figure seen edge on, centred above the figure's step
+-- number. "Senbazuru.Diagram.Layout" puts the number's baseline at the
+-- figure's top-left corner, a little below it when the page has any height,
+-- so the eye stands at that corner and is moved up the page in page units:
+-- half its size to the right, over the number, and 1.7 of its size up, clear
+-- of the number's glyph. Moved by an 'Offset' rather than placed in model
+-- units because a figure seen edge on has no height to place it in, and
+-- because the number it sits over is a fixed size in print. It is the step
+-- number's own size, @themeLabelSize@, until the theme has a glyph size of
+-- its own (S29), and drawn at a crease's weight.
+edgeOnMark :: Theme -> Diagram -> Shape
+edgeOnMark theme paper =
+  Offset (V2 (0.5 * size) (-1.7 * size)) (Symbol (solid (themeInk theme) (themeCreaseWidth theme)) size (V2 left top) EdgeOnMark)
+  where
+    size = themeLabelSize theme
+    Box (V2 left _) (V2 _ top) = diagramExtent paper
 
 -- | A kind stated from the reader's side, as a page showing this side sees
 -- it: valley and mountain swapped from the opposite side, as the module

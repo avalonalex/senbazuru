@@ -14,17 +14,19 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Senbazuru.Diagram
 import Senbazuru.Diagram.Layout (defaultGrid)
+import Senbazuru.Diagram.Page (FittedPage (..), Height (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Layering (..), Notation (..), Theme (..), arrowFor, defaultTheme, withKind)
 import Senbazuru.Fold.Load (decodeFile, decodeFoldFile, encodeFoldFile, renderLoadError)
 import Senbazuru.Fold.Query (renderFoldError)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..), allFrames, soleFrame)
 import Senbazuru.Geometry
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Folding (foldFrame)
 import Senbazuru.Origami.Stacking (defaultBudget, layerOrderFor)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis, bottomUp, defaultView, frontOn, isometric, sideOn, topDown)
+import Senbazuru.Render.Camera (Basis, View (..), bottomUp, defaultView, frontOn, isometric, sideOn, topDown)
 import Senbazuru.Render.CreasePattern (creasePatternFrom, withArrows)
-import Senbazuru.Render.Steps (stepPage)
+import Senbazuru.Render.Steps (Arrows (..), FoldLines (..), noteArrows, noteCaption, noteFoldLines, silentNote, stepFigures, stepPage)
 import Senbazuru.Render.Svg
 import Test.Golden (goldenText)
 import Test.Hspec
@@ -138,6 +140,12 @@ loopPage :: Page -> Double -> V2 -> Text
 loopPage page size axis =
   renderSvg page (diagramWithExtent (Box (V2 0 0) (V2 size size)) [Symbol (solid (Colour "#1a1a1a") 1.8) 40 (V2 (0.5 * size) (0.5 * size)) (TurnOverLoop axis)])
 
+-- | A page holding one edge-on mark of the given size in page units, at the
+-- middle of a square model of the given size.
+eyePage :: Double -> Double -> Text
+eyePage model size =
+  renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 model model)) [Symbol (solid (Colour "#1a1a1a") 1) size (V2 (0.5 * model) (0.5 * model)) EdgeOnMark])
+
 -- | Each path's points, as its @d@ attribute lists them, letters dropped.
 pathPointsOf :: Text -> [[V2]]
 pathPointsOf out = [pairs (numbers l) | l <- T.lines out, "<path" `T.isInfixOf` l]
@@ -179,6 +187,29 @@ renderSteps path = do
     Left err -> fail ("step page failed: " <> show err)
     Right Nothing -> fail "nothing to lay out"
     Right (Just d) -> pure (renderSvg testPage {pageWidth = 400} d)
+
+-- | The quarter fold's three frames with the notes a run of
+-- test/fixtures/quarter-fold.foldseq would give them, drawn through this
+-- camera and fitted to a 400-wide page with their captions under them, as a
+-- run's page is fitted (06's quarter-fold-steps-noted goldens). The first fold
+-- is written behind, a mountain, and the second in front, a valley; each
+-- figure carries its fold's arrow of that kind and its fold-here line, where
+-- the paper is before the fold, and the last figure the source's closing
+-- words. The captions are the source's own; the file's frame titles are not
+-- drawn, as nothing in "Senbazuru.Render.Steps" reads them.
+renderNoted :: Basis -> IO Text
+renderNoted basis = do
+  f <- decodedFixture "test/fixtures/quarter-fold-steps.fold"
+  let noted arrows foldLines caption = silentNote {noteArrows = arrows, noteFoldLines = foldLines, noteCaption = Just caption}
+      notes =
+        [ noted (InferArrowsAs MountainArrow) (GivenFoldLines [(MountainArrow, V3 0.5 0 0, V3 0.5 1 0)]) "Fold the left half behind, onto the right.",
+          noted (InferArrowsAs ValleyArrow) (GivenFoldLines [(ValleyArrow, V3 0.5 0.5 0, V3 1 0.5 0)]) "Fold the top half down in front, onto the bottom.",
+          noted NoArrows NoFoldLines "Folded into quarters."
+        ]
+  figures <- either (fail . show) pure (stepFigures defaultTheme defaultBudget (View (Just basis) 0) (zip (allFrames f) notes))
+  either (fail . show) pure (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit testPage {pageWidth = 400} figures) >>= \case
+    Just fitted -> pure (renderSvg (fittedPage fitted) (fittedDiagram fitted))
+    Nothing -> fail "nothing to lay out"
 
 -- | XML 1.0's Char production, restated here from the specification rather
 -- than imported, so a test of the writer does not take the writer's word for
@@ -459,6 +490,23 @@ spec = do
       forM_ [V2 0 1, V2 1 1, V2 0.3 0.7] $ \axis ->
         (axis, loopPage testPage 400 axis, loopPage testPage 400 (400 *^ axis)) `shouldBe` (axis, loopPage testPage 1 axis, loopPage testPage 1 axis)
 
+    -- 06's A4 for the edge-on mark: the same whole page at model sizes 1
+    -- and 400. Red if the eye were sized or placed through the page's scale.
+    it "draws an edge-on mark the same on the page however big the model is" $
+      eyePage 400 14 `shouldBe` eyePage 1 14
+
+    -- The eye as drawn: on testPage a unit square fills the 180-unit content
+    -- box from (10, 10), so the model's middle is (100, 100). The eye's
+    -- corners are half its size either side of it, each lid's control point
+    -- 0.56 of its size above or below, and its pupil's radius 0.13 of it. A
+    -- size that is not a length draws nothing, as for the loop.
+    it "draws the edge-on mark as an eye around its point, and nothing at a size that is not a length" $ do
+      let page = eyePage 1 14
+      pathPointsOf page `shouldBe` [[V2 93 100, V2 100 107.84, V2 107 100, V2 100 92.16, V2 93 100]]
+      T.isInfixOf "<circle cx=\"100\" cy=\"100\" r=\"1.82\" fill=\"#1a1a1a\"/>" page `shouldBe` True
+      forM_ [0, -1, 0 / 0, 1 / 0] $ \size ->
+        (show size, T.count "<path" (eyePage 1 size) + T.count "<circle" (eyePage 1 size)) `shouldBe` (show size, 0)
+
     -- The loop lies across its axis as the page shows it. TurnOverLoop (V2 1 1)
     -- names an axis running up and to the right, y up as the model's is, so
     -- the loop rises up and to the right of its point and the stem runs on
@@ -705,6 +753,21 @@ spec = do
     it "renders a whole folding sequence as one numbered page" $
       renderSteps "test/fixtures/quarter-fold-steps.fold"
         >>= goldenText "test/golden/quarter-fold-steps.svg"
+
+    -- Stated kinds, drawn as seen (06 R-06-9, A6). From above, figure 1's
+    -- mountain fold has the hollow half head and the mountain dash, figure
+    -- 2's valley the solid head and the valley dash, and the captions sit
+    -- under their figures. Red if a stated mountain drew a solid head, or a
+    -- line took its crease's letter.
+    it "renders the quarter fold with its folds' kinds and captions, from above" $
+      renderNoted topDown >>= goldenText "test/golden/quarter-fold-steps-noted.svg"
+
+    -- The same notes seen from below: the page shows the paper's other side,
+    -- so figure 1's mountain is drawn as a valley, solid head and valley
+    -- dash, and figure 2's valley as a mountain, while the captions read as
+    -- written. Red if heads or dashes were not swapped, or a caption was.
+    it "renders the same notes from below, valley and mountain swapped" $
+      renderNoted bottomUp >>= goldenText "test/golden/quarter-fold-steps-noted-bottom.svg"
 
     -- The bird base's sixteen states, with the arrow inferred between each
     -- pair. No other golden draws this file with arrows. A pair moved by one

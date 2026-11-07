@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="221.15" viewBox="0 0 400 221.15">
+  <title>fixture</title>
+  <rect x="0" y="0" width="400" height="221.15" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 128.75 128.75 L 128.75 69.375 L 69.375 69.375 L 69.375 128.75 Z M 128.75 10 L 69.375 10 L 69.375 69.375 L 128.75 69.375 Z M 10 10 L 10 69.375 L 69.375 69.375 L 69.375 10 Z M 10 128.75 L 69.375 128.75 L 69.375 69.375 L 10 69.375 Z" fill="#faf8f3"/>
+    <path d="M 69.375 69.375 L 69.375 128.75" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 69.375 69.375 L 128.75 69.375" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 69.375 69.375 L 69.375 10" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 69.375 69.375 L 10 69.375" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 10 128.75 L 69.375 128.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 69.375 128.75 L 128.75 128.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 128.75 128.75 L 128.75 69.375" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 128.75 69.375 L 128.75 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 128.75 10 L 69.375 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 69.375 10 L 10 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 10 10 L 10 69.375" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 10 69.375 L 10 128.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 69.375 128.75 L 69.375 10" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="9 3 1.2 3 1.2 3"/>
+    <path d="M 39.688 69.375 Q 69.375 54.531 89.224 64.456" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 89.224 64.456 L 99.062 69.375 L 91.192 60.52 Z" stroke="#1a1a1a" stroke-width="1.8"/>
+    <text x="10" y="24.25" font-size="14" font-family="sans-serif" fill="#1a1a1a">1</text>
+    <text x="10" y="146.75" font-size="14" font-family="sans-serif" fill="#1a1a1a">Fold the left</text>
+    <text x="10" y="163.55" font-size="14" font-family="sans-serif" fill="#1a1a1a">half behind,</text>
+    <text x="10" y="180.35" font-size="14" font-family="sans-serif" fill="#1a1a1a">onto the right.</text>
+    <path d="M 170.312 128.75 L 229.688 128.75 L 229.688 69.375 L 170.312 69.375 Z M 170.312 10 L 170.312 69.375 L 229.688 69.375 L 229.688 10 Z" fill="#faf8f3"/>
+    <path d="M 170.312 10 L 170.312 128.75" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 170.312 69.375 L 229.688 69.375" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 229.688 128.75 L 170.312 128.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 229.688 128.75 L 229.688 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 229.688 10 L 170.312 10" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 170.312 69.375 L 229.688 69.375" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 200 39.688 Q 214.844 69.375 204.919 89.224" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 200 99.062 L 200.984 87.256 L 208.855 91.192 Z" fill="#1a1a1a"/>
+    <text x="170.312" y="24.25" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
+    <text x="140.625" y="146.75" font-size="14" font-family="sans-serif" fill="#1a1a1a">Fold the top</text>
+    <text x="140.625" y="163.55" font-size="14" font-family="sans-serif" fill="#1a1a1a">half down in</text>
+    <text x="140.625" y="180.35" font-size="14" font-family="sans-serif" fill="#1a1a1a">front, onto the</text>
+    <text x="140.625" y="197.15" font-size="14" font-family="sans-serif" fill="#1a1a1a">bottom.</text>
+    <path d="M 300.938 39.688 L 300.938 99.062 L 360.312 99.062 L 360.312 39.688 Z" fill="#faf8f3"/>
+    <path d="M 300.938 39.688 L 300.938 99.062" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 300.938 39.688 L 360.312 39.688" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 360.312 99.062 L 300.938 99.062" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 360.312 99.062 L 360.312 39.688" stroke="#1a1a1a" stroke-width="1.6"/>
+    <text x="300.938" y="53.938" font-size="14" font-family="sans-serif" fill="#1a1a1a">3</text>
+    <text x="271.25" y="146.75" font-size="14" font-family="sans-serif" fill="#1a1a1a">Folded into</text>
+    <text x="271.25" y="163.55" font-size="14" font-family="sans-serif" fill="#1a1a1a">quarters.</text>
+  </g>
+</svg>

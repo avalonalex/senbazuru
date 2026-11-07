@@ -287,6 +287,30 @@ shapeToSvg toPage (Symbol st size anchor (TurnOverLoop axis))
     travel = perpendicular along
     point u w = pointText (at ^+^ ((size * u) *^ travel) ^+^ ((size * w) *^ along))
     pointText (V2 x y) = formatNumber x <> " " <> formatNumber y
+-- The eye: an almond of two quadratic curves meeting at the corners of the
+-- eye, and a filled pupil. Its corners are half its size either side of the
+-- point, and each lid's control point stands 0.56 of its size off, so the lid
+-- bows 0.28 of it, half as far as its control point does; the pupil's radius
+-- is 0.13 of it. Drawn on the page around the point, as the loop is, so it is
+-- the same size in print whatever the model measures, and the same way up on
+-- every page, since it is symmetric about both of its axes.
+shapeToSvg toPage (Symbol st size anchor EdgeOnMark)
+  | isNaN size || isInfinite size || size <= 0 = mempty
+  | otherwise =
+      "    <path"
+        <> attr "d" ("M " <> point (-0.5) 0 <> " Q " <> point 0 0.56 <> " " <> point 0.5 0 <> " Q " <> point 0 (-0.56) <> " " <> point (-0.5) 0 <> " Z")
+        <> attr "stroke" (colourText (strokeColour st))
+        <> attrNum "stroke-width" (strokeWidth st)
+        <> "/>\n"
+        <> "    <circle"
+        <> attrNum "cx" cx
+        <> attrNum "cy" cy
+        <> attrNum "r" (0.13 * size)
+        <> attr "fill" (colourText (strokeColour st))
+        <> "/>\n"
+  where
+    V2 cx cy = applyTransform toPage anchor
+    point u w = formatNumber (cx + size * u) <> " " <> formatNumber (cy + size * w)
 shapeToSvg toPage (Fill colour rings) = filledPath colour ((< 0) . signedArea) (applyTransform toPage) rings
 shapeToSvg toPage (Polyline stroke pts) = strokedPath stroke (applyTransform toPage) pts
 -- Each point through the transform its own displacement moves, as an Offset
