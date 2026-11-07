@@ -58,6 +58,7 @@ module Senbazuru.Sequence.Resolve
     -- * Points
     materialPoint,
     positionOf,
+    placedAt,
     toSheetLengths,
 
     -- * Fold lines and hinges

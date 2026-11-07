@@ -22,7 +22,7 @@ import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Flap (FlapError (..), flapCheck)
 import Senbazuru.Origami.HingeSweep (SweepCheck (..), SweepOutcome (..), SweepSettings (..))
 import Senbazuru.Origami.Step (motionsBetween, wholeModelMotion)
-import Senbazuru.Origami.Surface (SurfaceError (..), surfaceFrame)
+import Senbazuru.Origami.Surface (Sample (..), SurfaceError (..), surfaceFrame, surfaceSamples)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
@@ -46,6 +46,7 @@ spec = do
   creasing
   precreasing
   holdingToTheFigure
+  marking
   turningOver
   rotating
   reanchoring
@@ -158,7 +159,7 @@ running = describe "running a sequence" $ do
         other -> expectationFailure ("expected edge south refused as lying across the fold, got " <> show other)
 
     it "a move it does not make yet, by name" $
-      refusal (runOn (oneStep (void (mark "m" centre Nothing)))) `shouldBe` Just (MoveNotRunYet "\"mark\"")
+      refusal (runOn (sequenceOf (header "t" (sheetFile "examples/blintz-base.fold") (Just centre)) (step "s" "s" (fold behind (LineOnto (edge West) (edge East) Nothing)) >>= \s -> step_ "again" (repeatSteps s Nothing Nothing)))) `shouldBe` Just (MoveNotRunYet "\"repeat\"")
   where
     coords (V3 x y z) = [x, y, z]
     coords2 (V2 x y) = [x, y]
@@ -452,6 +453,97 @@ precreasing = describe "a pre-crease" $ do
 -- about an axis through its own middle. No paper moves; the state's
 -- presentation changes, and with it the reader's side and the states a run
 -- writes.
+-- @mark A = P@ (PRD 02 §4.5) at M3, named by a point the resolver works out on
+-- the sheet: it pins that one point of paper, and moves none.
+marking :: Spec
+marking = describe "mark A = P" $ do
+  quarterSheet <- runIO (loadFoldFile "examples/quarter-fold-steps.fold" >>= right)
+  blintzSheet <- runIO (loadFoldFile "examples/blintz-base.fold" >>= right)
+  let sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet)]
+      runText lines' = parseSequence "mark.foldseq" (T.unlines lines') >>= checkSequence >>= runSequence defaultRunSettings sheets . elaborate
+      quarter more = quarter' (["step half { fold mountain edge west to edge east }", "step quarter { fold valley edge north to edge south }"] ++ more)
+      quarter' more = runText (["foldseq 1", "title \"A square folded into quarters\"", "sheet \"examples/quarter-fold-steps.fold\"", "anchor (3/4, 1/4)"] ++ more)
+      blintz' more = runText (["foldseq 1", "title \"A blintz\"", "sheet \"examples/blintz-base.fold\"", "anchor centre"] ++ more)
+      square more = runText (["foldseq 1", "title \"A square\"", "sheet square", "anchor (1/4, 1/4)"] ++ more)
+      kinds = map (\r -> (recordStep r, recordKind r)) . runRecords
+      framesOf run = map stateFrame <$> writtenStates run
+      refusal = \case
+        Left (StepRefused _ _ _ failure) -> Just failure
+        _ -> Nothing
+      resolving = \case
+        Left (ResolveRefused _ _ _ problem) -> Just problem
+        _ -> Nothing
+
+  -- After step quarter the sheet's four corners all lie at (1, 0), folded
+  -- onto one another, and corner south-east, vertex 1, is the one of them
+  -- that never moved. A point named on the sheet names one point of paper,
+  -- so the mark pins that corner and nothing collects the other three. Red
+  -- if the mark pinned the position, or every point of paper lying there.
+  it "pins corner south-east's paper after step quarter, though all four corners lie at (1, 0)" $ do
+    run <- right (quarter ["step { mark A = corner south-east }"])
+    case reverse (runRecords run) of
+      r : _ -> do
+        recordKind r `shouldBe` Marking (Name "A") (MaterialPoint (V2 1 0))
+        let corners = [V2 0 0, V2 1 0, V2 1 1, V2 0 1]
+            atCorners = [applyRigid (displayBefore r) (position s) | s <- surfaceSamples (recordBefore r), any (\c -> norm (sampleMaterial s ^-^ c) < 1e-12) corners]
+        length atCorners `shouldBe` 4
+        atCorners `shouldSatisfy` all (\(V3 x y z) -> abs (x - 1) < 1e-12 && abs y < 1e-12 && abs z < 1e-12)
+      [] -> expectationFailure "expected records"
+
+  -- The mark's record holds the paper as the step before left it, held and
+  -- shown as it was, with no hinge and no moving paper, and evidence that no
+  -- paper moved. A step holding only the mark writes a state, the state
+  -- before it again, whose assurance is the mark's NoMotion, as a step
+  -- holding only anchor P does; the report says what the mark pinned. Red if
+  -- the mark made no record, moved the anchor, the placement or the
+  -- presentation, or wrote no state.
+  it "moves no paper, keeps its record's paper as it was, and writes a state" $ do
+    run <- right (quarter ["step { mark A = corner south-east }"])
+    case reverse (runRecords run) of
+      r : previous : _ -> do
+        (recordStep r, recordEvidence r, recordHinge r, recordMoving r) `shouldBe` (3, NoMotion, [], [])
+        (recordBefore r, recordAfter r) `shouldBe` (recordAfter previous, recordAfter previous)
+        recordAnchor r `shouldBe` (snd (recordAnchor previous), snd (recordAnchor previous))
+        recordPlacement r `shouldBe` (snd (recordPlacement previous), snd (recordPlacement previous))
+        recordPresentation r `shouldBe` (snd (recordPresentation previous), snd (recordPresentation previous))
+        recordCost r `shouldBe` StepCost 0 0
+      _ -> expectationFailure "expected records"
+    frames <- right (framesOf run)
+    case reverse frames of
+      marked : quartered' : _ -> do
+        (length frames, verticesCoords marked, facesVertices marked) `shouldBe` (4, verticesCoords quartered', facesVertices quartered')
+        KM.lookup "senbazuru:assurance" (frameExtras marked) `shouldBe` Just (toJSON [object ["move" .= (1 :: Int), "evidence" .= ("NoMotion" :: T.Text)]])
+      _ -> expectationFailure "expected written states"
+    renderRunReport run `shouldContain` ["step 3, move 1: mark A = corner south-east", "  nothing turned: no paper moved", "  mark A: the paper at (1, 0)", "  work: 0 sweep intervals, 0 refolds"]
+
+  -- A mark after a fold in one step moves no paper, so the step's figure
+  -- still shows everything; an unfold of the step turns back its fold and
+  -- passes over the mark, and hinge of the step is its fold's, since the
+  -- mark turned no paper about a hinge. Red if a mark counted as a hinge.
+  it "runs after a fold in one step, and leaves the step one hinge to unfold or fold along" $ do
+    run <- right (blintz' ["step one { fold valley corner south-west to centre; mark m = corner south-west }", "step { unfold one }"])
+    kinds run `shouldBe` [(1, Turn), (1, Marking (Name "m") (MaterialPoint (V2 0 0))), (2, Turn)]
+    along <- right (square ["step half { fold valley [midpoint of edge west, midpoint of edge east] moving corner north-east; mark m = centre }", "step { unfold half }", "step { fold mountain hinge of half moving corner north-east }"])
+    map snd (kinds along) `shouldBe` [Turn, Marking (Name "m") (MaterialPoint (V2 0.5 0.5)), Turn, Turn]
+
+  -- A point that is not paper names nothing to pin, and paper is named only
+  -- lying flat, as an anchor is. Red if the mark were made wherever the
+  -- point fell, or on paper standing in the air.
+  it "refuses a point off the paper, and paper standing in the air" $ do
+    resolving (square ["step { mark A = (5/4, 1/2) }"]) `shouldBe` Just (OffThePaper (V2 1.25 0.5))
+    case resolving (quarter' ["step { fold mountain 90° edge west to edge east }", "step { mark A = corner south-east }"]) of
+      Just (ConstructionInTheAir _) -> pure ()
+      other -> expectationFailure ("expected ConstructionInTheAir, got " <> show other)
+
+  -- What waits for milestone M4: a point measured where the paper is now,
+  -- meet, which can find several layers; in face containing S, which picks
+  -- one of them and has nothing to pick beside a point named on the sheet;
+  -- and a mark used as a point.
+  it "refuses what waits for M4 as not run yet" $ do
+    resolving (quarter ["step { mark A = meet edge east edge south }"]) `shouldBe` Just (NotRunYet "\"meet L1 L2\", which is measured where the paper is now,")
+    refusal (quarter ["step { mark A = corner south-east in face containing (3/4, 1/4) }"]) `shouldBe` Just (MoveNotRunYet "\"in face containing\", which picks one of the layers at a point measured where the paper is now,")
+    resolving (quarter ["step { mark A = corner south-east; mark B = A }"]) `shouldBe` Just (NotRunYet "the mark A")
+
 turningOver :: Spec
 turningOver = describe "a turn-over" $ do
   let runOn sequence' = checkSequence sequence' >>= runSequence defaultRunSettings M.empty . elaborate

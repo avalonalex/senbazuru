@@ -6,9 +6,10 @@
 -- record/ (see docs/glossary.md, "Fold sequences"); only @let@, @not
 -- modelled@ and @expect refused@ leave none. So far a record holds a turn
 -- about a hinge, a pre-crease, which is such a turn checked and laid flat
--- again, a change of presentation, which moves no paper, or an @anchor P@,
--- which moves none either and holds other paper still ('MoveKind'); the
--- section \"What is not here yet\" says what the other moves will bring. Three
+-- again, a change of presentation, which moves no paper, an @anchor P@,
+-- which moves none either and holds other paper still, or a @mark@, which
+-- moves none and names a point of paper ('MoveKind'); the section \"What is
+-- not here yet\" says what the other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
 -- page of steps, which draws one arrow for each move; the material study,
 -- which settles a move's paper as a sheet that bends; and the animated export.
@@ -67,12 +68,12 @@
 -- and the face held still from that one turn. So no record can pair the paper
 -- before one fold with the paper after another, and every record's evidence
 -- describes the record's own move. The same reasoning made
--- 'Senbazuru.Sequence.Check.Checked' opaque. The two other makers,
--- 'presented' and 'anchoring', take a single surface for both, so they pair
--- nothing, and their evidence says that no paper moved. 'asPrecrease' makes
--- a pre-crease's record from its fold's, and moves no surface in from
--- outside: the fold's after becomes the folded pose, and its before the
--- after too.
+-- 'Senbazuru.Sequence.Check.Checked' opaque. The three other makers,
+-- 'presented', 'anchoring' and 'marking', take a single surface for both, so
+-- they pair nothing, and their evidence says that no paper moved.
+-- 'asPrecrease' makes a pre-crease's record from its fold's, and moves no
+-- surface in from outside: the fold's after becomes the folded pose, and its
+-- before the after too.
 --
 -- Two parts are the runner's word, not the turn's: the hinge as stretches on
 -- the sheet, and the seed. A turn does not say how its hinge edges group into
@@ -202,6 +203,7 @@ module Senbazuru.Sequence.Record
     asPrecrease,
     presented,
     anchoring,
+    marking,
     addRefolds,
 
     -- * A run
@@ -335,6 +337,14 @@ data MoveKind
     -- one, held from the new anchor's face as a re-anchoring move's are
     -- ('recordPlacement').
     Anchoring
+  | -- | @mark A = P@ (PRDs\/02-language-semantics.md, §4.5): the name, and
+    -- the point of paper it pins, which a page labels wherever that paper
+    -- shows. No paper moves, and nothing is held differently. The point is
+    -- kept here, beside its name, rather than in the record's evidence,
+    -- which is 'NoMotion' as an @anchor P@'s is: evidence says how a move is
+    -- known to be possible, and a kind says what the move was, as
+    -- 'Presentation' carries the turn written.
+    Marking Name MaterialPoint
   deriving stock (Eq, Show)
 
 -- | Which turn a change of presentation was, as written. Kept because the
@@ -775,10 +785,43 @@ anchoring ::
 anchoring step move name caption origin anchor surface shown =
   unturned step move name caption origin NoMotion Anchoring anchor surface (shown, shown)
 
+-- | The record of @mark A = P@: the paper as it lies, held still in both
+-- surfaces, shown as it was, with the name and the point of paper it pins in
+-- its kind ('Marking'). No paper moved and no other paper is held still, so
+-- its evidence is 'NoMotion', as an @anchor P@'s is, it has no hinge and no
+-- moving paper, the anchor is the one before it, and the face it holds still
+-- is the anchor's.
+marking ::
+  -- | The step's number, from 1.
+  Int ->
+  -- | The move's place in its step, from 1.
+  Int ->
+  -- | The step's name, if it has one.
+  Maybe Name ->
+  -- | The step's caption, if it has one.
+  Maybe Text ->
+  -- | The move as written.
+  Origin ->
+  -- | The mark's name.
+  Name ->
+  -- | The point of paper it pins.
+  MaterialPoint ->
+  -- | The anchor, which a mark does not move.
+  MaterialPoint ->
+  -- | The paper as it lies.
+  Surface V2 ->
+  -- | How it is shown.
+  Rigid ->
+  -- | Where the anchor's face is placed.
+  Rigid ->
+  MoveRecord
+marking step move name caption origin mark pinned anchor surface shown =
+  unturned step move name caption origin NoMotion (Marking mark pinned) (anchor, anchor) surface (shown, shown)
+
 -- | A record of a move that turns no paper: one surface before and after, no
--- hinge, no moving paper, and the anchor's face held still. 'presented' and
--- 'anchoring' are this, each with its own evidence and kind, and each
--- changing only its own pair.
+-- hinge, no moving paper, and the anchor's face held still. 'presented',
+-- 'anchoring' and 'marking' are this, each with its own evidence and kind,
+-- and each changing only its own pair, if any.
 unturned :: Int -> Int -> Maybe Name -> Maybe Text -> Origin -> RouteEvidence -> MoveKind -> (MaterialPoint, MaterialPoint) -> Surface V2 -> (Rigid, Rigid) -> Rigid -> MoveRecord
 unturned step move name caption origin evidence kind anchor surface shown placed =
   MoveRecord
@@ -1020,6 +1063,7 @@ renderRunReport run = concatMap entry (sortOn place entries) ++ stopped
         ++ map resolvedFact (recordResolved r)
         ++ map newCrease (recordNewCreases r)
         ++ ["laid flat again: the paper ends where it began" | recordKind r == Precrease]
+        ++ ["mark " <> mark <> ": the paper at " <> point (sheetLengths p) | Marking (Name mark) (MaterialPoint p) <- [recordKind r]]
         ++ [ "anchor moved: " <> point (sheetLengths a) <> " to " <> point (sheetLengths b) <> why
              | let (MaterialPoint a, MaterialPoint b) = recordAnchor r,
                a /= b,

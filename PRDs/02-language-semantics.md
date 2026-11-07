@@ -591,10 +591,14 @@ Worked cases [py, checks [B](#check-b), [S](#check-s), [C](#check-c)]:
   M3 runs `mark` with the point forms the resolver already evaluates on the
   sheet ([owner decision 75](decisions.md#9-owner-decisions)), so at M3
   `mark A = corner south-east` pins vertex 1, corner south-east, and
-  `MarkOnSeveralLayers` has no case. Until S20
-  ([#640](https://github.com/avalonalex/senbazuru/issues/640)) the runner
-  refuses `mark` as not run yet
-  ([`Run.hs:584`](../src/Senbazuru/Sequence/Run.hs#L584)). `meet`
+  `MarkOnSeveralLayers` has no case. The runner has done so since S20
+  ([#640](https://github.com/avalonalex/senbazuru/issues/640),
+  [C155](decisions.md#changes-since-draft-v2)): the mark leaves one record of
+  kind `Marking`, holding its name and the pinned material point, with
+  evidence `NoMotion`. The point must be paper (`OffThePaper` otherwise) and is
+  named on a flat state, as `anchor P` is. Beside a point named on the sheet,
+  `in face containing S` has nothing to pick, and is refused as not run yet
+  until `meet` gives it something to. `meet`
   ([`Resolve.hs:174`](../src/Senbazuru/Sequence/Resolve.hs#L174)), and a mark
   used as a reference ([`:176`](../src/Senbazuru/Sequence/Resolve.hs#L176)),
   stay not run yet until M4.
