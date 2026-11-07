@@ -1898,8 +1898,12 @@ stack run -- run blintz.foldseq > blintz.fold
 
   The page draws the paper, the figure numbers and the captions, and nothing
   else yet. Not drawn so far:
-  - [fold arrows](glossary.md#origami); fold-here lines, the dashed line on
-    the figure before a fold showing where it falls; the arrows of a
+  - [fold arrows](glossary.md#origami);
+    [fold-here lines](glossary.md#origami), the dashed line on the figure
+    before a fold showing where it falls, which the library can draw from a
+    step note but which does not read where it lies along a crease: over a
+    folded figure's crease, drawn solid, its dash vanishes, and over a crease
+    of the other kind the two dashes blend; the arrows of a
     [pre-crease](glossary.md#origami); the loop and the mark a book draws for
     turning the model over or round, a change of
     [presentation](glossary.md#fold-sequences); and the labels of points a
