@@ -57,7 +57,7 @@ import Senbazuru.Render.Svg (Page (..), defaultPage, escapeXml, renderSvg)
 import Senbazuru.Sequence.Check (checkSequence, checkedSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Parse (parseSequence)
-import Senbazuru.Sequence.Record (MoveRecord, RouteEvidence (..), Run (..), recordAfter, recordBefore, recordCaption, recordEvidence)
+import Senbazuru.Sequence.Record (MoveKind (..), MoveRecord, RouteEvidence (..), Run (..), recordAfter, recordBefore, recordCaption, recordEvidence, recordKind)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence)
 import Senbazuru.Sequence.Syntax (SourceFile (..), sourceFiles)
 import System.Directory (copyFile, createDirectoryIfMissing)
@@ -122,12 +122,15 @@ pageStates gallery run = do
 
 -- | Each record's turn, which the page draws part-way through. Every kind of
 -- evidence is named, so that one added to 'RouteEvidence' is a warning here
--- rather than a turn the page silently cannot draw.
+-- rather than a turn the page silently cannot draw. An @anchor P@ and a
+-- @mark@ share 'NoMotion', so the record's kind tells them apart.
 turnOf :: MoveRecord -> Either Text CheckedFlap
 turnOf record = case recordEvidence record of
   SweptHinge turn -> Right turn
   Presented -> Left "a move that turns the model over or round, which a gallery's page does not draw"
-  NoMotion -> Left "a move that names an anchor, which a gallery's page does not draw"
+  NoMotion -> Left $ case recordKind record of
+    Marking {} -> "a move that marks a point of paper, which a gallery's page does not draw"
+    _ -> "a move that names an anchor, which a gallery's page does not draw"
 
 -- | The page's figures as one FOLD file, a frame each, titled as on the page.
 pageFile :: Gallery -> [(Text, Surface V2)] -> FoldFile

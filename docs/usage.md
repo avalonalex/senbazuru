@@ -1974,6 +1974,19 @@ move after one in the same step is refused as `MoveAfterPresentation`. Either
 way the message ends "start a new step for this move". A fold then a turn-over
 is one step; a turn-over then a fold is two.
 
+`mark A = P` names the point of paper P names on the sheet, for a page to
+label: a corner, an edge's midpoint, `centre`, `(u, v)` or a point between two
+of these. Each is one point of paper wherever it now lies, so after the
+quarter fold `mark A = corner south-east` names that corner, not the three
+folded onto it. A mark moves no paper. A step holding only a mark writes a
+state, the state before it again, and the report gives the point in sheet
+lengths, `mark A: the paper at (1, 0)`. A point off the paper is refused as
+`OffThePaper`, and a typed `(u, v)` near a vertex is the vertex or a near
+miss, as it is in a fold. A point measured where the paper lies now, `meet`, and
+`in face containing S`, which picks one of the layers lying there, are
+refused as not run yet until milestone M4, as is a mark used as a point. No
+page labels a mark yet.
+
 The flag rules and every line `run` prints are functions of
 `Senbazuru.Sequence.RunPlan`, tested there, since the command line is not.
 

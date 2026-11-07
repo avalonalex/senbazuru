@@ -18,9 +18,10 @@
 -- flat again, which leaves its crease and one record; @unfold@; @turn over@,
 -- which moves no paper and shows the model from its other side; @rotate@ by
 -- eighths of a turn, which turns the model on the page, the same side up;
--- @anchor P@, which holds other paper still from then on and moves none; and
--- @expect refused@. Every other move is refused as not run yet, naming itself,
--- rather than skipped.
+-- @anchor P@, which holds other paper still from then on and moves none;
+-- @mark A = P@, which pins the point of paper P names on the sheet and moves
+-- none; and @expect refused@. Every other move is refused as not run yet,
+-- naming itself, rather than skipped.
 --
 -- An @expect refused K { move }@ runs its move against the current state and
 -- requires a refusal of kind K ('Senbazuru.Sequence.Error.refusalKindOf'). It
@@ -77,8 +78,9 @@
 --
 -- Refused as not run yet: a new crease on folded paper, which creases through
 -- its layers (milestone M4); @L1 to L2@ between lines other than an edge
--- and @[P, Q]@; layer words; and every move but @fold@, @pre-crease@,
--- @unfold@, @turn over@, @rotate@ and @anchor@, @mark@ among them.
+-- and @[P, Q]@; layer words; a @mark@'s @in face containing@, which only a
+-- point measured where the paper is now needs; and every move but @fold@,
+-- @pre-crease@, @unfold@, @turn over@, @rotate@, @anchor@ and @mark@.
 --
 -- A re-anchoring onto a face that does not lie flat is refused as
 -- @ReanchorNotFlat@ (PRDs\/02-language-semantics.md, §2.3), since then no
@@ -211,7 +213,7 @@ import Data.IntMap.Strict qualified as IM
 import Data.List (maximumBy, nub, sort, sortOn)
 import Data.Map.Strict (Map)
 import Data.Map.Strict qualified as M
-import Data.Maybe (fromMaybe, listToMaybe)
+import Data.Maybe (fromMaybe, isJust, listToMaybe)
 import Data.Ord (comparing)
 import Data.Set qualified as S
 import Data.Text (Text)
@@ -596,6 +598,23 @@ makeMove settings place named figure state surface = \case
     (anchored, refolded, _) <- reanchorAt place folding folded face m
     held <- first (refusedAt place . JoinBroken . ("the re-anchored paper makes no surface: " <>) . explain) (surfaceFromFolded refolded)
     Right (Made anchored [refoldsSince state anchored (anchoring (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) (theAnchor state, theAnchor anchored) held (thePresentation anchored) (thePlacement anchored))] [])
+  -- @mark A = P@ pins the point of paper P names on the sheet
+  -- (PRDs\/02-language-semantics.md, §4.5): one material point, whatever
+  -- now lies on it, so nothing is collected. It must be paper, and is named
+  -- on a flat state, as an anchor is; a typed @(u, v)@ near a vertex is read
+  -- as a position reads it ('typedPoint'), the vertex or a near miss. @in face containing S@ picks one of
+  -- several layers lying at a point measured where the paper is now, which
+  -- only @meet@ names, from milestone M4, so beside a point named on the
+  -- sheet it is refused as not run yet rather than checked against the
+  -- point it could only agree with. No paper moves.
+  CoreMark name point face -> do
+    when (isJust face) (Left (refusedAt place (MoveNotRunYet "\"in face containing\", which picks one of the layers at a point measured where the paper is now,")))
+    (folding, folded) <- first (refusedAt place . FoldingRefused) (foldNow state)
+    let naming = resolvingAt place (prettyPoint point)
+    flat <- first naming (flatState folded)
+    m <- first naming (typedPoint (runNearMissBand settings) flat point)
+    _ <- first naming (placedAt flat m)
+    Right (Made folding [refoldsSince state folding (marking (placeStep place) (placeMove place) (placeName place) (placeCaption place) (placeOrigin place) name (MaterialPoint m) (theAnchor state) surface (thePresentation state) (thePlacement state))] [])
   -- A rotate turns the model on the page, the same side up, so the reader's
   -- side stays, by eighths of a turn (owner decision 10).
   CoreRotate eighths turning -> present (Rotated eighths turning) (eighthTurnsAbout ((case turning of Anticlockwise -> 1; Clockwise -> -1) * eighths))
@@ -628,6 +647,7 @@ foldMove settings place named arriving kind sense amount line layers seed = do
         Precrease -> True
         Presentation _ -> False
         Anchoring -> False
+        Marking {} -> False
   foldAt <- first (resolvingAt place (prettyLine line)) (foldLine (runNearMissBand settings) hingeNamed seen line)
   let towardIn st = case sense of
         ValleyFold -> frontOf st
