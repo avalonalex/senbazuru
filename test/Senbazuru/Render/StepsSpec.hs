@@ -266,34 +266,36 @@ foldHere = describe "fold-here lines" $ do
     (added, _) <- drawnLines (View (Just frontOn) 0) [(ValleyArrow, V3 0 0 0, V3 1 1 0)]
     added `shouldBe` [Polyline valleyDash [V2 0 0, V2 1 0]]
 
-  -- An unfold turns paper back along a crease it has, so it gets no line;
-  -- a line whose ends land on one point of the page, as one standing
-  -- straight up does seen from above, has no direction to draw.
-  it "draws nothing for an unfold, or for a line seen end on" $ do
-    (added, _) <- drawnLines top [(UnfoldArrow, V3 0 0 0, V3 1 1 0), (ValleyArrow, V3 0 0 0, V3 0 0 1)]
+  -- An unfold turns paper back along a crease it has, so it gets no line,
+  -- from either side: red if the page turned an unfold into a valley or a
+  -- mountain when it swaps the two. A line whose ends land on one point of
+  -- the page, as one standing straight up does seen from above, has no
+  -- direction to draw.
+  it "draws nothing for an unfold from either side, or for a line seen end on" $ do
+    forM_ [top, View (Just bottomUp) 0] $ \view -> do
+      (added, _) <- drawnLines view [(UnfoldArrow, V3 0 0 0, V3 1 1 0)]
+      added `shouldBe` []
+    (added, _) <- drawnLines top [(ValleyArrow, V3 0 0 0, V3 0 0 1)]
     added `shouldBe` []
 
   -- On the quarter fold's first figure, the line along the fold it is about
   -- to make, x = 1/2, comes after the paper and before the inferred arrow,
   -- so the arrow is painted over it. Given lines are drawn on the last
-  -- figure too, which carries no inferred arrow: nothing is inferred.
+  -- figure too, which carries no inferred arrow: nothing is inferred. The
+  -- line is matched by its points as well as its stroke, since the figure's
+  -- own valley creases are drawn with the same stroke elsewhere.
   it "paints a line before the figure's arrow, and draws given lines on the last figure" $ do
     (a, b, _) <- quarterThree
     let along = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]
+        line = Polyline valleyDash [V2 0.5 0, V2 0.5 1]
     figures <- right (stepFigures defaultTheme defaultBudget top [(a, inferNote {noteFoldLines = along}), (b, silentNote {noteFoldLines = along})])
-    [map kindOf (lastShapes 2 d) | (d, _) <- figures]
-      `shouldBe` [["line", "arrow"], ["paper", "line"]]
+    [(take 1 shapes, length [() | Arrow _ <- drop 1 shapes]) | (d, _) <- figures, let shapes = dropWhile (/= line) (diagramShapes d)]
+      `shouldBe` [([line], 1), ([line], 0)]
+    [length [() | Arrow _ <- diagramShapes d] | (d, _) <- figures] `shouldBe` [1, 0]
     (noteFoldLines inferNote, noteFoldLines silentNote) `shouldBe` (NoFoldLines, NoFoldLines)
   where
     valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
     mountainDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeMountainDash defaultTheme)
-
-    lastShapes n d = drop (length (diagramShapes d) - n) (diagramShapes d)
-
-    kindOf = \case
-      Arrow _ -> "arrow"
-      Polyline stroke _ | stroke `elem` [valleyDash, mountainDash] -> "line"
-      _ -> "paper" :: String
 
 -- | A flat sheet with a diagonal crease lettered @F@, drawn alone with these
 -- fold-here lines: the shapes the lines add after the figure drawn without

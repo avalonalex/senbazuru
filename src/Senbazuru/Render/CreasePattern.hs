@@ -667,10 +667,18 @@ withArrows theme basis motions d =
 -- caller's to know, so a caller drawing the paper from the opposite side swaps
 -- valley and mountain before it gets here ("Senbazuru.Render.Steps").
 --
--- Appended, so a line is painted over the paper and its creases. A line lying
--- along a crease is drawn on top of it, and its dash is what shows. Call this
+-- Appended, so a line is painted over the paper and its creases. Call this
 -- before 'withArrows', so that an arrow crossing a line is painted over it:
 -- the arrow is the instruction the eye should find first.
+--
+-- A line lying along a crease is drawn on top of it, and does not read. A
+-- folded form draws its creases solid, in the same ink and at the same weight,
+-- so the solid line shows through every gap in the dash and the two read as
+-- one solid line; over a crease of the other kind the two dashes blend. A book
+-- draws the instruction in place of the crease under it, which appending
+-- cannot do. No page draws a line yet, and the page that will, a run's, puts
+-- every line along a hinge that is usually a crease already, so S33 (#643)
+-- settles it before then.
 --
 -- The extent is left alone, as 'withArrows' leaves it. A line whose two ends
 -- land on one point of the page, a hinge seen end on, gets nothing, by the

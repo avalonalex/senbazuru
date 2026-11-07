@@ -202,11 +202,13 @@ data FoldLines
 -- | Arrows inferred from the frames, and nothing else: no fold-here line and
 -- no caption.
 --
--- No fold-here line, because two frames that differ by a fold do not say
--- where it was made: the quarter and blintz folds run along creases the
--- sheet already has, so the next frame has no crease the figure lacks. A
--- line here would have to come from somewhere, and @render --steps@ draws
--- its pages from this note, so it would change every arrowed page.
+-- No fold-here line. Two frames do say which creases a fold turned, by
+-- their fold angles, but not the line's kind: the quarter fold's second fold
+-- is one valley fold that turns a @V@ crease and an @M@ crease, as the module
+-- header says, and a frame carries no move to take the kind from. Nor is
+-- there a new crease to draw: the quarter and blintz folds run along creases
+-- the sheet already has. And @render --steps@ draws its pages from this note,
+-- so a line here would change every arrowed page.
 inferNote :: StepNote
 inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing}
 
