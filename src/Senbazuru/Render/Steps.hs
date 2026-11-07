@@ -43,9 +43,24 @@
 -- A book prints more beside a figure than the paper: the arrow for the next
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
--- each figure, from whoever knows it ('stepFigures'). A note says two things
--- so far: whether to infer arrows to the next figure, and what caption to
--- print under it.
+-- each figure, from whoever knows it ('stepFigures'). A note says three
+-- things so far: whether to infer arrows to the next figure, which fold-here
+-- lines to draw on it, and what caption to print under it.
+--
+-- == Kinds as the page sees them
+--
+-- A fold-here line, the dashed line a book draws where the paper is about to
+-- fold, comes with its kind, valley or mountain, stated as the move was
+-- written: from the reader's side. A valley fold seen from behind the paper is
+-- a mountain fold, so a page that shows the opposite side swaps the two
+-- before drawing ('asSeen'); an unfold is an unfold from either side, and a
+-- page seen edge on draws the kind as stated.
+--
+-- The kind is never read off the crease a line lies along. In
+-- @examples/quarter-fold-steps.fold@ the second fold is one valley fold seen
+-- from above, yet it folds one crease lettered @V@ and one lettered @M@,
+-- because the first fold turned the second crease's paper upside down. A line
+-- styled by the letters would be half valley and half mountain.
 --
 -- 'stepFigures' draws each figure with its note and hands it back with its
 -- caption, and lays out no page, because laying out a caption needs the
@@ -89,8 +104,10 @@ module Senbazuru.Render.Steps
     -- * What each figure carries
     StepNote,
     noteArrows,
+    noteFoldLines,
     noteCaption,
     Arrows (..),
+    FoldLines (..),
     inferNote,
     silentNote,
     noteFor,
@@ -104,19 +121,20 @@ import Data.Bifunctor (first)
 import Data.Text (Text)
 import Senbazuru.Diagram (Diagram)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
-import Senbazuru.Diagram.Style (Theme)
+import Senbazuru.Diagram.Style (ArrowKind (..), Theme)
 import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Geometry.V3 (V3)
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (motionsBetween)
-import Senbazuru.Render.Camera (Basis, SeenFrom, View, seenFrom)
+import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, seenFrom)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
     creasePatternFrom,
     defaultNotationFor,
     withArrows,
+    withFoldLines,
   )
 
 -- | Something wrong with one frame of a sequence, and which frame it was.
@@ -150,6 +168,8 @@ instance Explain StepError where
 data StepNote = StepNote
   { -- | Whether the figure carries the fold that takes it to the next one.
     noteArrows :: !Arrows,
+    -- | The lines on the figure where its paper is about to fold.
+    noteFoldLines :: !FoldLines,
     -- | The words printed under the figure, if any: the instruction of the
     -- step that starts from it.
     noteCaption :: !(Maybe Text)
@@ -165,13 +185,36 @@ data Arrows
     NoArrows
   deriving stock (Eq, Show)
 
--- | Arrows inferred from the frames, and nothing else: no caption.
+-- | Which fold-here lines a figure carries: the dashed lines a book draws on
+-- the figure before a fold, where the paper is about to fold.
+data FoldLines
+  = -- | None.
+    NoFoldLines
+  | -- | These, each a kind as the move was written, from the reader's side,
+    -- and its two ends, in the frame's own coordinates: where the paper is
+    -- on this figure, before the move. Drawn on the figure whichever place
+    -- it has, the last included, since nothing is inferred; drawn as the page
+    -- sees each kind ('asSeen'); and drawn not at all for an unfold, which
+    -- has no line ("Senbazuru.Diagram.Style", @foldLineStroke@).
+    GivenFoldLines ![(ArrowKind, V3, V3)]
+  deriving stock (Eq, Show)
+
+-- | Arrows inferred from the frames, and nothing else: no fold-here line and
+-- no caption.
+--
+-- No fold-here line. Two frames do say which creases a fold turned, by
+-- their fold angles, but not the line's kind: the quarter fold's second fold
+-- is one valley fold that turns a @V@ crease and an @M@ crease, as the module
+-- header says, and a frame carries no move to take the kind from. Nor is
+-- there a new crease to draw: the quarter and blintz folds run along creases
+-- the sheet already has. And @render --steps@ draws its pages from this note,
+-- so a line here would change every arrowed page.
 inferNote :: StepNote
-inferNote = StepNote {noteArrows = InferArrows, noteCaption = Nothing}
+inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing}
 
 -- | The paper and nothing else.
 silentNote :: StepNote
-silentNote = StepNote {noteArrows = NoArrows, noteCaption = Nothing}
+silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing}
 
 -- | The note 'stepPage' gives every figure: 'inferNote' with arrows asked for,
 -- 'silentNote' without.
@@ -207,18 +250,34 @@ stepFigures theme budget view notes = do
   traverse (figure basis order) (zip [0 ..] resolved)
   where
     figure basis order (position, (i, fr, note, verts)) = do
-      d <-
+      paper <-
         first
           (StepError i)
           (creasePatternFrom theme budget (defaultNotationFor (frameClasses fr) verts) basis fr)
+      -- Lines before arrows, so an arrow is painted over a line it crosses.
+      let lined = case noteFoldLines note of
+            NoFoldLines -> paper
+            GivenFoldLines foldLines ->
+              withFoldLines theme basis [(asSeen (seenFrom basis) kind, a, b) | (kind, a, b) <- foldLines] paper
       drawn <- case (noteArrows note, drop (position + 1) order) of
         -- The last figure of a sequence is the finished model, and a book draws
         -- no arrow on it, whatever its note asks for.
         (InferArrows, next : _) -> do
           motions <- first (StepError i) (motionsBetween fr next)
-          pure (withArrows theme basis motions d)
-        _ -> pure d
+          pure (withArrows theme basis motions lined)
+        _ -> pure lined
       pure (drawn, noteCaption note)
+
+-- | A kind stated from the reader's side, as a page showing this side sees
+-- it: valley and mountain swapped from the opposite side, as the module
+-- header says. Seen edge on, the page cannot show which way the paper turns,
+-- so the stated kind is drawn as it is.
+asSeen :: SeenFrom -> ArrowKind -> ArrowKind
+asSeen FromOppositeSide = \case
+  ValleyArrow -> MountainArrow
+  MountainArrow -> ValleyArrow
+  UnfoldArrow -> UnfoldArrow
+asSeen _ = id
 
 -- | Every frame of a file as one page of numbered figures: 'stepFigures' with
 -- 'noteFor' on every figure, laid out by 'gridOf'.

@@ -11,9 +11,9 @@ module Senbazuru.Render.StepsSpec (spec) where
 import Control.Monad (forM, forM_)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
-import Senbazuru.Diagram (Diagram (..), Shape (..))
+import Senbazuru.Diagram (Diagram (..), Shape (..), Stroke (..))
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
-import Senbazuru.Diagram.Style (defaultTheme)
+import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..), VertexId (..), allFrames, emptyFrame)
@@ -226,7 +226,97 @@ spec = do
       pageSide defaultView [emptyFrame, flatSheet, broken]
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
+  foldHere
   turning
+
+-- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
+-- line a book draws on the figure before a fold, where the paper is about to
+-- fold. Each comes in a note with its kind as the move was written, from the
+-- reader's side, and is drawn as the page sees it.
+--
+-- The sheet carries a diagonal crease lettered @F@, the letter a written
+-- pre-crease gets, which the default theme draws as a faint solid line. A
+-- valley line along it has to be drawn with the valley dash all the same:
+-- styling a line by the crease under it ('strokeFor'), rather than by its
+-- note's kind, draws it faint and turns the first example red.
+foldHere :: Spec
+foldHere = describe "fold-here lines" $ do
+  it "draws a valley line on an F crease with the valley dash, over the paper" $ do
+    (added, crease) <- drawnLines top [(ValleyArrow, V3 0 0 0, V3 1 1 0)]
+    added `shouldBe` [Polyline valleyDash crease]
+
+  -- R-06-9's fold-here half: from the opposite side valley and mountain
+  -- swap. Red if the page drew the stated kind from every side.
+  it "swaps valley and mountain dashes seen from below, and only there" $ do
+    let below = View (Just bottomUp) 0
+    forM_
+      [ (below, ValleyArrow, mountainDash),
+        (below, MountainArrow, valleyDash),
+        (top, MountainArrow, mountainDash)
+      ]
+      $ \(view, kind, dash) -> do
+        (added, crease) <- drawnLines view [(kind, V3 0 0 0, V3 1 1 0)]
+        added `shouldBe` [Polyline dash crease]
+
+  -- Edge on, the page cannot show which way the paper turns, so the stated
+  -- kind is drawn. Red if edge-on counted as the opposite side. The line
+  -- runs from (0, 0) to (1, 0) on the page: looking along +y with z up, a
+  -- point's x stays and its height is its z.
+  it "draws the stated kind seen edge on" $ do
+    (added, _) <- drawnLines (View (Just frontOn) 0) [(ValleyArrow, V3 0 0 0, V3 1 1 0)]
+    added `shouldBe` [Polyline valleyDash [V2 0 0, V2 1 0]]
+
+  -- An unfold turns paper back along a crease it has, so it gets no line,
+  -- from either side: red if the page turned an unfold into a valley or a
+  -- mountain when it swaps the two. A line whose ends land on one point of
+  -- the page, as one standing straight up does seen from above, has no
+  -- direction to draw.
+  it "draws nothing for an unfold from either side, or for a line seen end on" $ do
+    forM_ [top, View (Just bottomUp) 0] $ \view -> do
+      (added, _) <- drawnLines view [(UnfoldArrow, V3 0 0 0, V3 1 1 0)]
+      added `shouldBe` []
+    (added, _) <- drawnLines top [(ValleyArrow, V3 0 0 0, V3 0 0 1)]
+    added `shouldBe` []
+
+  -- On the quarter fold's first figure, the line along the fold it is about
+  -- to make, x = 1/2, comes after the paper and before the inferred arrow,
+  -- so the arrow is painted over it. Given lines are drawn on the last
+  -- figure too, which carries no inferred arrow: nothing is inferred. The
+  -- line is matched by its points as well as its stroke, since the figure's
+  -- own valley creases are drawn with the same stroke elsewhere.
+  it "paints a line before the figure's arrow, and draws given lines on the last figure" $ do
+    (a, b, _) <- quarterThree
+    let along = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]
+        line = Polyline valleyDash [V2 0.5 0, V2 0.5 1]
+    figures <- right (stepFigures defaultTheme defaultBudget top [(a, inferNote {noteFoldLines = along}), (b, silentNote {noteFoldLines = along})])
+    [(take 1 shapes, length [() | Arrow _ <- drop 1 shapes]) | (d, _) <- figures, let shapes = dropWhile (/= line) (diagramShapes d)]
+      `shouldBe` [([line], 1), ([line], 0)]
+    [length [() | Arrow _ <- diagramShapes d] | (d, _) <- figures] `shouldBe` [1, 0]
+    (noteFoldLines inferNote, noteFoldLines silentNote) `shouldBe` (NoFoldLines, NoFoldLines)
+  where
+    valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
+    mountainDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeMountainDash defaultTheme)
+
+-- | A flat sheet with a diagonal crease lettered @F@, drawn alone with these
+-- fold-here lines: the shapes the lines add after the figure drawn without
+-- them, which has to come first unchanged, and the points of the figure's
+-- crease, which the default theme draws as its one faint line.
+drawnLines :: View -> [(ArrowKind, V3, V3)] -> IO ([Shape], [V2])
+drawnLines view foldLines = do
+  without <- figureWith silentNote
+  with <- figureWith silentNote {noteFoldLines = GivenFoldLines foldLines}
+  take (length without) with `shouldBe` without
+  pure (drop (length without) with, concat [ps | Polyline stroke ps <- without, strokeWidth stroke == themeGhostWidth defaultTheme])
+  where
+    creased =
+      flatSheet
+        { edgesVertices = edgesVertices flatSheet <> [(VertexId 0, VertexId 2)],
+          edgesAssignment = edgesAssignment flatSheet <> [Flat]
+        }
+    figureWith note =
+      right (stepFigures defaultTheme defaultBudget view [(creased, note)]) >>= \case
+        [(d, _)] -> pure (diagramShapes d)
+        figures -> fail ("expected one figure, got " <> show (length figures))
 
 -- | Every label's text, a caption's lines among them, which are 'Label's
 -- moved by an 'Offset'.

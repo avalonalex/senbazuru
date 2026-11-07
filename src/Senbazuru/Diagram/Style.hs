@@ -58,8 +58,15 @@
 -- for a crease pattern that is enough, because a crease pattern is always
 -- viewed from that side. Under a camera it is not enough: a face turned away
 -- from the viewer has its mountains and valleys swapped from where the viewer
--- stands. Drawing folded forms with solid edges sidesteps this. A step diagram
--- that marks the /next/ fold on top of a folded form will have to face it.
+-- stands. Drawing folded forms with solid edges sidesteps this for the edges.
+-- A step diagram's marks for the /next/ fold, its fold-here line and its
+-- arrow, cannot sidestep it, and do not ask the crease at all. An earlier fold
+-- may have turned the crease's paper upside down, so its letter can say
+-- mountain for paper folding towards the reader. A mark takes its kind from
+-- the move ('ArrowKind'), stated from the reader's side, and the page swaps
+-- valley and mountain before handing it here when it shows the other side
+-- ("Senbazuru.Render.Steps"). So 'foldLineStroke' takes a kind, never an
+-- 'Assignment'.
 --
 -- == Why this module knows about 'Assignment'
 --
@@ -79,6 +86,7 @@ module Senbazuru.Diagram.Style
     arrowFor,
     ArrowKind (..),
     withKind,
+    foldLineStroke,
     buriedEdge,
     layerStep,
     towardDeeperPaper,
@@ -449,3 +457,28 @@ withKind kind a = a {arrowHead = headFor kind}
     headFor ValleyArrow = SolidHead
     headFor MountainArrow = HollowHalfHead
     headFor UnfoldArrow = HollowDoubleHead
+
+-- | The stroke for a /fold-here line/: the dashed line a book draws on the
+-- figure before a fold, where the paper is about to fold (docs\/glossary.md).
+-- A valley gets the valley dash and a mountain the mountain dash, in ink at a
+-- crease's weight, exactly as 'strokeFor' draws a valley or mountain crease in
+-- a crease pattern: it is the same instruction, \"fold here, this way\".
+--
+-- The kind is the one the page sees, already swapped for a page drawn from
+-- the opposite side, as 'ArrowKind' says. It is never read off the crease
+-- the line lies along, whose letter may say the opposite, as the module
+-- header explains.
+--
+-- 'Nothing' for an unfold, which draws no line. An unfold turns paper back
+-- along a crease it already has, and its arrow says so; a dash there would
+-- say \"fold here\", the opposite instruction, and the crease is drawn
+-- already. This is also the decision record's reading of owner decision 74,
+-- which gives a run's page a line for every fold and pre-crease and none for
+-- an unfold.
+foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke
+foldLineStroke theme = \case
+  ValleyArrow -> Just (line (themeValleyDash theme))
+  MountainArrow -> Just (line (themeMountainDash theme))
+  UnfoldArrow -> Nothing
+  where
+    line = Stroke (themeInk theme) (themeCreaseWidth theme)

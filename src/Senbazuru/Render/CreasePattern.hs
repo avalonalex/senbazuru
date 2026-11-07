@@ -109,6 +109,7 @@ module Senbazuru.Render.CreasePattern
     defaultNotationFor,
     creaseOrder,
     withArrows,
+    withFoldLines,
   )
 where
 
@@ -119,11 +120,13 @@ import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
 import Senbazuru.Diagram (Colour, Diagram (..), Shape (..), Stroke, diagramWithExtent)
 import Senbazuru.Diagram.Style
-  ( Notation (..),
+  ( ArrowKind,
+    Notation (..),
     Paper (..),
     Theme (..),
     arrowFor,
     buriedEdge,
+    foldLineStroke,
     layerStep,
     strokeFor,
   )
@@ -649,12 +652,55 @@ withArrows :: Theme -> Basis -> [Motion] -> Diagram -> Diagram
 withArrows theme basis motions d =
   d {diagramShapes = diagramShapes d <> concatMap arrow motions}
   where
-    V2 w h = boxSize (diagramExtent d)
-    negligible = 1e-6 * max 1 (max w h)
-
     arrow m
-      | norm (to ^-^ from) <= negligible = []
+      | norm (to ^-^ from) <= negligibleOn d = []
       | otherwise = [Arrow (arrowFor theme from to)]
       where
         from = project basis (motionFrom m)
         to = project basis (motionTo m)
+
+-- | Add the fold-here lines for a step to a drawing of the paper before it:
+-- each a dashed line between two points, in the positions the paper has
+-- before the move, styled by its kind ('foldLineStroke').
+--
+-- The kinds are the ones the page sees. Which side the page shows is the
+-- caller's to know, so a caller drawing the paper from the opposite side swaps
+-- valley and mountain before it gets here ("Senbazuru.Render.Steps").
+--
+-- Appended, so a line is painted over the paper and its creases. Call this
+-- before 'withArrows', so that an arrow crossing a line is painted over it:
+-- the arrow is the instruction the eye should find first.
+--
+-- A line lying along a crease is drawn on top of it, and does not read. A
+-- folded form draws its creases solid, in the same ink and at the same weight,
+-- so the solid line shows through every gap in the dash and the two read as
+-- one solid line; over a crease of the other kind the two dashes blend. A book
+-- draws the instruction in place of the crease under it, which appending
+-- cannot do. No page draws a line yet, and the page that will, a run's, puts
+-- every line along a hinge that is usually a crease already, so S33 (#643)
+-- settles it before then.
+--
+-- The extent is left alone, as 'withArrows' leaves it. A line whose two ends
+-- land on one point of the page, a hinge seen end on, gets nothing, by the
+-- rule 'withArrows' uses for an arrow, and so does an unfold, which has no
+-- line ('foldLineStroke').
+withFoldLines :: Theme -> Basis -> [(ArrowKind, V3, V3)] -> Diagram -> Diagram
+withFoldLines theme basis foldLines d =
+  d {diagramShapes = diagramShapes d <> concatMap line foldLines}
+  where
+    line (kind, a, b) = case foldLineStroke theme kind of
+      Just stroke
+        | norm (to ^-^ from) > negligibleOn d -> [Polyline stroke [from, to]]
+      _ -> []
+      where
+        from = project basis a
+        to = project basis b
+
+-- | How short a mark can be on this drawing before it is taken to have no
+-- length: a millionth of the drawing's larger side, and never less than a
+-- millionth of a unit. 'withArrows' and 'withFoldLines' share it, so an arrow
+-- and a line between the same two points are drawn or skipped together.
+negligibleOn :: Diagram -> Double
+negligibleOn d = 1e-6 * max 1 (max w h)
+  where
+    V2 w h = boxSize (diagramExtent d)

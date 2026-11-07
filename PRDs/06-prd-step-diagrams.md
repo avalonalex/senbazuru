@@ -344,6 +344,11 @@ then.
   ([C139](decisions.md#changes-since-draft-v2)).
 - **R-06-15.** Fold-here lines go on the figure before the move, at `before`
   positions, styled by the note's kind as seen, never by the crease's assignment.
+  Built by S26 ([#642](https://github.com/avalonalex/senbazuru/issues/642),
+  [C156](decisions.md#changes-since-draft-v2)) for `GivenFoldLines`: painted
+  over the paper and under the arrows, on any figure the note is on, the last
+  included; an unfold draws none. A line lying along a crease is drawn over it
+  and does not read, so S33 has to settle that before a run's page draws one.
 
 **Several moves**
 
@@ -520,11 +525,11 @@ then.
 -- Senbazuru.Diagram.Style: kind to ink, the one file to open when marks look wrong
 data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648)
 withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head and body only; built, setting the head
-foldLineStroke :: Theme -> ArrowKind -> Stroke                          -- valley or mountain dash
+foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valley or mountain dash; built by S26, Nothing for an unfold (C156)
 
 -- Senbazuru.Render.Steps
 data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKind, V3, V3)] | NoArrows
-data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]
+data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 without InferFoldLines (S28)
 data PresentationChange
   = TurnedOver !V3 !V3        -- a point on the axis and its direction, written coordinates
   | Rotated !Int !V3          -- signed eighths, anticlockwise from the reader's side; a point on the axis
