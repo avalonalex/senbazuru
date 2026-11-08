@@ -183,8 +183,9 @@ data Theme = Theme
     themeLabelSize :: !Double,
     -- | Page units: how large a mark at one point is drawn, its 'Symbol'
     -- size; for the turn-over loop, the length of its stem, and for the
-    -- rotate mark, the width of its circle and arrow; the repeat range's box
-    -- holds its words at seven twelfths of it. Larger than the type, so the
+    -- rotate mark, the square its circle and head fit in, the circle 0.8 of
+    -- it across; the repeat range's box holds its words at seven twelfths of
+    -- it. Larger than the type, so the
     -- loop reads as a mark beside the fold arrows. The edge-on eye is not
     -- sized by it: it sits over a step number, and is the number's size.
     themeGlyphSize :: !Double,

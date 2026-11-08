@@ -752,6 +752,7 @@ rotatingAndRepeating = describe "rotate and repeat marks" $ do
     length (nudges top both) `shouldBe` 2
     and (zipWith near (nudges top alone) [(RepeatMark 1 2, V2 (negate boxAcross) (negate (line + boxUp)))]) `shouldBe` True
     and (zipWith near (nudges (View (Just frontOn) 0) both) (expect eyeLine)) `shouldBe` True
+    (length (nudges top alone), length (nudges (View (Just frontOn) 0) both)) `shouldBe` (1, 2)
 
   -- On a page fitted as a run's page is, the marks lie on the page, clear
   -- of the step numbers and, seen edge on, of the eyes: no two of their
@@ -769,7 +770,9 @@ rotatingAndRepeating = describe "rotate and repeat marks" $ do
           overlap (Box (V2 a0 b0) (V2 a1 b1)) (Box (V2 c0 d0) (V2 c1 d1)) = a0 < c1 && c0 < a1 && b0 < d1 && d0 < b1
           inside (Box (V2 x0 y0) (V2 x1 y1)) = x0 >= 0 && y0 >= 0 && x1 <= 400 && y1 <= pageHeight (fittedPage fitted)
           pairs = [(m, o) | (i, m) <- zip [0 :: Int ..] boxes, (j, o) <- zip [0 ..] boxes, i < j]
-      (length boxes >= 7, all (inside . snd) boxes) `shouldBe` (True, True)
+      -- Three numbers, two rotate marks and two repeat boxes, and from the
+      -- front three eyes too.
+      (length boxes, all (inside . snd) boxes) `shouldBe` (if view == top then 7 else 10, True)
       [(fst m, fst o) | (m, o) <- pairs, overlap (snd m) (snd o)] `shouldBe` []
   where
     corner d = let Box _ (V2 r t) = diagramExtent d in V2 r t

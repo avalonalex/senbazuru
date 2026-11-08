@@ -324,7 +324,8 @@ then.
   [C157](decisions.md#changes-since-draft-v2)) for heads and the mark: plain
   `InferArrows` states no kind and keeps `SolidHead` from every side; the mark
   is an eye over each figure's step number, and an edge-on page gets it only
-  when some figure states a valley or a mountain, so no page `render --steps`
+  when some figure states a valley or a mountain, or, since S30
+  ([C159](decisions.md#changes-since-draft-v2)), turns the model round, so no page `render --steps`
   draws changes.
 - **R-06-10.** `run -o x.svg` warns once when `pageSide` is `FromOppositeSide`. No
   `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`, so the
@@ -794,7 +795,7 @@ already uses
 the loop is drawn as if the axis were page-vertical: horizontal, under the midpoint
 of the figure's bottom edge ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
 A17). As built, the cut-off is taken per unit of the axis's length, since a
-direction has no length of its own ([C158](decisions.md#changes-since-draft-v2)). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
+direction has no length of its own ([C158](decisions.md#changes-since-draft-v2)). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)) or turns the model round ([C159](decisions.md#changes-since-draft-v2)).
 
 **Extent, measured.** A `python3` script on `examples/bird-base-sequence.fold`
 (run on 2026-09-14, and again on 2026-09-15 with the same output): take

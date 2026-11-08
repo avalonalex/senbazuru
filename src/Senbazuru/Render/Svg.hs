@@ -359,10 +359,12 @@ shapeToSvg toPage (Symbol st size anchor (RotateMark k))
     radius = 0.4 * size
     typeSize = 0.38 * size
     turning = if k > 0 then 1 else -1 :: Double
-    -- Angles in degrees from model x, anticlockwise: the arc starts an
-    -- eighth of a circle's half past the top on the side it leaves from, and
-    -- turns seven eighths in its sense.
-    start = 90 - turning * 22.5
+    -- Angles in degrees from model x, anticlockwise: the gap is the eighth
+    -- of the circle centred on the top, so the arc starts at the gap's edge
+    -- it leaves from, half an eighth past the top against its sense, and
+    -- turns seven eighths in its sense, ending with its head at the gap's
+    -- other edge.
+    start = 90 + turning * 22.5
     angle :: Int -> Double
     angle i = start + turning * 45 * fromIntegral i
     direction a = (cos (a * pi / 180) *^ across) ^+^ (sin (a * pi / 180) *^ up)

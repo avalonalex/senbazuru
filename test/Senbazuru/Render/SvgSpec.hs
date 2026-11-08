@@ -536,6 +536,28 @@ spec = do
       and (zipWith near [V2 (200 - x) y | V2 x y <- points] mirrored) `shouldBe` True
       length mirrored `shouldBe` length points
 
+    -- Which way the mark turns on the page: a positive turn is anticlockwise
+    -- as the reader sees it, and SVG's y grows down the page, so its arc's
+    -- points, its control points among them, wind with a negative signed
+    -- area; a negative turn winds the other way. A page whose margins turn
+    -- the drawing round keeps the sense, a half turn being no mirror. And the
+    -- arc's gap is at the top: it starts and ends above its point, on either
+    -- side of it. Red if every sense were reversed, the page's y flip
+    -- ignored, or the gap elsewhere.
+    it "turns a positive rotate mark anticlockwise on the page, its gap at the top" $ do
+      let arcOf page = case pathPointsOf page of
+            arc : _ -> arc
+            [] -> []
+          winding ps = sum (zipWith (\(V2 x0 y0) (V2 x1 y1) -> x0 * y1 - x1 * y0) ps (drop 1 ps ++ take 1 ps))
+          turned = renderSvg testPage {pageMargin = 150} (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Symbol (solid (Colour "#1a1a1a") 1.8) 24 (V2 0.5 0.5) (RotateMark 3)])
+      map (signum . winding . arcOf) [glyphPage 1 24 (RotateMark 3), glyphPage 1 24 (RotateMark (-3)), turned] `shouldBe` [-1, 1, -1]
+      case arcOf (glyphPage 1 24 (RotateMark 3)) of
+        first : rest@(_ : _) ->
+          let V2 x0 y0 = first
+              V2 x1 y1 = last rest
+           in (y0 < 100, y1 < 100, signum (x0 - 100) /= signum (x1 - 100)) `shouldBe` (True, True, True)
+        other -> expectationFailure ("expected an arc, got " <> show other)
+
     -- A turn a run never makes, and a size that is not a length, draw
     -- nothing; so does a repeat at such a size.
     it "draws no rotate mark for a turn of no eighths or of eight or more, and no mark at a size that is not a length" $ do

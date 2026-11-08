@@ -75,8 +75,9 @@
 -- so it draws each kind as stated and puts an eye over every figure's step
 -- number to say so ('edgeOnMark'). Every figure, because a mark on one alone
 -- would read as that figure's own view; and only when some figure states a
--- valley or a mountain, the kinds whose look depends on the side, so a page
--- of inferred arrows, as every @render --steps@ page is, gets none. Edge on
+-- valley or a mountain, or turns the model round, the marks whose look
+-- depends on the side, so a page of inferred arrows, as every
+-- @render --steps@ page is, gets none. Edge on
 -- is a fact about the camera alone, its line of sight lying exactly in the
 -- plane ("Senbazuru.Render.Camera", @seenFrom@): a model standing in the air
 -- seen from the front is edge on too, and a camera tilted by a hair is not.
