@@ -150,6 +150,14 @@ describe different pictures: `--steps` with `--frame`, with `--fold`, or with
 arrow is drawn at the coordinates the paper actually has and `--offset` draws
 every sheet a step away from those.
 
+`--steps` with `--view front` or `--view side` draws flat paper edge on, each
+figure a line with no height, and on a page of more than one row the rows
+then land on top of one another: rows are spaced by the figures' height, and
+there is none ([#647](https://github.com/avalonalex/senbazuru/issues/647)).
+`--columns N`, with N at least the number of frames, puts every figure in one
+row. A run's page (`run -o x.svg`) with any caption does not overprint, since
+captions put a band below every row.
+
 `--offset` is the one flag that needs the layers rather than merely using them,
 so four things are worth knowing about it.
 

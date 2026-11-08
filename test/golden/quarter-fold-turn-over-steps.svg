@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="394.45" viewBox="0 0 400 394.45">
+  <title>fixture</title>
+  <rect x="0" y="0" width="400" height="394.45" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 131 131 L 131 73.5 L 73.5 73.5 L 73.5 131 Z M 131 16 L 73.5 16 L 73.5 73.5 L 131 73.5 Z M 16 16 L 16 73.5 L 73.5 73.5 L 73.5 16 Z M 16 131 L 73.5 131 L 73.5 73.5 L 16 73.5 Z" fill="#faf8f3"/>
+    <path d="M 73.5 73.5 L 73.5 131" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 73.5 73.5 L 131 73.5" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 73.5 73.5 L 73.5 16" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 73.5 73.5 L 16 73.5" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 16 131 L 73.5 131" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 73.5 131 L 131 131" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 131 131 L 131 73.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 131 73.5 L 131 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 131 16 L 73.5 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 73.5 16 L 16 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 16 L 16 73.5" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 73.5 L 16 131" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 44.75 73.5 Q 73.5 59.125 92.411 68.581" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 102.25 73.5 L 90.444 72.516 L 94.379 64.645 Z" fill="#1a1a1a"/>
+    <text x="16" y="29.8" font-size="14" font-family="sans-serif" fill="#1a1a1a">1</text>
+    <text x="16" y="150.25" font-size="14" font-family="sans-serif" fill="#1a1a1a">Fold the left</text>
+    <text x="16" y="167.05" font-size="14" font-family="sans-serif" fill="#1a1a1a">half behind,</text>
+    <text x="16" y="183.85" font-size="14" font-family="sans-serif" fill="#1a1a1a">onto the</text>
+    <text x="16" y="200.65" font-size="14" font-family="sans-serif" fill="#1a1a1a">right.</text>
+    <path d="M 171.25 131 L 228.75 131 L 228.75 73.5 L 171.25 73.5 Z M 171.25 16 L 171.25 73.5 L 228.75 73.5 L 228.75 16 Z" fill="#faf8f3"/>
+    <path d="M 171.25 73.5 L 228.75 73.5" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 171.25 16 L 171.25 131" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 228.75 131 L 171.25 131" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 228.75 131 L 228.75 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 228.75 16 L 171.25 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 200 44.75 Q 214.375 73.5 204.919 92.411" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 200 102.25 L 200.984 90.444 L 208.855 94.379 Z" fill="#1a1a1a"/>
+    <text x="171.25" y="29.8" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
+    <text x="142.5" y="150.25" font-size="14" font-family="sans-serif" fill="#1a1a1a">Fold the top</text>
+    <text x="142.5" y="167.05" font-size="14" font-family="sans-serif" fill="#1a1a1a">half down in</text>
+    <text x="142.5" y="183.85" font-size="14" font-family="sans-serif" fill="#1a1a1a">front, onto</text>
+    <text x="142.5" y="200.65" font-size="14" font-family="sans-serif" fill="#1a1a1a">the bottom.</text>
+    <path d="M 297.75 102.25 L 355.25 102.25 L 355.25 44.75 L 297.75 44.75 Z" fill="#faf8f3"/>
+    <path d="M 297.75 44.75 L 297.75 102.25" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 297.75 44.75 L 355.25 44.75" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 355.25 102.25 L 297.75 102.25" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 355.25 102.25 L 355.25 44.75" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 314.5 120.25 C 321.22 120.25 330.82 117.37 330.82 113.53 C 330.82 111.144 328.886 109.21 326.5 109.21 C 324.114 109.21 322.18 111.144 322.18 113.53 C 322.18 117.37 324.58 120.25 331.3 120.25" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 338.5 120.25 L 331.3 117.37 L 331.3 123.13 Z" fill="#1a1a1a"/>
+    <text x="297.75" y="58.55" font-size="14" font-family="sans-serif" fill="#1a1a1a">3</text>
+    <text x="269" y="150.25" font-size="14" font-family="sans-serif" fill="#1a1a1a">Turn the model</text>
+    <text x="269" y="167.05" font-size="14" font-family="sans-serif" fill="#1a1a1a">over, left to</text>
+    <text x="269" y="183.85" font-size="14" font-family="sans-serif" fill="#1a1a1a">right.</text>
+    <path d="M 102.25 243.4 L 44.75 243.4 L 44.75 300.9 L 102.25 300.9 Z" fill="#faf8f3"/>
+    <path d="M 102.25 243.4 L 102.25 300.9" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 102.25 243.4 L 44.75 243.4" stroke="#1a1a1a" stroke-width="1"/>
+    <path d="M 44.75 300.9 L 102.25 300.9" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 44.75 300.9 L 44.75 243.4" stroke="#1a1a1a" stroke-width="1.6"/>
+    <text x="44.75" y="257.2" font-size="14" font-family="sans-serif" fill="#1a1a1a">4</text>
+    <text x="16" y="347.65" font-size="14" font-family="sans-serif" fill="#1a1a1a">Folded into</text>
+    <text x="16" y="364.45" font-size="14" font-family="sans-serif" fill="#1a1a1a">quarters.</text>
+  </g>
+</svg>

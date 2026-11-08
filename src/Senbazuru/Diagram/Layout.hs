@@ -74,7 +74,13 @@
 -- the cell's top edge. So a row whose figures carry such a mark also gets
 -- /room above it/, in page units like its band below, as far as the mark
 -- rises ('markRise'). The first row's room raises the page's top; a later
--- row's lies between the band above it and its numbers.
+-- row's lies between the band above it and its numbers. A mark may hang
+-- below its cell too, as the turn-over loop below its figure does; then the
+-- row's captions start that much lower and its band is that much taller
+-- ('markDrop', 'rowsDrop'). And it may reach past its cell's side, as the
+-- loop of an axis across the page does past its figure's right end; then the
+-- column gets that much room beside it, the columns to its right move over,
+-- and the page is that much wider ('markLeft', 'markRight').
 --
 -- __The widths are estimates.__ The backend has no font metrics, so a line is
 -- taken to be 0.55 of the type size per character, wider than the sans-serif
@@ -96,6 +102,9 @@ module Senbazuru.Diagram.Layout
     hasCaptions,
     hasBands,
     markRise,
+    markDrop,
+    markLeft,
+    markRight,
     wrapCaption,
   )
 where
@@ -167,6 +176,9 @@ gridOf grid figures = arrange grid evenRows figures
       Rows
         { rowDrop = \r -> fromIntegral r * dy,
           pageTop = id,
+          columnShift = const 0,
+          pageLeft = id,
+          pageRight = id,
           pageBottom = \top -> top - (fromIntegral rowCount - 1) * dy - h,
           underneath = repeat (const [])
         }
@@ -200,16 +212,20 @@ pageScaleValue (PageScale s) = s
 --
 -- Each caption is wrapped ('wrapCaption') to the width the shared box has on
 -- the page, and its line @k@, counted from 0, is a 'Label' at the cell's
--- bottom-left corner moved down @a + k p@ page units by an 'Offset'. Columns
--- keep the grid's gutter. Below each row, the last included, lies a band of
--- @a + (L - 1) p + d@ page units in place of the gutter, @L@ being the most
--- lines any caption in the row wraps to, and 1 for a row with none; @p@ is
--- 1.2 times the type size, @a@ is 18 and @d@ is 14 (PRDs\/06, R-06-19).
--- 'captionedRows' measures the same rows, and this lays them out.
+-- bottom-left corner moved down @m + a + k p@ page units by an 'Offset'.
+-- Columns keep the grid's gutter. Below each row, the last included, lies a
+-- band of @m + a + (L - 1) p + d@ page units in place of the gutter, @L@
+-- being the most lines any caption in the row wraps to, and 1 for a row with
+-- none; @p@ is 1.2 times the type size, @a@ is 18 and @d@ is 14 (PRDs\/06,
+-- R-06-19), and @m@ is how far the row's marks hang below its cells, 0 for a
+-- row without such a mark ('rowsDrop'). 'captionedRows' measures the same
+-- rows, and this lays them out.
 --
 -- A page none of whose captions has a word, and none of whose figures carries
 -- a mark, is 'gridOf''s page, unchanged. A row whose figures carry a mark
--- rising above their cells has that much room above it ('rowsHeadroom').
+-- rising above their cells has that much room above it ('rowsHeadroom'), and
+-- a column whose figures carry one reaching past their cells that much room
+-- beside it ('rowsLeft', 'rowsRight'), the columns after it moving over.
 gridOfCaptioned :: Theme -> Grid -> PageScale -> [(Diagram, Maybe Text)] -> Maybe Diagram
 gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedRows theme grid atScale captioned of
   Nothing -> gridOf grid figures
@@ -224,11 +240,16 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
       Rows
         { rowDrop = below,
           pageTop = \top -> top + headroomAt 0,
+          columnShift = \c -> (foldl' (+) 0 (take c (rowsRight rows)) + foldl' (+) 0 (take c (drop 1 (rowsLeft rows)))) / scale,
+          pageLeft = \x -> x - foldl' (+) 0 (take 1 (rowsLeft rows)) / scale,
+          pageRight = \x -> x + foldl' (+) 0 (take 1 (reverse (rowsRight rows))) / scale,
           pageBottom = \top -> top - below rowCount,
-          underneath = map linesAt (rowsCaptionLines rows)
+          underneath = [linesAt (dropAt (i `div` columns)) ls | (i, ls) <- zip [0 :: Int ..] (rowsCaptionLines rows)]
         }
       where
         V2 _ h = boxSize shared
+        columns = columnsOf grid
+        dropAt r = foldl' (+) 0 (take 1 (drop r (rowsDrop rows)))
 
         -- Each band in model units: its page units over the scale.
         bands = [b / scale | b <- rowsBands rows]
@@ -244,8 +265,10 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
         -- The drop is a positive y, and that is not a sign slip beside the
         -- negated row offsets: an 'Offset' is in page axes, whose y grows
         -- down the page, while model y grows up it.
-        linesAt ls corner =
-          [ Offset (V2 0 (captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
+        -- A row whose marks hang below its cells starts its captions that
+        -- much lower ('rowsDrop'), so the marks sit between figure and words.
+        linesAt hang ls corner =
+          [ Offset (V2 0 (hang + captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
             | (k, line) <- zip [0 :: Int ..] ls
           ]
 
@@ -262,13 +285,26 @@ data CaptionedRows = CaptionedRows
   { -- | The figures' rows stacked with nothing between them, in model units:
     -- the row count times the height of the box each figure is centred in.
     rowsFigureHeight :: !Double,
-    -- | The band below each row, top to bottom, in page units.
+    -- | The band below each row, top to bottom, in page units. It holds the
+    -- row's 'rowsDrop' too, so the bands alone say how tall the page is.
     rowsBands :: ![Double],
     -- | The room above each row, top to bottom, in page units: as far as a
     -- mark on one of its figures rises above the row's cells ('markRise'),
     -- and 0 for a row whose marks all lie inside them, as every row without
     -- a mark does.
     rowsHeadroom :: ![Double],
+    -- | How far marks hang below each row's cells, top to bottom, in page
+    -- units ('markDrop'): the row's captions start that much lower, and its
+    -- band is that much taller. 0 for a row whose marks all lie inside its
+    -- cells, as every row without a mark does.
+    rowsDrop :: ![Double],
+    -- | The room left and right of each column, left to right, in page
+    -- units: as far as a mark on one of its figures reaches past the
+    -- column's cells ('markLeft', 'markRight'), as a turn-over loop beside
+    -- its figure does. One entry for each column the page uses, and 0 for a
+    -- column whose marks all lie inside its cells.
+    rowsLeft :: ![Double],
+    rowsRight :: ![Double],
     -- | Each figure's caption, in order, as the lines it wraps to.
     rowsCaptionLines :: ![[Text]]
   }
@@ -297,6 +333,9 @@ captionedRows theme grid (PageScale scale) captioned = do
         { rowsFigureHeight = fromIntegral rowCount * h,
           rowsBands = bands,
           rowsHeadroom = headroom,
+          rowsDrop = hangs,
+          rowsLeft = sides markLeft,
+          rowsRight = sides markRight,
           rowsCaptionLines = wrapped
         }
       where
@@ -309,15 +348,29 @@ captionedRows theme grid (PageScale scale) captioned = do
             | r <- [0 .. rowCount - 1]
           ]
 
+        -- Each column's room on one side, in page units: the most any mark
+        -- on one of its figures reaches past its cells there.
+        sides reach =
+          [ maximum (0 : [reach scale shared d | (i, (d, _)) <- zip [0 :: Int ..] captioned, i `mod` columns == c])
+            | c <- [0 .. min columns (length captioned) - 1]
+          ]
+
+        -- Row r's room below its cells, in page units, before its captions:
+        -- the most any mark on one of its figures hangs below them.
+        hangs =
+          [ maximum (0 : [markDrop scale shared d | (i, (d, _)) <- zip [0 :: Int ..] captioned, i `div` columns == r])
+            | r <- [0 .. rowCount - 1]
+          ]
+
         -- Each figure's caption as lines, wrapped to the shared box's width
         -- on the page.
         wrapped = [maybe [] (wrapCaption size (w * scale)) caption | (_, caption) <- captioned]
 
         -- Row r's band, in page units, for the most lines any caption in the
-        -- row has, and 1 for a row with none.
+        -- row has, and 1 for a row with none, below the room its marks take.
         bands =
-          [ captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap
-            | r <- [0 .. rowCount - 1],
+          [ hang + captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap
+            | (r, hang) <- zip [0 .. rowCount - 1] hangs,
               let lineCount = maximum (1 : [length ls | (i, ls) <- zip [0 ..] wrapped, i `div` columns == r])
           ]
 
@@ -363,11 +416,61 @@ markRise scale shared d = maximum (0 : concatMap rise (diagramShapes d))
       Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [above y - nudge + 0.5 * size]
       _ -> []
 
+-- | How far, in page units at the given scale, the marks on a figure hang
+-- below the bottom of the cell it is centred in, and 0 when none hangs below
+-- it: 'markRise' turned upside down. The turn-over loop
+-- ("Senbazuru.Render.Steps") is the case this is for: it is drawn below its
+-- figure, past where the turn's axis leaves it.
+--
+-- A nudge's @y@ grows down the page, so a positive one is a drop, and is
+-- added.
+markDrop :: Double -> Box -> Diagram -> Double
+markDrop scale shared d = maximum (0 : concatMap hang (diagramShapes d))
+  where
+    Box (V2 _ cellBottom) _ = shared
+    V2 _ shift = boxCentre shared ^-^ boxCentre (diagramExtent d)
+    below y = (cellBottom - (y + shift)) * scale
+    hang = \case
+      Symbol _ size (V2 _ y) _ -> [below y + 0.5 * size]
+      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [below y + nudge + 0.5 * size]
+      _ -> []
+
+-- | How far, in page units at the given scale, the marks on a figure reach
+-- past the left side of the cell it is centred in, and 0 when none does;
+-- 'markRise' turned on its side. A mark reaches half its size from its point,
+-- moved by any 'Offset' around it, whose @x@ grows to the right as the
+-- model's does.
+markLeft :: Double -> Box -> Diagram -> Double
+markLeft scale shared d = maximum (0 : concatMap reach (diagramShapes d))
+  where
+    Box (V2 cellLeft _) _ = shared
+    V2 shift _ = boxCentre shared ^-^ boxCentre (diagramExtent d)
+    past x = (cellLeft - (x + shift)) * scale
+    reach = \case
+      Symbol _ size (V2 x _) _ -> [past x + 0.5 * size]
+      Offset (V2 nudge _) (Symbol _ size (V2 x _) _) -> [past x - nudge + 0.5 * size]
+      _ -> []
+
+-- | 'markLeft' for the right side: the turn-over loop of an axis across the
+-- page stands past its figure's right end.
+markRight :: Double -> Box -> Diagram -> Double
+markRight scale shared d = maximum (0 : concatMap reach (diagramShapes d))
+  where
+    Box _ (V2 cellRight _) = shared
+    V2 shift _ = boxCentre shared ^-^ boxCentre (diagramExtent d)
+    past x = (x + shift - cellRight) * scale
+    reach = \case
+      Symbol _ size (V2 x _) _ -> [past x + 0.5 * size]
+      Offset (V2 nudge _) (Symbol _ size (V2 x _) _) -> [past x + nudge + 0.5 * size]
+      _ -> []
+
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at
 -- the default type size, clears a fanned figure's largest move of 6.4
--- (PRDs\/06 §8). Set with 'captionGap' by S24 at 06's figures (C134); the
--- turn-over loop, whose size is not set yet, may need more (S29).
+-- (PRDs\/06 §8). Set with 'captionGap' by S24 at 06's figures (C134). A
+-- mark hanging below the figures, as the turn-over loop does, moves its
+-- row's captions down by as much ('rowsDrop'), rather than this growing for
+-- every page.
 captionDrop :: Double
 captionDrop = 18
 
@@ -432,6 +535,14 @@ data Rows = Rows
     pageTop :: Double -> Double,
     -- | Where the page ends, given the first row's top.
     pageBottom :: Double -> Double,
+    -- | How much further right than its even spacing column c lies, in model
+    -- units: the room beside the columns to its left.
+    columnShift :: Int -> Double,
+    -- | Where the page's left and right sides are, given the first column's
+    -- left side and the last column's right side: past them by the room the
+    -- outer columns need.
+    pageLeft :: Double -> Double,
+    pageRight :: Double -> Double,
     -- | What goes under each figure, in order, given its cell's bottom-left
     -- corner.
     underneath :: [V2 -> [Shape]]
@@ -457,7 +568,7 @@ arrange grid rowsFor figures = do
     -- Rows run down the page, so later rows sit at smaller y: model space has y
     -- increasing upwards and a reader goes the other way.
     offsetOf shared rows i =
-      V2 (fromIntegral (i `mod` columns) * columnStep shared) (negate (rowDrop rows (i `div` columns)))
+      V2 (fromIntegral (i `mod` columns) * columnStep shared + columnShift rows (i `mod` columns)) (negate (rowDrop rows (i `div` columns)))
 
     -- Only the scale is shared; each figure is centred in its cell. Keeping a
     -- figure at the absolute position its coordinates give is defensible -- the
@@ -492,8 +603,8 @@ arrange grid rowsFor figures = do
     -- no trailing gutter, and the rows down to where the rows say it ends.
     page shared rows =
       Box
-        (V2 x0 (pageBottom rows y1))
-        (V2 (x0 + (fromIntegral used - 1) * columnStep shared + w) (pageTop rows y1))
+        (V2 (pageLeft rows x0) (pageBottom rows y1))
+        (V2 (pageRight rows (x0 + (fromIntegral used - 1) * columnStep shared + columnShift rows (used - 1) + w)) (pageTop rows y1))
       where
         Box (V2 x0 _) (V2 _ y1) = shared
         V2 w _ = boxSize shared

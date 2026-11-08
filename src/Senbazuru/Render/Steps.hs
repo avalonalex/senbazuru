@@ -43,10 +43,12 @@
 -- A book prints more beside a figure than the paper: the arrow for the next
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
--- each figure, from whoever knows it ('stepFigures'). A note says three
+-- each figure, from whoever knows it ('stepFigures'). A note says four
 -- things so far: which arrows the figure carries, inferred to the next
--- figure or given, which fold-here lines to draw on it, and what caption to
--- print under it.
+-- figure or given, which fold-here lines to draw on it, what caption to
+-- print under it, and whether the reader turns the model over before the
+-- next figure, which draws the turn-over loop and no arrow inferred across
+-- the turn ('PresentationChange').
 --
 -- == Kinds as the page sees them
 --
@@ -121,9 +123,11 @@ module Senbazuru.Render.Steps
     StepNote,
     noteArrows,
     noteFoldLines,
+    notePresentation,
     noteCaption,
     Arrows (..),
     FoldLines (..),
+    PresentationChange (..),
     inferNote,
     silentNote,
     noteFor,
@@ -134,6 +138,7 @@ module Senbazuru.Render.Steps
 where
 
 import Data.Bifunctor (first)
+import Data.Maybe (isNothing)
 import Data.Text (Text)
 import Senbazuru.Diagram (Diagram (..), Glyph (..), Shape (..), solid)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
@@ -142,10 +147,10 @@ import Senbazuru.Explain (Explain (..), tshow)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Geometry (Box (..), V2 (..))
-import Senbazuru.Geometry.V3 (V3)
+import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (Motion (..), motionsBetween)
-import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, seenFrom)
+import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, project, seenFrom)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
     creasePatternFrom,
@@ -190,7 +195,11 @@ data StepNote = StepNote
     noteFoldLines :: !FoldLines,
     -- | The words printed under the figure, if any: the instruction of the
     -- step that starts from it.
-    noteCaption :: !(Maybe Text)
+    noteCaption :: !(Maybe Text),
+    -- | What the reader does to the whole model before the next figure, if
+    -- anything: turn it over. Drawn as a mark on this figure, and the arrows
+    -- this figure would infer to the next are not drawn ('PresentationChange').
+    notePresentation :: !(Maybe PresentationChange)
   }
   deriving stock (Eq, Show)
 
@@ -228,6 +237,24 @@ data FoldLines
     GivenFoldLines ![(ArrowKind, V3, V3)]
   deriving stock (Eq, Show)
 
+-- | A change of presentation: the reader moving the whole model, not folding
+-- it, between this figure and the next.
+--
+-- The page draws it as a mark and does not infer arrows across it. Two frames
+-- that differ by a turn and nothing else already infer none, since the whole
+-- model moving is no fold (@motionsBetween@); but a step may fold and then
+-- turn, and the arrows inferred across that pair would follow every face to
+-- where the turn left it, which no reader folding along could follow. So the
+-- mark stands for the pair, and a fold's arrow on it has to be given
+-- ('GivenArrows'), as a run's records will give it.
+data PresentationChange
+  = -- | Turned over about the line through this point in this direction,
+    -- both in the frame's own coordinates: the turn's axis, as
+    -- "Senbazuru.Sequence.Record"'s @presentationAxis@ gives it for a run.
+    -- Drawn as the turn-over loop below the figure ('turnOverMark').
+    PageTurnedOver !V3 !V3
+  deriving stock (Eq, Show)
+
 -- | Arrows inferred from the frames, and nothing else: no fold-here line and
 -- no caption.
 --
@@ -239,11 +266,11 @@ data FoldLines
 -- the sheet already has. And @render --steps@ draws its pages from this note,
 -- so a line here would change every arrowed page.
 inferNote :: StepNote
-inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing}
+inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing}
 
 -- | The paper and nothing else.
 silentNote :: StepNote
-silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing}
+silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing}
 
 -- | The note 'stepPage' gives every figure: 'inferNote' with arrows asked for,
 -- 'silentNote' without.
@@ -293,29 +320,36 @@ stepFigures theme budget view notes = do
             NoFoldLines -> paper
             GivenFoldLines foldLines ->
               withFoldLines theme basis [(asSeen side kind, a, b) | (kind, a, b) <- foldLines] paper
+      let unturned = isNothing (notePresentation note)
       arrowed <- case (noteArrows note, drop (position + 1) order) of
-        (InferArrows, next : _) -> do
+        (InferArrows, next : _) | unturned -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withArrows theme basis motions lined)
-        (InferArrowsAs kind, next : _) -> do
+        (InferArrowsAs kind, next : _) | unturned -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withKindedArrows theme basis [(asSeen side kind, motionFrom m, motionTo m) | m <- motions] lined)
         (GivenArrows arrows, _) ->
           pure (withKindedArrows theme basis [(asSeen side kind, a, b) | (kind, a, b) <- arrows] lined)
         -- The last figure of a sequence is the finished model, and a book draws
-        -- no arrow on it, whatever its note asks it to infer.
-        (InferArrows, []) -> pure lined
-        (InferArrowsAs _, []) -> pure lined
+        -- no arrow on it, whatever its note asks it to infer; a figure the
+        -- reader turns infers none across the turn ('PresentationChange').
+        (InferArrows, _) -> pure lined
+        (InferArrowsAs _, _) -> pure lined
         (NoArrows, _) -> pure lined
-      let drawn
-            | marked = arrowed {diagramShapes = diagramShapes arrowed <> [edgeOnMark theme paper]}
-            | otherwise = arrowed
+      let presented = case notePresentation note of
+            Nothing -> arrowed
+            Just (PageTurnedOver point direction) ->
+              arrowed {diagramShapes = diagramShapes arrowed <> [turnOverMark theme basis paper point direction]}
+          drawn
+            | marked = presented {diagramShapes = diagramShapes presented <> [edgeOnMark theme paper]}
+            | otherwise = presented
       pure (drawn, noteCaption note)
 
 -- | Whether a note states a kind whose look depends on the side the page
 -- shows: a valley or a mountain, in its arrows or its fold-here lines.
 -- An unfold looks the same from either side, so it does not count, nor does
--- an empty list, nor arrows inferred on the last figure, which draws none.
+-- an empty list, nor arrows inferred on the last figure or across a turn,
+-- which draw none.
 statesSidedKind :: StepNote -> Bool -> Bool
 statesSidedKind note hasNext = arrows || foldLines
   where
@@ -326,7 +360,7 @@ statesSidedKind note hasNext = arrows || foldLines
       MountainArrow -> True
       UnfoldArrow -> False
     arrows = case noteArrows note of
-      InferArrowsAs kind -> hasNext && sided kind
+      InferArrowsAs kind -> hasNext && isNothing (notePresentation note) && sided kind
       GivenArrows given -> any (\(kind, _, _) -> sided kind) given
       InferArrows -> False
       NoArrows -> False
@@ -342,14 +376,121 @@ statesSidedKind note hasNext = arrows || foldLines
 -- of the number's glyph. Moved by an 'Offset' rather than placed in model
 -- units because a figure seen edge on has no height to place it in, and
 -- because the number it sits over is a fixed size in print. It is the step
--- number's own size, @themeLabelSize@, until the theme has a glyph size of
--- its own (S29), and drawn at a crease's weight.
+-- number's own size, @themeLabelSize@, not the theme's glyph size, since it
+-- is sized to sit over the number (the owner's choice of 2026-11-07), and
+-- drawn at a crease's weight.
 edgeOnMark :: Theme -> Diagram -> Shape
 edgeOnMark theme paper =
   Offset (V2 (0.5 * size) (-1.7 * size)) (Symbol (solid (themeInk theme) (themeCreaseWidth theme)) size (V2 left top) EdgeOnMark)
   where
     size = themeLabelSize theme
     Box (V2 left _) (V2 _ top) = diagramExtent paper
+
+-- | The turn-over loop for a figure the reader turns over about the line
+-- through this point in this direction: below the figure, lying across the
+-- turn's axis as the page shows it.
+--
+-- R-06-11 anchors the loop where the projected axis leaves the figure's own
+-- extent, at its lower end, or its right end when the axis runs across the
+-- page ('placeLoop'). Drawn there, the stem lies along the paper's edge and
+-- vanishes into it, so the loop is moved on past that point, away from the
+-- figure, by three quarters of its size, in page units: below the figure for
+-- a left-right turn seen from above, as books draw it (the owner's choice of
+-- 2026-11-07). Its vector points back into the figure, so the loop rises
+-- towards the paper it stands for. "Senbazuru.Diagram.Layout" leaves room
+-- for it where it lies past its figure's cell, below the row for an axis up
+-- the page and beside the column for one across it (@markDrop@,
+-- @markRight@), so it never lies across a neighbour.
+-- The theme's glyph size sizes it, and it is drawn at an arrow's weight,
+-- since it is an arrow.
+--
+-- The nudge is in page axes, whose @y@ grows down the page, so the inward
+-- vector's @y@ is negated in it: (0, 1) inward moves the loop down.
+turnOverMark :: Theme -> Basis -> Diagram -> V3 -> V3 -> Shape
+turnOverMark theme basis paper point direction =
+  Offset (V2 (negate ix * away) (iy * away)) (Symbol (solid (themeInk theme) (themeArrowWidth theme)) size anchor (TurnOverLoop inward))
+  where
+    size = themeGlyphSize theme
+    away = 0.75 * size
+    (anchor, inward@(V2 ix iy)) = placeLoop (diagramExtent paper) (project basis point) (unitProjection basis direction)
+
+-- | A direction as the page shows it, as a unit vector on the page.
+-- 'Nothing' when its projection, per unit of its length in the model, is
+-- shorter than 1e-6, an axis seen end on, which R-06-11 draws as if it ran
+-- up the page, and when the direction has no length or is not a number.
+--
+-- A direction has no size of its own, so R-06-11's cut-off, a millionth of
+-- the figure's larger side, which is a length, is taken per unit of the
+-- direction's length: the same test on a direction as long as the figure.
+unitProjection :: Basis -> V3 -> Maybe V2
+unitProjection basis direction
+  | isNaN biggest || isInfinite biggest || biggest <= 0 = Nothing
+  | isNaN shown || shown <= 1e-6 = Nothing
+  | otherwise = Just (V2 (x / shown') (y / shown'))
+  where
+    V3 dx dy dz = direction
+    -- Divided by its largest part first, so that a direction too long or too
+    -- short to square keeps its length: only its direction counts.
+    biggest = maximum [abs dx, abs dy, abs dz]
+    scaled = V3 (dx / biggest) (dy / biggest) (dz / biggest)
+    V3 sx sy sz = scaled
+    len = sqrt (sx * sx + sy * sy + sz * sz)
+    V2 x y = project basis scaled
+    shown' = sqrt (x * x + y * y)
+    shown = shown' / len
+
+-- | Where the turn-over loop stands on a figure's extent, and the unit vector
+-- pointing from there back into the figure: where the line through the
+-- point along the direction leaves the box, at its lower end, or at its right
+-- end when the line runs across the page, within 1e-9 of level, since a roll
+-- of a quarter turn leaves a horizontal axis 6e-17 off level. A direction of
+-- 'Nothing' is taken as up the page.
+--
+-- A line that misses the box, or only touches it at a corner, falls back to
+-- the midpoint of the box's bottom edge, with the loop rising up the page:
+-- an axis given by hand need not cross the figure, and the bottom middle is
+-- where a left-right turn seen from above puts it anyway. A box with no
+-- height or no width, a figure seen edge on, is crossed at a single point,
+-- and that point is the anchor. The inward vector is a unit vector on the
+-- page, so the loop is moved by exactly three quarters of its size.
+placeLoop :: Box -> V2 -> Maybe V2 -> (V2, V2)
+placeLoop (Box (V2 x0 y0) (V2 x1 y1)) (V2 px py) shown =
+  case (inRange x0 x1 px ux, inRange y0 y1 py uy) of
+    (Just (ax, bx), Just (ay, by))
+      | low < high || (low == high && flat) ->
+          if level
+            then (at high, V2 (negate ux) (negate uy))
+            else (at low, V2 ux uy)
+      where
+        low = max ax ay
+        high = min bx by
+    _ -> fallback
+  where
+    fallback = (V2 (0.5 * (x0 + x1)) y0, V2 0 1)
+    -- A box with no height or no width, a figure seen edge on, is crossed at
+    -- one point; any other box a line meets at one point is only touched,
+    -- at a corner, and the line does not cross the figure.
+    flat = y0 == y1 || x0 == x1
+    -- Oriented so that the lower end comes first along it, or, for a level
+    -- line, the left end: then the exit is at the smallest parameter, or the
+    -- largest for a level line, and the inward vector is the direction
+    -- itself, or its reverse.
+    level = maybe False (\(V2 _ y) -> abs y <= 1e-9) shown
+    V2 ux uy = case shown of
+      Nothing -> V2 0 1
+      Just (V2 x y)
+        | level -> if x < 0 then V2 (negate x) (negate y) else V2 x y
+        | y < 0 -> V2 (negate x) (negate y)
+        | otherwise -> V2 x y
+    at t = V2 (px + t * ux) (py + t * uy)
+    -- The parameters along one axis for which the line lies between lo and
+    -- hi, or 'Nothing' when it runs alongside that slab outside it. A part
+    -- of the unit direction within 1e-9 of 0 is taken as 0, as for level:
+    -- a quarter-turn roll leaves 6e-17, which would otherwise make the slab
+    -- a sliver of parameters around the given point and put the loop there.
+    inRange lo hi p u
+      | abs u <= 1e-9 = if lo <= p && p <= hi then Just (-1 / 0, 1 / 0) else Nothing
+      | otherwise = let a = (lo - p) / u; b = (hi - p) / u in Just (min a b, max a b)
 
 -- | A kind stated from the reader's side, as a page showing this side sees
 -- it: valley and mountain swapped from the opposite side, as the module

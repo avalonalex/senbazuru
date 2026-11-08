@@ -311,6 +311,70 @@ spec = do
       (hasCaptions [(eyed, Nothing)], hasBands [(eyed, Nothing)], hasBands [(square 1, Nothing)]) `shouldBe` (False, True, False)
       fmap rowsHeadroom (captionedRows defaultTheme oneColumn (scaleOf 100) [(eyed, Nothing)]) `shouldSatisfy` maybe False (all (near1 30.8))
 
+  -- Room below a row for a mark hanging below its figures' cells, as the
+  -- turn-over loop does: drawn at the cell's bottom edge and nudged 18 page
+  -- units down, it reaches half its size, 12, below that. So the room is 30
+  -- page units at every scale, the row's captions start 30 lower, and its
+  -- band is 30 taller. Red if the room came from the model, or were added to
+  -- the band without moving the captions.
+  describe "room below a row" $ do
+    let loop = Offset (V2 0 18) (Symbol (solid ink 1.8) 24 (V2 0.5 0) (TurnOverLoop (V2 0 1)))
+        looped = (square 1) {diagramShapes = diagramShapes (square 1) <> [loop]}
+        oneColumn = numbered {gridColumns = 1}
+    it "leaves room below each row whose figures carry a mark hanging below them, and starts its captions lower" $
+      forM_ [10, 100, 400] $ \s -> do
+        let figures = [(looped, Just "a"), (square 1, Just "b")]
+        case (captionedRows defaultTheme oneColumn (scaleOf s) figures, captionedRows defaultTheme oneColumn (scaleOf s) [(square 1, Just "a"), (square 1, Just "b")]) of
+          (Just rows, Just plainRows) -> do
+            (s, rowsDrop rows) `shouldSatisfy` (\(_, hangs) -> and (zipWith near1 hangs [30, 0]) && length hangs == 2)
+            (s, zipWith (-) (rowsBands rows) (rowsBands plainRows)) `shouldSatisfy` (\(_, extra) -> and (zipWith near1 extra [30, 0]))
+            page <- maybe (fail "laid out nothing") pure (gridOfCaptioned defaultTheme oneColumn (scaleOf s) figures)
+            -- The caption's first line sits the room and the usual 18 below.
+            [nudge | Offset (V2 _ nudge) (Label _ _ _ "a") <- diagramShapes page] `shouldSatisfy` (\ns -> length ns == 1 && and (zipWith near1 ns [48]))
+          _ -> expectationFailure "measured no rows"
+
+    it "measures how far a mark hangs below its cell, and nothing for one inside it" $ do
+      let at y = (square 1) {diagramShapes = [Symbol (solid ink 1) 24 (V2 0.5 y) (TurnOverLoop (V2 0 1))]}
+          shared = Box (V2 0 0) (V2 1 1)
+      markDrop 100 shared (at 0.5) `shouldBe` 0
+      markDrop 100 shared (at 0) `shouldBe` 12
+      markDrop 100 shared looped `shouldSatisfy` near1 30
+      markDrop 100 shared (square 1) `shouldBe` 0
+
+  -- Room beside a column for a mark reaching past its figures' cells, as
+  -- the turn-over loop of an axis across the page does: drawn at the cell's
+  -- right edge and nudged 18 page units right, it reaches half its size, 12,
+  -- past that. So the room is 30 page units at every scale, the columns to
+  -- its right move over by it, and the page is that much wider. Red if the
+  -- room came from the model, or the page were not widened.
+  describe "room beside a column" $ do
+    let loop = Offset (V2 18 0) (Symbol (solid ink 1.8) 24 (V2 1 0.5) (TurnOverLoop (V2 (-1) 0)))
+        looped = (square 1) {diagramShapes = diagramShapes (square 1) <> [loop]}
+        twoColumns = numbered {gridColumns = 2}
+    it "leaves room beside each column whose figures carry a mark past them, and moves the columns after it over" $
+      forM_ [10, 100, 400] $ \s -> do
+        let figures = [(looped, Just "a"), (square 1, Just "b")]
+            plainFigures = [(square 1, Just "a"), (square 1, Just "b")]
+        case (captionedRows defaultTheme twoColumns (scaleOf s) figures, gridOfCaptioned defaultTheme twoColumns (scaleOf s) figures, gridOfCaptioned defaultTheme twoColumns (scaleOf s) plainFigures) of
+          (Just rows, Just page, Just plainPage) -> do
+            (s, rowsLeft rows, rowsRight rows) `shouldSatisfy` (\(_, lefts, rights) -> lefts == [0, 0] && and (zipWith near1 rights [30, 0]) && length rights == 2)
+            let V2 wide _ = boxSize (diagramExtent page)
+                V2 plainWide _ = boxSize (diagramExtent plainPage)
+            (s, wide - plainWide) `shouldSatisfy` (\(_, extra) -> near1 extra (30 / s))
+            -- The second figure's number, at its cell's top-left corner, moves
+            -- over by the room.
+            let numberAt pg = [x | Label _ _ (V2 x _) "2" <- diagramShapes pg]
+            (s, zipWith (-) (numberAt page) (numberAt plainPage)) `shouldSatisfy` (\(_, moved) -> and (zipWith near1 moved [30 / s]) && length moved == 1)
+          _ -> expectationFailure "laid out nothing"
+
+    it "measures how far a mark reaches past either side of its cell, and nothing for one inside it" $ do
+      let at x = (square 1) {diagramShapes = [Symbol (solid ink 1) 24 (V2 x 0.5) (TurnOverLoop (V2 0 1))]}
+          shared = Box (V2 0 0) (V2 1 1)
+      (markRight 100 shared (at 0.5), markLeft 100 shared (at 0.5)) `shouldBe` (0, 0)
+      (markRight 100 shared (at 1), markLeft 100 shared (at 0)) `shouldBe` (12, 12)
+      markRight 100 shared looped `shouldSatisfy` near1 30
+      markLeft 100 shared looped `shouldBe` 0
+
   describe "pageScale" $
     it "refuses a scale that is not positive and finite" $
       map (void . pageScale) [1, 1e-300, 0, -1, 0 / 0, 1 / 0] `shouldBe` [Just (), Just (), Nothing, Nothing, Nothing, Nothing]
