@@ -273,6 +273,44 @@ spec = do
       captionedRows defaultTheme numbered (scaleOf 100) [] `shouldBe` Nothing
       captionedRows defaultTheme numbered (scaleOf 100) [(square 1, Nothing), (square 1, Just " \x00A0")] `shouldBe` Nothing
 
+  -- Room above a row for a mark that rises above its figures' cells, as
+  -- the edge-on eye does: it stands over the step number, at the cell's top
+  -- edge, nudged 23.8 page units up, and reaches half its size, 7, above
+  -- that. So the room is 30.8 page units, the same at every scale, and the
+  -- page grows by it in model units. Red if the room came from the model, or
+  -- from a mark's point alone.
+  describe "room above a row" $ do
+    let eye = Offset (V2 7 (-23.8)) (Symbol (solid ink 1) 14 (V2 0 1) EdgeOnMark)
+        eyed = (square 1) {diagramShapes = diagramShapes (square 1) <> [eye]}
+        oneColumn = numbered {gridColumns = 1}
+    it "leaves room above each row whose figures carry a mark rising above them" $
+      forM_ [10, 100, 400] $ \s -> do
+        let figures = [(eyed, Just "a"), (square 1, Just "b"), (eyed, Nothing)]
+        case captionedRows defaultTheme oneColumn (scaleOf s) figures of
+          Nothing -> expectationFailure "measured no rows"
+          Just rows -> do
+            (s, rowsHeadroom rows) `shouldSatisfy` (\(_, heads) -> and (zipWith near1 heads [30.8, 0, 30.8]) && length heads == 3)
+            page <- maybe (fail "laid out nothing") pure (gridOfCaptioned defaultTheme oneColumn (scaleOf s) figures)
+            let V2 _ tall = boxSize (diagramExtent page)
+            (s, tall) `shouldSatisfy` (\(_, t) -> near1 t (rowsFigureHeight rows + (sum (rowsBands rows) + sum (rowsHeadroom rows)) / s))
+
+    -- A mark that stays inside its cell needs no room: a symbol half a unit
+    -- below the cell's top, at 100 page units a model unit, reaches 7 above
+    -- its point and so stops 43 short. One at the top edge reaches 7 above.
+    it "measures how far a mark rises above its cell, and nothing for one inside it" $ do
+      let at y = (square 1) {diagramShapes = [Symbol (solid ink 1) 14 (V2 0.5 y) EdgeOnMark]}
+          shared = Box (V2 0 0) (V2 1 1)
+      markRise 100 shared (at 0.5) `shouldBe` 0
+      markRise 100 shared (at 1) `shouldBe` 7
+      markRise 100 shared eyed `shouldSatisfy` near1 30.8
+      markRise 100 shared (square 1) `shouldBe` 0
+
+    -- A page whose only reason for bands is a mark gets them, as a page
+    -- with a caption does; a page with neither is gridOf's.
+    it "gives bands to a page whose figures carry a mark and no caption" $ do
+      (hasCaptions [(eyed, Nothing)], hasBands [(eyed, Nothing)], hasBands [(square 1, Nothing)]) `shouldBe` (False, True, False)
+      fmap rowsHeadroom (captionedRows defaultTheme oneColumn (scaleOf 100) [(eyed, Nothing)]) `shouldSatisfy` maybe False (all (near1 30.8))
+
   describe "pageScale" $
     it "refuses a scale that is not positive and finite" $
       map (void . pageScale) [1, 1e-300, 0, -1, 0 / 0, 1 / 0] `shouldBe` [Just (), Just (), Nothing, Nothing, Nothing, Nothing]

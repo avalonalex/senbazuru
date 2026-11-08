@@ -99,7 +99,7 @@ import Senbazuru.Diagram.Layout
     captionedRows,
     gridOf,
     gridOfCaptioned,
-    hasCaptions,
+    hasBands,
     pageScale,
     pageScaleValue,
   )
@@ -219,7 +219,7 @@ fitPage :: Theme -> Grid -> Height -> Page -> [(Diagram, Maybe Text)] -> Either 
 fitPage theme grid height page captioned = case gridOf grid (map fst captioned) of
   Nothing -> Right Nothing
   Just plain
-    | hasCaptions captioned -> Just <$> fitted plain
+    | hasBands captioned -> Just <$> fitted plain
     | otherwise -> Right (Just (FittedPage page plain))
   where
     margin = pageMargin page
@@ -276,5 +276,5 @@ fitPage theme grid height page captioned = case gridOf grid (map fst captioned) 
 
     -- The two fallbacks below are for a page with nothing to measure, which
     -- 'fitted' is never handed: it is called only for figures with captions.
-    bandsAt scale = maybe 0 (sum . rowsBands) (rowsAt scale)
+    bandsAt scale = maybe 0 (\rows -> sum (rowsBands rows) + sum (rowsHeadroom rows)) (rowsAt scale)
     laidOut plain scale = fromMaybe plain (gridOfCaptioned theme grid scale captioned)

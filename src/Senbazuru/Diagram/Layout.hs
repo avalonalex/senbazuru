@@ -65,8 +65,16 @@
 -- units would be the units bug the numbers above once had: right at one
 -- scale, and type running into the next row at any other.
 --
--- __A page with no caption is 'gridOf''s__, byte for byte. Captions are the
--- one thing that adds bands, so every page drawn before them keeps its layout.
+-- __A page with no caption and no mark is 'gridOf''s__, byte for byte.
+-- Captions and marks are the two things that add bands, so every page drawn
+-- before them keeps its layout.
+--
+-- A mark ('Symbol') may stand above its figure's cell: the eye on a figure
+-- seen edge on stands over the step number, which on such a figure sits on
+-- the cell's top edge. So a row whose figures carry such a mark also gets
+-- /room above it/, in page units like its band below, as far as the mark
+-- rises ('markRise'). The first row's room raises the page's top; a later
+-- row's lies between the band above it and its numbers.
 --
 -- __The widths are estimates.__ The backend has no font metrics, so a line is
 -- taken to be 0.55 of the type size per character, wider than the sans-serif
@@ -86,6 +94,8 @@ module Senbazuru.Diagram.Layout
     CaptionedRows (..),
     captionedRows,
     hasCaptions,
+    hasBands,
+    markRise,
     wrapCaption,
   )
 where
@@ -156,6 +166,7 @@ gridOf grid figures = arrange grid evenRows figures
     evenRows shared =
       Rows
         { rowDrop = \r -> fromIntegral r * dy,
+          pageTop = id,
           pageBottom = \top -> top - (fromIntegral rowCount - 1) * dy - h,
           underneath = repeat (const [])
         }
@@ -196,7 +207,9 @@ pageScaleValue (PageScale s) = s
 -- 1.2 times the type size, @a@ is 18 and @d@ is 14 (PRDs\/06, R-06-19).
 -- 'captionedRows' measures the same rows, and this lays them out.
 --
--- A page none of whose captions has a word is 'gridOf''s page, unchanged.
+-- A page none of whose captions has a word, and none of whose figures carries
+-- a mark, is 'gridOf''s page, unchanged. A row whose figures carry a mark
+-- rising above their cells has that much room above it ('rowsHeadroom').
 gridOfCaptioned :: Theme -> Grid -> PageScale -> [(Diagram, Maybe Text)] -> Maybe Diagram
 gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedRows theme grid atScale captioned of
   Nothing -> gridOf grid figures
@@ -210,6 +223,7 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
     bandedRows rows shared =
       Rows
         { rowDrop = below,
+          pageTop = \top -> top + headroomAt 0,
           pageBottom = \top -> top - below rowCount,
           underneath = map linesAt (rowsCaptionLines rows)
         }
@@ -218,10 +232,14 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
 
         -- Each band in model units: its page units over the scale.
         bands = [b / scale | b <- rowsBands rows]
+        heads = [b / scale | b <- rowsHeadroom rows]
+        headroomAt r = foldl' (+) 0 (take 1 (drop r heads))
 
         -- How far below the first row's top row r's top lies: every row above
-        -- it, and the band below each.
-        below r = foldl' (+) 0 [h + b | b <- take r bands]
+        -- it and the band below each, and the room above every row after the
+        -- first, down to and including row r's own. The first row's room lies
+        -- above the page's top, which 'pageTop' raises by it.
+        below r = foldl' (+) 0 [h + b | b <- take r bands] + foldl' (+) 0 (take r (drop 1 heads))
 
         -- The drop is a positive y, and that is not a sign slip beside the
         -- negated row offsets: an 'Offset' is in page axes, whose y grows
@@ -246,6 +264,11 @@ data CaptionedRows = CaptionedRows
     rowsFigureHeight :: !Double,
     -- | The band below each row, top to bottom, in page units.
     rowsBands :: ![Double],
+    -- | The room above each row, top to bottom, in page units: as far as a
+    -- mark on one of its figures rises above the row's cells ('markRise'),
+    -- and 0 for a row whose marks all lie inside them, as every row without
+    -- a mark does.
+    rowsHeadroom :: ![Double],
     -- | Each figure's caption, in order, as the lines it wraps to.
     rowsCaptionLines :: ![[Text]]
   }
@@ -254,12 +277,13 @@ data CaptionedRows = CaptionedRows
 -- | How a page's captioned rows measure at the given scale ('CaptionedRows').
 --
 -- 'Nothing' for a page with no figure, which has no rows, and for one none of
--- whose captions has a word, which 'gridOfCaptioned' lays out as 'gridOf'
--- does, with no band to measure.
+-- whose captions has a word and none of whose figures carries a mark
+-- ('hasBands'), which 'gridOfCaptioned' lays out as 'gridOf' does, with no
+-- band to measure.
 captionedRows :: Theme -> Grid -> PageScale -> [(Diagram, Maybe Text)] -> Maybe CaptionedRows
 captionedRows theme grid (PageScale scale) captioned = do
   shared <- sharedBox (map fst captioned)
-  if hasCaptions captioned
+  if hasBands captioned
     then Just (measured shared)
     else Nothing
   where
@@ -272,10 +296,18 @@ captionedRows theme grid (PageScale scale) captioned = do
       CaptionedRows
         { rowsFigureHeight = fromIntegral rowCount * h,
           rowsBands = bands,
+          rowsHeadroom = headroom,
           rowsCaptionLines = wrapped
         }
       where
         V2 w h = boxSize shared
+
+        -- Row r's room above, in page units: the most any mark on one of its
+        -- figures rises above the row's cells.
+        headroom =
+          [ maximum (0 : [markRise scale shared d | (i, (d, _)) <- zip [0 :: Int ..] captioned, i `div` columns == r])
+            | r <- [0 .. rowCount - 1]
+          ]
 
         -- Each figure's caption as lines, wrapped to the shared box's width
         -- on the page.
@@ -289,10 +321,47 @@ captionedRows theme grid (PageScale scale) captioned = do
               let lineCount = maximum (1 : [length ls | (i, ls) <- zip [0 ..] wrapped, i `div` columns == r])
           ]
 
--- | Whether any figure has a caption with a word in it: the pages
--- 'gridOfCaptioned' gives bands to, and lays out other than 'gridOf' does.
+-- | Whether any figure has a caption with a word in it.
 hasCaptions :: [(Diagram, Maybe Text)] -> Bool
 hasCaptions = not . all (null . captionWords . snd)
+
+-- | Whether a page gets bands: any figure has a caption with a word in it,
+-- or carries a mark ('Symbol'), which may rise above its cell and need room
+-- there. These are the pages 'gridOfCaptioned' lays out other than 'gridOf'
+-- does; a row with a mark and no caption gets the band a caption of one line
+-- would.
+hasBands :: [(Diagram, Maybe Text)] -> Bool
+hasBands captioned = hasCaptions captioned || any (any isMark . diagramShapes . fst) captioned
+  where
+    isMark = \case
+      Symbol {} -> True
+      Offset _ shape -> isMark shape
+      _ -> False
+
+-- | How far, in page units at the given scale, the marks on a figure rise
+-- above the top of the cell it is centred in, and 0 when none rises above it.
+--
+-- A mark ('Symbol') reaches half its size from its point, the most any glyph
+-- does, and an 'Offset' around it moves that point up or down the page. Its
+-- point is in model units, so where it lies against the cell's top is turned
+-- into page units by the scale; the nudge and the size are page units
+-- already. The edge-on eye ("Senbazuru.Render.Steps") is the case this is
+-- for: it stands over the step number, which on a figure seen edge on sits
+-- on the cell's top edge, so all of it lies above the cell.
+--
+-- A nudge's @y@ grows down the page, so a negative one is a rise, and is
+-- subtracted.
+markRise :: Double -> Box -> Diagram -> Double
+markRise scale shared d = maximum (0 : concatMap rise (diagramShapes d))
+  where
+    Box _ (V2 _ cellTop) = shared
+    -- Where the figure's points land once it is centred in its cell.
+    V2 _ shift = boxCentre shared ^-^ boxCentre (diagramExtent d)
+    above y = (y + shift - cellTop) * scale
+    rise = \case
+      Symbol _ size (V2 _ y) _ -> [above y + 0.5 * size]
+      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [above y - nudge + 0.5 * size]
+      _ -> []
 
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at
@@ -358,6 +427,9 @@ rowCountOf grid count = (count + columns - 1) `div` columns
 data Rows = Rows
   { -- | How far below the first row's top row r's top lies.
     rowDrop :: Int -> Double,
+    -- | Where the page starts, given the first row's top: above it by the
+    -- room the first row needs over it.
+    pageTop :: Double -> Double,
     -- | Where the page ends, given the first row's top.
     pageBottom :: Double -> Double,
     -- | What goes under each figure, in order, given its cell's bottom-left
@@ -421,7 +493,7 @@ arrange grid rowsFor figures = do
     page shared rows =
       Box
         (V2 x0 (pageBottom rows y1))
-        (V2 (x0 + (fromIntegral used - 1) * columnStep shared + w) y1)
+        (V2 (x0 + (fromIntegral used - 1) * columnStep shared + w) (pageTop rows y1))
       where
         Box (V2 x0 _) (V2 _ y1) = shared
         V2 w _ = boxSize shared

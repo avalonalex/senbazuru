@@ -14,6 +14,7 @@ import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..), solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
+import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
@@ -318,6 +319,10 @@ statedKinds = describe "stated kinds" $ do
     let note = silentNote {noteArrows = InferArrowsAs ValleyArrow, noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]}
     [map summary (added view [(a, note), (b, silentNote)] [(a, silentNote), (b, silentNote)]) | view <- [top, View (Just bottomUp) 0]]
       `shouldBe` [[Right valleyDash, Left (Just SolidHead)], [Right mountainDash, Left (Just HollowHalfHead)]]
+    -- A given arrow's kind is drawn as seen too.
+    let given = silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}
+    [map summary (added view [(a, given), (b, silentNote)] [(a, silentNote), (b, silentNote)]) | view <- [top, View (Just bottomUp) 0]]
+      `shouldBe` [[Left (Just SolidHead)], [Left (Just HollowHalfHead)]]
 
   -- Plain InferArrows states no kind, which is what keeps every arrowed
   -- page drawn from below, checked-bird-below.svg among them, as it is. An
@@ -349,7 +354,7 @@ statedKinds = describe "stated kinds" $ do
   -- or arrows asked of the last figure, which draws none. Seen from above
   -- the same notes give no eye. Red if the eye went only on the figure that
   -- states the kind, or on every edge-on page.
-  it "marks every figure seen edge on when any figure draws a valley or a mountain, and only then" $ do
+  it "marks every figure seen edge on when any figure states a valley or a mountain, and only then" $ do
     (a, b, c) <- quarterThree
     let front = View (Just frontOn) 0
         eyes view notes = case stepFigures defaultTheme defaultBudget view (zip [a, b, c] notes) of
@@ -358,6 +363,7 @@ statedKinds = describe "stated kinds" $ do
         on1 note = [note, silentNote, silentNote]
     eyes front (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [1, 1, 1]
     eyes front [silentNote, silentNote, silentNote {noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]}] `shouldBe` Right [1, 1, 1]
+    eyes front (on1 silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}) `shouldBe` Right [1, 1, 1]
     eyes top (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [0, 0, 0]
     forM_
       [ on1 inferNote,
@@ -386,6 +392,59 @@ statedKinds = describe "stated kinds" $ do
     [[shape | shape@(Offset _ (Symbol {})) <- diagramShapes d] | (d, _) <- take 1 figures] `shouldBe` [[eyeAt (V2 0 0)]]
     pageAt 400 `shouldBe` pageAt 1
     fmap (fmap (T.count "<circle")) (pageAt 1) `shouldBe` Right (Just 3)
+
+  -- On a page fitted as a run's page is, with captions, every eye lies on the
+  -- page and clear of the captions above it: the first row's eyes in the
+  -- room the page leaves above it, the second row's in the room between the
+  -- first row's captions and its numbers. Each eye's outline spans 7 either
+  -- side of its pupil's centre and 3.92 above and below it; a caption's ink
+  -- spans 10.8 above its baseline and about 3 below. Red if no room were
+  -- reserved: the first row's eyes then lie above the page.
+  it "keeps every eye on a fitted page, clear of the captions above it" $ do
+    (a, b, c) <- quarterThree
+    let front = View (Just frontOn) 0
+        captioned t = silentNote {noteCaption = Just t}
+        notes = [(captioned "Fold the left half behind, onto the right.") {noteArrows = InferArrowsAs MountainArrow}, captioned "Fold the top half down in front, onto the bottom.", captioned "Done.", captioned "Again."]
+    figures <- right (stepFigures defaultTheme defaultBudget front (zip [a, b, c, a] notes))
+    fitted <- right (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit defaultPage {pageWidth = 400} figures) >>= maybe (fail "nothing to lay out") pure
+    let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
+        number key line = case T.splitOn (" " <> key <> "=\"") line of
+          [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)) :: Double)
+          _ -> Nothing
+        eyeCentres = [(x, y) | l <- T.lines svg, "<circle" `T.isInfixOf` l, Just x <- [number "cx" l], Just y <- [number "cy" l]]
+        texts = [(x, y) | l <- T.lines svg, "<text" `T.isInfixOf` l, Just x <- [number "x" l], Just y <- [number "y" l]]
+        tall = pageHeight (fittedPage fitted)
+        clashes (ex, ey) = [(tx, ty) | (tx, ty) <- texts, ty - 10.8 < ey + 3.92, ty + 3 > ey - 3.92, abs (tx - ex) < 60, ty < ey]
+    length eyeCentres `shouldBe` 4
+    length texts `shouldBe` 14
+    [(x, y) | (x, y) <- eyeCentres, y - 3.92 < 0 || y + 3.92 > tall || x - 7 < 0 || x + 7 > 400] `shouldBe` []
+    concatMap clashes eyeCentres `shouldBe` []
+
+  -- A page of a given height shrinks figures with height to leave room for
+  -- their captions' bands, and has to leave the eyes' room too: the sheet
+  -- with a corner raised 0.7, seen from the front, in two rows of one, on a
+  -- page 200 tall. Row 2's eye then sits 21 page units below row 1's caption
+  -- baseline: the 14 left of row 1's band, the 30.8 of room above row 2, and
+  -- the eye 23.8 back up from row 2's top. Red if the fit left out the room:
+  -- the page is then drawn at a smaller scale than the fit chose, so bands
+  -- and room, turned into model units at the fit's scale, come out short.
+  it "leaves the eyes' room when a page of a given height shrinks its figures" $ do
+    let front = View (Just frontOn) 0
+        note t = silentNote {noteCaption = Just t, noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0 0 0, V3 1 0 0)]}
+        grid1 = (defaultGrid defaultTheme) {gridColumns = 1}
+    figures <- right (stepFigures defaultTheme defaultBudget front [(solidSheet, note "First."), (solidSheet, note "Second.")])
+    fitted <- right (fitPage defaultTheme grid1 HeightAsGiven defaultPage {pageWidth = 400, pageHeight = 200} figures) >>= maybe (fail "nothing to lay out") pure
+    let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
+        number key line = case T.splitOn (" " <> key <> "=\"") line of
+          [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)) :: Double)
+          _ -> Nothing
+        ys tag key = [y | l <- T.lines svg, tag `T.isInfixOf` l, Just y <- [number key l]]
+        firstCaption = [y | l <- T.lines svg, ">First.</text>" `T.isInfixOf` l, Just y <- [number "y" l]]
+    case (ys "<circle" "cy", firstCaption) of
+      ([eye1, eye2], [caption]) -> do
+        [y | y <- [eye1, eye2], y - 3.92 < 0] `shouldBe` []
+        (eye2 - caption) `shouldSatisfy` (\gap -> abs (gap - 21) < 1e-6)
+      other -> expectationFailure ("expected two eyes and one first caption, got " <> show other)
 
   -- Edge on is the camera's alone: the spec's sheet with one corner raised
   -- 0.7 is not flat, yet seen from the front it is edge on and marked. Its

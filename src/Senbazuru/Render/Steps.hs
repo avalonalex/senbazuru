@@ -65,7 +65,7 @@
 -- A page seen edge on, looking along the paper's plane, shows neither side,
 -- so it draws each kind as stated and puts an eye over every figure's step
 -- number to say so ('edgeOnMark'). Every figure, because a mark on one alone
--- would read as that figure's own view; and only when some figure draws a
+-- would read as that figure's own view; and only when some figure states a
 -- valley or a mountain, the kinds whose look depends on the side, so a page
 -- of inferred arrows, as every @render --steps@ page is, gets none. Edge on
 -- is a fact about the camera alone, its line of sight lying exactly in the
@@ -277,7 +277,7 @@ stepFigures theme budget view notes = do
   -- over a metadata-only key frame rather than tripping on it.
   let order = [fr | (_, fr, _, _) <- resolved]
   let side = seenFrom basis
-      -- Seen edge on, every figure says so, when any figure draws a kind
+      -- Seen edge on, every figure says so, when any figure states a kind
       -- that depends on the side the page shows: one figure marked alone
       -- would read as that figure's own view.
       marked = side == EdgeOn && or [statesSidedKind note (position + 1 < length order) | (position, (_, _, note, _)) <- zip [0 :: Int ..] resolved]
@@ -312,14 +312,19 @@ stepFigures theme budget view notes = do
             | otherwise = arrowed
       pure (drawn, noteCaption note)
 
--- | Whether a note draws a kind whose look depends on the side the page
--- shows: a valley or a mountain, stated in its arrows or its fold-here lines.
+-- | Whether a note states a kind whose look depends on the side the page
+-- shows: a valley or a mountain, in its arrows or its fold-here lines.
 -- An unfold looks the same from either side, so it does not count, nor does
 -- an empty list, nor arrows inferred on the last figure, which draws none.
 statesSidedKind :: StepNote -> Bool -> Bool
 statesSidedKind note hasNext = arrows || foldLines
   where
-    sided kind = kind /= UnfoldArrow
+    -- Named one by one, so a kind added later, such as a push, has to be
+    -- placed here by whoever adds it.
+    sided = \case
+      ValleyArrow -> True
+      MountainArrow -> True
+      UnfoldArrow -> False
     arrows = case noteArrows note of
       InferArrowsAs kind -> hasNext && sided kind
       GivenArrows given -> any (\(kind, _, _) -> sided kind) given

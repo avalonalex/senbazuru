@@ -317,7 +317,7 @@ then.
   [C157](decisions.md#changes-since-draft-v2)) for heads and the mark: plain
   `InferArrows` states no kind and keeps `SolidHead` from every side; the mark
   is an eye over each figure's step number, and an edge-on page gets it only
-  when some figure draws a valley or a mountain, so no page `render --steps`
+  when some figure states a valley or a mountain, so no page `render --steps`
   draws changes.
 - **R-06-10.** `run -o x.svg` warns once when `pageSide` is `FromOppositeSide`. No
   `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`, so the
@@ -412,7 +412,10 @@ then.
 - **R-06-19.** `gridOf`'s output is unchanged, and a page with no caption is laid
   out as today: its rows are `gridGutter`
   ([`Layout.hs:73`](../src/Senbazuru/Diagram/Layout.hs#L73)) of a figure apart,
-  with no trailing gutter, so no existing page changes. On a page where some
+  with no trailing gutter, so no existing page changes. (A page whose figures
+  carry a mark is laid out as a captioned one, with room above a row whose
+  mark rises above its cells: S27's edge-on eye,
+  [C157](decisions.md#changes-since-draft-v2).) On a page where some
   figure has a caption, columns stay `gridGutter` apart, and below each row r,
   the last included, lies a band of b_r = a + (L_r − 1) p + d page units in
   place of the gutter. L_r is the most lines any caption in row r wraps to, and
@@ -769,7 +772,7 @@ already uses
 ([`CreasePattern.hs:596-597`](../src/Senbazuru/Render/CreasePattern.hs#L596-L597)),
 the loop is drawn as if the axis were page-vertical: horizontal, at the midpoint of
 the figure's bottom edge ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
-A17). The figure carries `EdgeOnMark` too when some figure of its page draws a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
+A17). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
 
 **Extent, measured.** A `python3` script on `examples/bird-base-sequence.fold`
 (run on 2026-09-14, and again on 2026-09-15 with the same output): take
