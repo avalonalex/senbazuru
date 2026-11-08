@@ -181,6 +181,12 @@ data Theme = Theme
     themeArrowHead :: !Double,
     -- | Page units: the type size of a step number and of a caption.
     themeLabelSize :: !Double,
+    -- | Page units: how large a mark at one point is drawn, its 'Symbol'
+    -- size; for the turn-over loop, the length of its stem. Larger than the
+    -- type, so the loop reads as a mark beside the fold arrows. The edge-on
+    -- eye is not sized by it: it sits over a step number, and is the
+    -- number's size.
+    themeGlyphSize :: !Double,
     -- | How far the arc's midpoint stands off the straight line between the
     -- arrow's ends, as a fraction of the distance it spans. Zero would be a
     -- straight arrow, which reads as \"slide\" rather than \"fold\".
@@ -255,6 +261,10 @@ defaultTheme =
       themeArrowWidth = 1.8,
       themeArrowHead = 11,
       themeLabelSize = 14,
+      -- The owner's choice of 2026-11-07, from the quarter fold drawn with
+      -- loops of 14, 24 and 36: a mark that reads, beside fold arrows that
+      -- span about 60, without competing with them.
+      themeGlyphSize = 24,
       -- An eighth of the span. Enough to read as a turn through the air rather
       -- than a slide along the page, without the arc wandering off the paper.
       themeArrowBow = 0.125,

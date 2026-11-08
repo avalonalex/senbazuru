@@ -245,6 +245,10 @@ then.
   ([C139](decisions.md#changes-since-draft-v2)).
 - **R-06-4.** A presentation mark places a `Symbol` and suppresses inference on that
   pair only. `stepFigures` never transforms a coordinate: frames arrive presented.
+  Built by S29 ([C158](decisions.md#changes-since-draft-v2)) for a turn-over:
+  `notePresentation = Just (PageTurnedOver point direction)` puts the loop on
+  the figure and suppresses `InferArrows` and `InferArrowsAs` there; a figure's
+  `GivenArrows` are still drawn.
 
 **Diagram**
 
@@ -261,7 +265,10 @@ then.
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
   moves only the anchor. Built by S13 of [#639](https://github.com/avalonalex/senbazuru/issues/639)
   with `Glyph = TurnOverLoop` alone ([C145](decisions.md#changes-since-draft-v2)).
-  The `Theme` gains no glyph size until S29 sets it, as the owner chose.
+  The `Theme` gains no glyph size until S29 sets it, as the owner chose. S29
+  adds `themeGlyphSize`, 24 page units, the owner's choice of 2026-11-07; it
+  sizes the turn-over loop, and S27's edge-on eye stays at the step number's
+  size ([C158](decisions.md#changes-since-draft-v2)).
 - **R-06-7.** The PR adding `Symbol` updates by hand the wildcard matchers the
   compiler cannot flag:
   [`LayoutSpec.hs:32-35`](../test/Senbazuru/Diagram/LayoutSpec.hs#L32-L35),
@@ -330,7 +337,13 @@ then.
   its lower end (its right end when the projection is horizontal). When the
   projected axis is shorter than 1e-6 × max(1, the figure's larger side), the loop
   is drawn as if the axis were page-vertical (§5,
-  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
+  [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). As built by S29
+  ([C158](decisions.md#changes-since-draft-v2)), the loop is then moved past
+  that point, away from the figure, by three quarters of its size in page
+  units, since on the edge its stem lies along the paper's border: below the
+  figure for an axis up the page, as books draw it (the owner's choice of
+  2026-11-07). An axis that misses the figure falls back to the midpoint of
+  its bottom edge.
 - **R-06-12.** On `top` and `bottom` pages with roll a multiple of 90°, a turn-over
   or half turn keeps each figure's extent and the page union (the one box
   covering every figure's extent, which sets the scale,
@@ -540,8 +553,8 @@ foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valle
 data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKind, V3, V3)] | NoArrows  -- built by S27 (C157)
 data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 without InferFoldLines (S28)
 data PresentationChange
-  = TurnedOver !V3 !V3        -- a point on the axis and its direction, written coordinates
-  | Rotated !Int !V3          -- signed eighths, anticlockwise from the reader's side; a point on the axis
+  = PageTurnedOver !V3 !V3    -- a point on the axis and its direction, written coordinates; built by S29 (C158)
+  | PageRotated !Int !V3      -- signed eighths, anticlockwise from the reader's side; a point on the axis (S30)
 data StepNote = StepNote
   { noteCaption      :: !(Maybe Text),
     noteArrows       :: !Arrows,
@@ -759,7 +772,7 @@ The runner turns the model about a **model-intrinsic** axis through the centre o
 the current bounding box; `left-right` is (x, y, z) ↦ (2cx − x, y, 2cz − z)
 ([02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper),
 [D5](decisions.md#d5-presentation-and-the-readers-side)). The page receives frames
-already turned and the axis in `TurnedOver`, and draws the loop on the figure
+already turned and the axis in `PageTurnedOver`, and draws the loop on the figure
 before the turn. Under `top` with no roll a `left-right` axis is page-vertical, so
 the loop lies horizontal at the midpoint of the figure's bottom edge (Lang's
 side-to-side flip, research finding 20); under `iso` the projected axis, and the
@@ -940,7 +953,10 @@ line, which runs under the figure's middle once it is half a figure long. The lo
 a = 18 does not account for it, and S24 left a at 18; S29
 ([#642](https://github.com/avalonalex/senbazuru/issues/642)), which sets the
 loop's size, sets a for the larger of the two or keeps the loop inside the box
-([C134](decisions.md#changes-since-draft-v2)).
+([C134](decisions.md#changes-since-draft-v2)). As built, neither: a stays 18,
+and a row whose loop hangs below its cells starts its captions that much
+lower, its band that much taller (`Layout.markDrop`, `rowsDrop`), so a page
+without a loop keeps its bytes ([C158](decisions.md#changes-since-draft-v2)).
 
 **The scale.** `Layout` has no page units of its own
 ([§11](#11-rejected-alternatives)), so the caller that knows the page hands it
@@ -1222,7 +1238,7 @@ decisions 67 to 69).
 | A6 | Under `View (Just bottomUp) 0` the same notes draw `HollowHalfHead` where `top` draws `SolidHead`, with dashes swapped too | inversion reaches heads but not dashes |
 | A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
 | A8 | On `iso`, bird `file_frames[13]`'s extent changes across the turn (0.4142 × 0.6118 → 0.9981 × 0.3335, within 1e-4) | the turn is computed about a page axis, or the page re-fits figures after a turn, so the `iso` extent stays equal |
-| A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn` | inference is not suppressed on the marked pair |
+| A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn`. Restated by S29 ([C158](decisions.md#changes-since-draft-v2)): on a pair that folds and turns, since a pure turn infers no arrow anyway, `StepsSpec` counts one `TurnOverLoop` and no `Arrow` under `InferArrows` and `InferArrowsAs` from above, where the pair without the note infers one; given arrows are still drawn | inference is not suppressed on the marked pair |
 | A10 | On each single-move figure of the blintz sequence (M2), `GivenArrows` from its record equal `InferArrowsAs` ends within 1e-12 × span | `displayBefore` or `displayAfter` is not applied, or record ids are not in `recordBefore`'s numbering |
 | A11 | For the quarter-fold run, `fmap (map fst) (stepNotes run)` equals the `file_frames` of `writeSequence`'s file, both `Right`. In review: `Render.Sequence` imports `Sequence.Record` and `Sequence.Error` and no other sequence module, and no `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`. Sharing `writtenStates` makes the frames equal by construction; the test guards what the construction does not, `stepNotes` dropping or reordering states | `stepNotes` filters `writtenStates` (for example drops sample states) or rebuilds frames without the [state rule](glossary-additions.md#the-fold-format); `Render.Sequence` imports `Sequence.Write` or `Sequence.Run`; a `View` reaches the runner, the writer or `stepNotes` |
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
@@ -1230,7 +1246,7 @@ decisions 67 to 69).
 | A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g`; pinned by `LayoutSpec`, S13 | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
 | A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
 | A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
-| A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
+| A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge, moved 18 page units down the page (S29, `StepsSpec`, [C158](decisions.md#changes-since-draft-v2)) | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
 | A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |
 | A19 | A fanned figure emits equal page bytes at model sizes 1 and 400, extending A4 | the fan step is in model units |
 | A20 | Under `View (Just bottomUp) 0`, the helmet base's last state fans by 05 L16's counts seen from −z (vertices 0 and 2 by 2, vertex 3 and vertices 6 and 7 by 1) | the counts are read from the top whatever the view |
@@ -1267,7 +1283,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `blintz-sequence-arrows.svg` (S2, [#636](https://github.com/avalonalex/senbazuru/issues/636)) | `examples/blintz-sequence.fold`'s six states through `renderSteps` ([`SvgSpec.hs:416`](../test/Senbazuru/Render/SvgSpec.hs#L416)), `stepPage` with arrows as `render --steps --arrows` calls it, beside `bird-base-sequence-arrows.svg`; tracked before any M3 change to `stepPage`, so every later M3 PR keeps it byte-identical (Goal 3; [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages)) | a pair is taken for a presentation change and loses its arrow; an arrow goes on the figure after its fold instead of the one before |
 | `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2, each with its fold's fold-here line; drawn by `stepFigures` and fitted by `fitPage` with `HeightToFit` to the `renderSteps` page's 400 width, as a run's page is (C157) | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
-| `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
+| `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `PageTurnedOver` goes on figure 3, which draws state 2. As built (S29, [C158](decisions.md#changes-since-draft-v2)): a run of the quarter fold and a turn-over, its states' titles as captions, `inferNote` on every figure, the axis the turn's record gives (`presentationAxis`), fitted by `fitPage` to a 400-wide page | the runner's axis is at x = 0 (every coordinate moves), which A7 catches too; the loop stands on the edge, lies along the axis or follows model size. A page-side axis at x = 0 cannot turn it red: that line misses figure 3, and the fallback gives the same anchor, so `StepsSpec` tests the anchor rule on off-centre axes |
 | `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
 | `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
 | `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `runPage` on the blintz run with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |

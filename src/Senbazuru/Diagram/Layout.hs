@@ -74,7 +74,10 @@
 -- the cell's top edge. So a row whose figures carry such a mark also gets
 -- /room above it/, in page units like its band below, as far as the mark
 -- rises ('markRise'). The first row's room raises the page's top; a later
--- row's lies between the band above it and its numbers.
+-- row's lies between the band above it and its numbers. A mark may hang
+-- below its cell too, as the turn-over loop below its figure does; then the
+-- row's captions start that much lower and its band is that much taller
+-- ('markDrop', 'rowsDrop').
 --
 -- __The widths are estimates.__ The backend has no font metrics, so a line is
 -- taken to be 0.55 of the type size per character, wider than the sans-serif
@@ -96,6 +99,7 @@ module Senbazuru.Diagram.Layout
     hasCaptions,
     hasBands,
     markRise,
+    markDrop,
     wrapCaption,
   )
 where
@@ -225,10 +229,12 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
         { rowDrop = below,
           pageTop = \top -> top + headroomAt 0,
           pageBottom = \top -> top - below rowCount,
-          underneath = map linesAt (rowsCaptionLines rows)
+          underneath = [linesAt (dropAt (i `div` columns)) ls | (i, ls) <- zip [0 :: Int ..] (rowsCaptionLines rows)]
         }
       where
         V2 _ h = boxSize shared
+        columns = columnsOf grid
+        dropAt r = foldl' (+) 0 (take 1 (drop r (rowsDrop rows)))
 
         -- Each band in model units: its page units over the scale.
         bands = [b / scale | b <- rowsBands rows]
@@ -244,8 +250,10 @@ gridOfCaptioned theme grid atScale@(PageScale scale) captioned = case captionedR
         -- The drop is a positive y, and that is not a sign slip beside the
         -- negated row offsets: an 'Offset' is in page axes, whose y grows
         -- down the page, while model y grows up it.
-        linesAt ls corner =
-          [ Offset (V2 0 (captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
+        -- A row whose marks hang below its cells starts its captions that
+        -- much lower ('rowsDrop'), so the marks sit between figure and words.
+        linesAt hang ls corner =
+          [ Offset (V2 0 (hang + captionDrop + fromIntegral k * pitch)) (Label (themeInk theme) size corner line)
             | (k, line) <- zip [0 :: Int ..] ls
           ]
 
@@ -262,13 +270,19 @@ data CaptionedRows = CaptionedRows
   { -- | The figures' rows stacked with nothing between them, in model units:
     -- the row count times the height of the box each figure is centred in.
     rowsFigureHeight :: !Double,
-    -- | The band below each row, top to bottom, in page units.
+    -- | The band below each row, top to bottom, in page units. It holds the
+    -- row's 'rowsDrop' too, so the bands alone say how tall the page is.
     rowsBands :: ![Double],
     -- | The room above each row, top to bottom, in page units: as far as a
     -- mark on one of its figures rises above the row's cells ('markRise'),
     -- and 0 for a row whose marks all lie inside them, as every row without
     -- a mark does.
     rowsHeadroom :: ![Double],
+    -- | How far marks hang below each row's cells, top to bottom, in page
+    -- units ('markDrop'): the row's captions start that much lower, and its
+    -- band is that much taller. 0 for a row whose marks all lie inside its
+    -- cells, as every row without a mark does.
+    rowsDrop :: ![Double],
     -- | Each figure's caption, in order, as the lines it wraps to.
     rowsCaptionLines :: ![[Text]]
   }
@@ -297,6 +311,7 @@ captionedRows theme grid (PageScale scale) captioned = do
         { rowsFigureHeight = fromIntegral rowCount * h,
           rowsBands = bands,
           rowsHeadroom = headroom,
+          rowsDrop = hangs,
           rowsCaptionLines = wrapped
         }
       where
@@ -309,15 +324,22 @@ captionedRows theme grid (PageScale scale) captioned = do
             | r <- [0 .. rowCount - 1]
           ]
 
+        -- Row r's room below its cells, in page units, before its captions:
+        -- the most any mark on one of its figures hangs below them.
+        hangs =
+          [ maximum (0 : [markDrop scale shared d | (i, (d, _)) <- zip [0 :: Int ..] captioned, i `div` columns == r])
+            | r <- [0 .. rowCount - 1]
+          ]
+
         -- Each figure's caption as lines, wrapped to the shared box's width
         -- on the page.
         wrapped = [maybe [] (wrapCaption size (w * scale)) caption | (_, caption) <- captioned]
 
         -- Row r's band, in page units, for the most lines any caption in the
-        -- row has, and 1 for a row with none.
+        -- row has, and 1 for a row with none, below the room its marks take.
         bands =
-          [ captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap
-            | r <- [0 .. rowCount - 1],
+          [ hang + captionDrop + fromIntegral (lineCount - 1) * pitch + captionGap
+            | (r, hang) <- zip [0 .. rowCount - 1] hangs,
               let lineCount = maximum (1 : [length ls | (i, ls) <- zip [0 ..] wrapped, i `div` columns == r])
           ]
 
@@ -363,11 +385,32 @@ markRise scale shared d = maximum (0 : concatMap rise (diagramShapes d))
       Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [above y - nudge + 0.5 * size]
       _ -> []
 
+-- | How far, in page units at the given scale, the marks on a figure hang
+-- below the bottom of the cell it is centred in, and 0 when none hangs below
+-- it: 'markRise' turned upside down. The turn-over loop
+-- ("Senbazuru.Render.Steps") is the case this is for: it is drawn below its
+-- figure, past where the turn's axis leaves it.
+--
+-- A nudge's @y@ grows down the page, so a positive one is a drop, and is
+-- added.
+markDrop :: Double -> Box -> Diagram -> Double
+markDrop scale shared d = maximum (0 : concatMap hang (diagramShapes d))
+  where
+    Box (V2 _ cellBottom) _ = shared
+    V2 _ shift = boxCentre shared ^-^ boxCentre (diagramExtent d)
+    below y = (cellBottom - (y + shift)) * scale
+    hang = \case
+      Symbol _ size (V2 _ y) _ -> [below y + 0.5 * size]
+      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [below y + nudge + 0.5 * size]
+      _ -> []
+
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at
 -- the default type size, clears a fanned figure's largest move of 6.4
--- (PRDs\/06 §8). Set with 'captionGap' by S24 at 06's figures (C134); the
--- turn-over loop, whose size is not set yet, may need more (S29).
+-- (PRDs\/06 §8). Set with 'captionGap' by S24 at 06's figures (C134). A
+-- mark hanging below the figures, as the turn-over loop does, moves its
+-- row's captions down by as much ('rowsDrop'), rather than this growing for
+-- every page.
 captionDrop :: Double
 captionDrop = 18
 

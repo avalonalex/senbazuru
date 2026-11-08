@@ -647,9 +647,11 @@ creaseOrder = \case
 -- That is not a failure to draw one: it is paper that moved without going
 -- anywhere the reader can see it go — a model turned over, or a flap folded
 -- straight up out of the page and looked at from above. Books mark those with a
--- different symbol altogether, a loop or a pair of arrows, and senbazuru has
--- neither. An arrow with no length would be given a direction by whatever the
--- arithmetic happened to produce, and would say something confident and untrue.
+-- different symbol altogether, a loop or a pair of arrows. senbazuru draws the
+-- loop, but only from a step note that says the model is turned over, never
+-- from two frames ("Senbazuru.Render.Steps"). An arrow with no length would be
+-- given a direction by whatever the arithmetic happened to produce, and would
+-- say something confident and untrue.
 --
 -- Every arrow it draws has a solid head and states no kind, so it looks the
 -- same from either side of the paper: the motions say where paper goes, not
