@@ -109,6 +109,7 @@ module Senbazuru.Render.CreasePattern
     defaultNotationFor,
     creaseOrder,
     withArrows,
+    withKindedArrows,
     withFoldLines,
   )
 where
@@ -118,7 +119,7 @@ import Data.List (nub, sortOn)
 import Data.Map.Strict qualified as M
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Text (Text)
-import Senbazuru.Diagram (Colour, Diagram (..), Shape (..), Stroke, diagramWithExtent)
+import Senbazuru.Diagram (ArrowPath, Colour, Diagram (..), Shape (..), Stroke, diagramWithExtent)
 import Senbazuru.Diagram.Style
   ( ArrowKind,
     Notation (..),
@@ -129,6 +130,7 @@ import Senbazuru.Diagram.Style
     foldLineStroke,
     layerStep,
     strokeFor,
+    withKind,
   )
 import Senbazuru.Fold.Query
   ( Crease (..),
@@ -648,16 +650,40 @@ creaseOrder = \case
 -- different symbol altogether, a loop or a pair of arrows, and senbazuru has
 -- neither. An arrow with no length would be given a direction by whatever the
 -- arithmetic happened to produce, and would say something confident and untrue.
+--
+-- Every arrow it draws has a solid head and states no kind, so it looks the
+-- same from either side of the paper: the motions say where paper goes, not
+-- whether it was folded towards the reader. 'withKindedArrows' draws arrows of
+-- a stated kind.
 withArrows :: Theme -> Basis -> [Motion] -> Diagram -> Diagram
-withArrows theme basis motions d =
-  d {diagramShapes = diagramShapes d <> concatMap arrow motions}
+withArrows theme basis motions =
+  arrowsAlong theme basis [(id, motionFrom m, motionTo m) | m <- motions]
+
+-- | 'withArrows' for arrows that each come with their kind and their two
+-- ends, in the frame's coordinates: each drawn by the same rule, projected the
+-- same way and skipped when it has no length on the page, with the head its
+-- kind gives it ('withKind').
+--
+-- The kinds are the ones the page sees, as 'withFoldLines'' are: a caller
+-- drawing the paper from the opposite side swaps valley and mountain first.
+-- So two arrows between the same two points, one from 'withArrows' and one
+-- from here, have the same curve, and differ at most in their heads.
+withKindedArrows :: Theme -> Basis -> [(ArrowKind, V3, V3)] -> Diagram -> Diagram
+withKindedArrows theme basis arrows =
+  arrowsAlong theme basis [(withKind kind, a, b) | (kind, a, b) <- arrows]
+
+-- | Each arrow from one point to another, given what to do to its path once
+-- 'arrowFor' has made it, appended to the drawing.
+arrowsAlong :: Theme -> Basis -> [(ArrowPath -> ArrowPath, V3, V3)] -> Diagram -> Diagram
+arrowsAlong theme basis arrows d =
+  d {diagramShapes = diagramShapes d <> concatMap arrow arrows}
   where
-    arrow m
+    arrow (finish, a, b)
       | norm (to ^-^ from) <= negligibleOn d = []
-      | otherwise = [Arrow (arrowFor theme from to)]
+      | otherwise = [Arrow (finish (arrowFor theme from to))]
       where
-        from = project basis (motionFrom m)
-        to = project basis (motionTo m)
+        from = project basis a
+        to = project basis b
 
 -- | Add the fold-here lines for a step to a drawing of the paper before it:
 -- each a dashed line between two points, in the positions the paper has

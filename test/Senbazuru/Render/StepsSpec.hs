@@ -11,8 +11,10 @@ module Senbazuru.Render.StepsSpec (spec) where
 import Control.Monad (forM, forM_)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
-import Senbazuru.Diagram (Diagram (..), Shape (..), Stroke (..))
+import Data.Text qualified as T
+import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..), solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
+import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
@@ -21,9 +23,10 @@ import Senbazuru.Geometry (Box (..), Transform (..), V2 (..), boxSize)
 import Senbazuru.Geometry.Rigid (applyRigid)
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Origami.Stacking (defaultBudget)
+import Senbazuru.Origami.Step (Motion (..), motionsBetween)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), bottomUp, defaultView, frontOn, isometric, topDown)
 import Senbazuru.Render.Steps
-import Senbazuru.Render.Svg (defaultPage, pageTransform)
+import Senbazuru.Render.Svg (defaultPage, pageTransform, renderSvg)
 import Senbazuru.Sequence.Build (rotate, sequenceOf, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
@@ -227,6 +230,7 @@ spec = do
         `shouldBe` Left (StepError 2 (VertexCoordTooShort (VertexId 0) 1))
 
   foldHere
+  statedKinds
   turning
 
 -- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
@@ -262,9 +266,11 @@ foldHere = describe "fold-here lines" $ do
   -- kind is drawn. Red if edge-on counted as the opposite side. The line
   -- runs from (0, 0) to (1, 0) on the page: looking along +y with z up, a
   -- point's x stays and its height is its z.
+  -- The figure seen edge on also carries the eye that says so, since a
+  -- valley line is a kind whose look depends on the side.
   it "draws the stated kind seen edge on" $ do
     (added, _) <- drawnLines (View (Just frontOn) 0) [(ValleyArrow, V3 0 0 0, V3 1 1 0)]
-    added `shouldBe` [Polyline valleyDash [V2 0 0, V2 1 0]]
+    added `shouldBe` [Polyline valleyDash [V2 0 0, V2 1 0], eyeAt (V2 0 0)]
 
   -- An unfold turns paper back along a crease it has, so it gets no line,
   -- from either side: red if the page turned an unfold into a valley or a
@@ -296,6 +302,182 @@ foldHere = describe "fold-here lines" $ do
   where
     valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
     mountainDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeMountainDash defaultTheme)
+
+-- | Stated kinds, drawn as seen (R-06-9 and A6 of
+-- PRDs/06-prd-step-diagrams.md): an arrow or a fold-here line of a stated
+-- kind is drawn as the page sees it, valley and mountain swapped from the
+-- side opposite the reader's; an inferred arrow states no kind and stays
+-- solid; and a page seen edge on, which can show neither side, draws the
+-- kind as stated and marks every figure with an eye.
+statedKinds :: Spec
+statedKinds = describe "stated kinds" $ do
+  -- A6, on the quarter fold's first figure: a valley arrow and a valley line
+  -- along its fold. Red if the page drew the stated kind from every side, or
+  -- swapped the line and not the head.
+  it "draws a valley's head and line as a mountain's from below (A6)" $ do
+    (a, b, _) <- quarterThree
+    let note = silentNote {noteArrows = InferArrowsAs ValleyArrow, noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]}
+    [map summary (added view [(a, note), (b, silentNote)] [(a, silentNote), (b, silentNote)]) | view <- [top, View (Just bottomUp) 0]]
+      `shouldBe` [[Right valleyDash, Left (Just SolidHead)], [Right mountainDash, Left (Just HollowHalfHead)]]
+    -- A given arrow's kind is drawn as seen too.
+    let given = silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}
+    [map summary (added view [(a, given), (b, silentNote)] [(a, silentNote), (b, silentNote)]) | view <- [top, View (Just bottomUp) 0]]
+      `shouldBe` [[Left (Just SolidHead)], [Left (Just HollowHalfHead)]]
+
+  -- Plain InferArrows states no kind, which is what keeps every arrowed
+  -- page drawn from below, checked-bird-below.svg among them, as it is. An
+  -- unfold is an unfold from either side.
+  it "keeps an inferred arrow solid from below, and an unfold's head from either side" $ do
+    (a, b, _) <- quarterThree
+    let heads view note = [arrowHead p | Arrow p <- added view [(a, note), (b, silentNote)] [(a, silentNote), (b, silentNote)]]
+    heads (View (Just bottomUp) 0) inferNote `shouldBe` [SolidHead]
+    forM_ [top, View (Just bottomUp) 0] $ \view ->
+      heads view silentNote {noteArrows = InferArrowsAs UnfoldArrow} `shouldBe` [HollowDoubleHead]
+
+  -- A given arrow between the ends an inferred one has is the same arrow,
+  -- which #643's S32 relies on when it gives a run's arrows from its records
+  -- (A10). Given arrows are drawn on the last figure too, which infers none.
+  it "draws a given arrow as the inferred arrow between the same ends, on any figure" $ do
+    (a, b, _) <- quarterThree
+    motions <- right (motionsBetween a b)
+    let given = GivenArrows [(MountainArrow, motionFrom m, motionTo m) | m <- motions]
+        arrowsWith notes = [[p | Arrow p <- diagramShapes d] | Right figures <- [stepFigures defaultTheme defaultBudget top notes], (d, _) <- figures]
+    inferred <- case arrowsWith [(a, silentNote {noteArrows = InferArrowsAs MountainArrow}), (b, silentNote)] of
+      [first', []] -> pure first'
+      other -> fail ("expected arrows on the first figure only, got " <> show other)
+    arrowsWith [(a, silentNote {noteArrows = given}), (b, silentNote {noteArrows = given})] `shouldBe` [inferred, inferred]
+    map arrowHead inferred `shouldBe` [HollowHalfHead]
+
+  -- Edge on, every figure gets one eye when any figure draws a valley or a
+  -- mountain, and none otherwise: not for inferred arrows, which state no
+  -- kind, an unfold, which looks the same from either side, an empty list,
+  -- or arrows asked of the last figure, which draws none. Seen from above
+  -- the same notes give no eye. Red if the eye went only on the figure that
+  -- states the kind, or on every edge-on page.
+  it "marks every figure seen edge on when any figure states a valley or a mountain, and only then" $ do
+    (a, b, c) <- quarterThree
+    let front = View (Just frontOn) 0
+        eyes view notes = case stepFigures defaultTheme defaultBudget view (zip [a, b, c] notes) of
+          Right figures -> Right [length [() | Offset _ (Symbol _ _ _ EdgeOnMark) <- diagramShapes d] | (d, _) <- figures]
+          Left err -> Left err
+        on1 note = [note, silentNote, silentNote]
+    eyes front (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [1, 1, 1]
+    eyes front [silentNote, silentNote, silentNote {noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]}] `shouldBe` Right [1, 1, 1]
+    eyes front (on1 silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}) `shouldBe` Right [1, 1, 1]
+    eyes top (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [0, 0, 0]
+    forM_
+      [ on1 inferNote,
+        on1 silentNote {noteArrows = InferArrowsAs UnfoldArrow},
+        on1 silentNote {noteArrows = GivenArrows []},
+        on1 silentNote {noteFoldLines = GivenFoldLines [(UnfoldArrow, V3 0.5 0 0, V3 0.5 1 0)]},
+        [silentNote, silentNote, silentNote {noteArrows = InferArrowsAs ValleyArrow}]
+      ]
+      $ \notes -> eyes front notes `shouldBe` Right [0, 0, 0]
+
+  -- The eye stands at the figure's top-left corner, where the step number's
+  -- baseline is on an edge-on page, moved over and above the number in page
+  -- units. A4 for the whole page: the same bytes at model sizes 1 and 400,
+  -- so neither the eye nor its nudge is sized to the model.
+  it "puts the eye over the step number, the same on the page at model sizes 1 and 400 (A4)" $ do
+    (a, b, c) <- quarterThree
+    let front = View (Just frontOn) 0
+        notesAt k =
+          [ silentNote {noteArrows = InferArrowsAs MountainArrow, noteFoldLines = GivenFoldLines [(MountainArrow, V3 0 0 0, V3 (k * 0.5) k 0)]},
+            silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 (k * 0.75) (k * 0.75) 0, V3 (k * 0.75) (k * 0.25) 0)]},
+            silentNote
+          ]
+        scaled k fr = fr {verticesCoords = map (map (* k)) (verticesCoords fr)}
+        pageAt k = fmap (fmap (renderSvg defaultPage)) (pageWith front (zip (map (scaled k) [a, b, c]) (notesAt k)))
+    figures <- right (stepFigures defaultTheme defaultBudget front (zip [a, b, c] (notesAt 1)))
+    [[shape | shape@(Offset _ (Symbol {})) <- diagramShapes d] | (d, _) <- take 1 figures] `shouldBe` [[eyeAt (V2 0 0)]]
+    pageAt 400 `shouldBe` pageAt 1
+    fmap (fmap (T.count "<circle")) (pageAt 1) `shouldBe` Right (Just 3)
+
+  -- On a page fitted as a run's page is, with captions, every eye lies on the
+  -- page and clear of the captions above it: the first row's eyes in the
+  -- room the page leaves above it, the second row's in the room between the
+  -- first row's captions and its numbers. Each eye's outline spans 7 either
+  -- side of its pupil's centre and 3.92 above and below it; a caption's ink
+  -- spans 10.8 above its baseline and about 3 below. Red if no room were
+  -- reserved: the first row's eyes then lie above the page.
+  it "keeps every eye on a fitted page, clear of the captions above it" $ do
+    (a, b, c) <- quarterThree
+    let front = View (Just frontOn) 0
+        captioned t = silentNote {noteCaption = Just t}
+        notes = [(captioned "Fold the left half behind, onto the right.") {noteArrows = InferArrowsAs MountainArrow}, captioned "Fold the top half down in front, onto the bottom.", captioned "Done.", captioned "Again."]
+    figures <- right (stepFigures defaultTheme defaultBudget front (zip [a, b, c, a] notes))
+    fitted <- right (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit defaultPage {pageWidth = 400} figures) >>= maybe (fail "nothing to lay out") pure
+    let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
+        number key line = case T.splitOn (" " <> key <> "=\"") line of
+          [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)) :: Double)
+          _ -> Nothing
+        eyeCentres = [(x, y) | l <- T.lines svg, "<circle" `T.isInfixOf` l, Just x <- [number "cx" l], Just y <- [number "cy" l]]
+        texts = [(x, y) | l <- T.lines svg, "<text" `T.isInfixOf` l, Just x <- [number "x" l], Just y <- [number "y" l]]
+        tall = pageHeight (fittedPage fitted)
+        clashes (ex, ey) = [(tx, ty) | (tx, ty) <- texts, ty - 10.8 < ey + 3.92, ty + 3 > ey - 3.92, abs (tx - ex) < 60, ty < ey]
+    length eyeCentres `shouldBe` 4
+    length texts `shouldBe` 14
+    [(x, y) | (x, y) <- eyeCentres, y - 3.92 < 0 || y + 3.92 > tall || x - 7 < 0 || x + 7 > 400] `shouldBe` []
+    concatMap clashes eyeCentres `shouldBe` []
+
+  -- A page of a given height shrinks figures with height to leave room for
+  -- their captions' bands, and has to leave the eyes' room too: the sheet
+  -- with a corner raised 0.7, seen from the front, in two rows of one, on a
+  -- page 200 tall. Row 2's eye then sits 21 page units below row 1's caption
+  -- baseline: the 14 left of row 1's band, the 30.8 of room above row 2, and
+  -- the eye 23.8 back up from row 2's top. Red if the fit left out the room:
+  -- the page is then drawn at a smaller scale than the fit chose, so bands
+  -- and room, turned into model units at the fit's scale, come out short.
+  it "leaves the eyes' room when a page of a given height shrinks its figures" $ do
+    let front = View (Just frontOn) 0
+        note t = silentNote {noteCaption = Just t, noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0 0 0, V3 1 0 0)]}
+        grid1 = (defaultGrid defaultTheme) {gridColumns = 1}
+    figures <- right (stepFigures defaultTheme defaultBudget front [(solidSheet, note "First."), (solidSheet, note "Second.")])
+    fitted <- right (fitPage defaultTheme grid1 HeightAsGiven defaultPage {pageWidth = 400, pageHeight = 200} figures) >>= maybe (fail "nothing to lay out") pure
+    let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
+        number key line = case T.splitOn (" " <> key <> "=\"") line of
+          [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)) :: Double)
+          _ -> Nothing
+        ys tag key = [y | l <- T.lines svg, tag `T.isInfixOf` l, Just y <- [number key l]]
+        firstCaption = [y | l <- T.lines svg, ">First.</text>" `T.isInfixOf` l, Just y <- [number "y" l]]
+    case (ys "<circle" "cy", firstCaption) of
+      ([eye1, eye2], [caption]) -> do
+        [y | y <- [eye1, eye2], y - 3.92 < 0] `shouldBe` []
+        (eye2 - caption) `shouldSatisfy` (\gap -> abs (gap - 21) < 1e-6)
+      other -> expectationFailure ("expected two eyes and one first caption, got " <> show other)
+
+  -- Edge on is the camera's alone: the spec's sheet with one corner raised
+  -- 0.7 is not flat, yet seen from the front it is edge on and marked. Its
+  -- figure has height, from (0, 0) up to (1, 0.7) on the page, so the eye
+  -- stands at its top-left corner, (0, 0.7), not its bottom, and is the
+  -- step number's size however big the sheet is.
+  it "marks a model in the air seen from the front, at its figure's top-left corner" $ do
+    let note = silentNote {noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0 0 0, V3 1 0 0)]}
+        eyes fr = [[shape | shape@(Offset _ (Symbol {})) <- diagramShapes d] | Right figures <- [stepFigures defaultTheme defaultBudget (View (Just frontOn) 0) [(fr, note)]], (d, _) <- figures]
+    eyes solidSheet `shouldBe` [[eyeAt (V2 0 0.7)]]
+    eyes solidSheet {verticesCoords = map (map (* 3)) (verticesCoords solidSheet)} `shouldBe` [[eyeAt (V2 0 (0.7 * 3))]]
+  where
+    valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
+    mountainDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeMountainDash defaultTheme)
+
+    -- What a note adds to the first figure, past the figure drawn without it.
+    added view noted plain = case (stepFigures defaultTheme defaultBudget view noted, stepFigures defaultTheme defaultBudget view plain) of
+      (Right ((with, _) : _), Right ((without, _) : _)) -> drop (length (diagramShapes without)) (diagramShapes with)
+      _ -> []
+
+    -- An arrow by its head, a line by its stroke, and anything else as
+    -- neither, which no expected list holds.
+    summary = \case
+      Arrow p -> Left (Just (arrowHead p))
+      Polyline stroke _ -> Right stroke
+      _ -> Left Nothing
+
+-- | The eye that marks a figure seen edge on, at a figure whose top-left
+-- corner is this point: the step number's size, 14, half of it to the right
+-- and 1.7 of it up the page, at a crease's weight.
+eyeAt :: V2 -> Shape
+eyeAt corner =
+  Offset (V2 (0.5 * 14) (-1.7 * 14)) (Symbol (solid (themeInk defaultTheme) (themeCreaseWidth defaultTheme)) 14 corner EdgeOnMark)
 
 -- | A flat sheet with a diagonal crease lettered @F@, drawn alone with these
 -- fold-here lines: the shapes the lines add after the figure drawn without

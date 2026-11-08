@@ -312,7 +312,13 @@ then.
 - **R-06-9.** Stated kinds are drawn as seen: from the opposite side valley and
   mountain swap, in arrow heads and fold-here dashes alike; unfold and push do not
   change; edge-on draws the stated kind and puts an `EdgeOnMark` on each figure.
-  Captions are never rewritten.
+  Captions are never rewritten. Built by S26 for fold-here lines and S27
+  ([#642](https://github.com/avalonalex/senbazuru/issues/642),
+  [C157](decisions.md#changes-since-draft-v2)) for heads and the mark: plain
+  `InferArrows` states no kind and keeps `SolidHead` from every side; the mark
+  is an eye over each figure's step number, and an edge-on page gets it only
+  when some figure states a valley or a mountain, so no page `render --steps`
+  draws changes.
 - **R-06-10.** `run -o x.svg` warns once when `pageSide` is `FromOppositeSide`. No
   `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`, so the
   frames `run -o x.fold` writes are the frames every `--view` draws.
@@ -406,7 +412,10 @@ then.
 - **R-06-19.** `gridOf`'s output is unchanged, and a page with no caption is laid
   out as today: its rows are `gridGutter`
   ([`Layout.hs:73`](../src/Senbazuru/Diagram/Layout.hs#L73)) of a figure apart,
-  with no trailing gutter, so no existing page changes. On a page where some
+  with no trailing gutter, so no existing page changes. (A page whose figures
+  carry a mark is laid out as a captioned one, with room above a row whose
+  mark rises above its cells: S27's edge-on eye,
+  [C157](decisions.md#changes-since-draft-v2).) On a page where some
   figure has a caption, columns stay `gridGutter` apart, and below each row r,
   the last included, lies a band of b_r = a + (L_r − 1) p + d page units in
   place of the gutter. L_r is the most lines any caption in row r wraps to, and
@@ -528,7 +537,7 @@ withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets 
 foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valley or mountain dash; built by S26, Nothing for an unfold (C156)
 
 -- Senbazuru.Render.Steps
-data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKind, V3, V3)] | NoArrows
+data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKind, V3, V3)] | NoArrows  -- built by S27 (C157)
 data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 without InferFoldLines (S28)
 data PresentationChange
   = TurnedOver !V3 !V3        -- a point on the axis and its direction, written coordinates
@@ -660,7 +669,7 @@ fills its own inside and reads as a valley's.
 
 ```haskell
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
-data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark
+data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark  -- built without RotateMark and RepeatMark (S30); EdgeOnMark an eye (C157)
 data Shape = … | Symbol !Stroke !Double !V2 !Glyph   -- stroke, page-unit size, model anchor, glyph
            | Fanned !Fan                            -- a line or a fill of FanPoints, each with its page-unit displacement (§10, R-06-28)
 ```
@@ -763,7 +772,7 @@ already uses
 ([`CreasePattern.hs:596-597`](../src/Senbazuru/Render/CreasePattern.hs#L596-L597)),
 the loop is drawn as if the axis were page-vertical: horizontal, at the midpoint of
 the figure's bottom edge ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
-A17). The figure already carries `EdgeOnMark`.
+A17). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
 
 **Extent, measured.** A `python3` script on `examples/bird-base-sequence.fold`
 (run on 2026-09-14, and again on 2026-09-15 with the same output): take
@@ -1256,7 +1265,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | Golden | Input | Red if |
 | --- | --- | --- |
 | `blintz-sequence-arrows.svg` (S2, [#636](https://github.com/avalonalex/senbazuru/issues/636)) | `examples/blintz-sequence.fold`'s six states through `renderSteps` ([`SvgSpec.hs:416`](../test/Senbazuru/Render/SvgSpec.hs#L416)), `stepPage` with arrows as `render --steps --arrows` calls it, beside `bird-base-sequence-arrows.svg`; tracked before any M3 change to `stepPage`, so every later M3 PR keeps it byte-identical (Goal 3; [09 §1.3](09-testing-and-acceptance.md#13-multi-frame-examples-draw-the-same-step-pages)) | a pair is taken for a presentation change and loses its arrow; an arrow goes on the figure after its fold instead of the one before |
-| `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2; the `renderSteps` page | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
+| `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2, each with its fold's fold-here line; drawn by `stepFigures` and fitted by `fitPage` with `HeightToFit` to the `renderSteps` page's 400 width, as a run's page is (C157) | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `TurnedOver` goes on figure 3, which draws state 2. | the axis is at x = 0 (every coordinate moves); an inferred arrow joins the loop; the loop lies along the axis or follows model size |
 | `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |

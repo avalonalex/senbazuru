@@ -313,16 +313,22 @@ fanPoints = \case
   FanLine _ ps -> ps
   FanFill _ rings -> concat rings
 
--- | The marks a 'Symbol' draws. A newtype while it has one, which the slices
--- adding the edge-on, rotate and repeat marks make a data type again.
-newtype Glyph
+-- | The marks a 'Symbol' draws.
+data Glyph
   = -- | The loop that says \"turn the model over\": an arrow whose stem
     -- crosses the turn's axis at the symbol's point, loops once, and goes on
     -- across. The vector is the axis's direction as the page shows it, in
     -- model axes, so @y@ up; only its direction counts, and the loop rises on
     -- the side it points to. Whoever places the loop points that side into
     -- its figure, so the loop never lies across a neighbour.
-    TurnOverLoop V2
+    TurnOverLoop !V2
+  | -- | An eye, centred on the symbol's point and as wide as its size: the
+    -- mark that says \"this figure is seen edge on\". Looking along the
+    -- paper's plane, a page cannot show which side of the sheet faces the
+    -- reader, so it draws each fold's kind as the move was written rather
+    -- than as seen, and marks every figure so a reader knows
+    -- ("Senbazuru.Render.Steps"). Symmetric, so it has no direction to turn.
+    EdgeOnMark
   deriving stock (Eq, Show)
 
 -- | The model-space points a shape passes through.
