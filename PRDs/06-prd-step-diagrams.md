@@ -343,7 +343,8 @@ then.
   units, since on the edge its stem lies along the paper's border: below the
   figure for an axis up the page, as books draw it (the owner's choice of
   2026-11-07). An axis that misses the figure falls back to the midpoint of
-  its bottom edge.
+  its bottom edge. A fitted page leaves room for the loop past its figure's
+  cell: below the row, or beside the column for an axis across the page.
 - **R-06-12.** On `top` and `bottom` pages with roll a multiple of 90°, a turn-over
   or half turn keeps each figure's extent and the page union (the one box
   covering every figure's extent, which sets the scale,
@@ -774,18 +775,21 @@ the current bounding box; `left-right` is (x, y, z) ↦ (2cx − x, y, 2cz − z
 [D5](decisions.md#d5-presentation-and-the-readers-side)). The page receives frames
 already turned and the axis in `PageTurnedOver`, and draws the loop on the figure
 before the turn. Under `top` with no roll a `left-right` axis is page-vertical, so
-the loop lies horizontal at the midpoint of the figure's bottom edge (Lang's
-side-to-side flip, research finding 20); under `iso` the projected axis, and the
-loop, slant.
+the loop lies horizontal under the midpoint of the figure's bottom edge (Lang's
+side-to-side flip, research finding 20), moved 18 page units below it as S29
+built it; a `top-bottom` axis runs across the page, so its loop stands upright
+past the figure's right end; under `iso` the projected axis, and the loop,
+slant ([C158](decisions.md#changes-since-draft-v2)).
 
 **An axis that projects to a point.** Under `front` a `left-right` axis points at
 the viewer, so its projection has no direction to lie across. When the projection
 is shorter than 1e-6 × max(1, the figure's larger side), the cut-off `withArrows`
 already uses
 ([`CreasePattern.hs:596-597`](../src/Senbazuru/Render/CreasePattern.hs#L596-L597)),
-the loop is drawn as if the axis were page-vertical: horizontal, at the midpoint of
-the figure's bottom edge ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
-A17). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
+the loop is drawn as if the axis were page-vertical: horizontal, under the midpoint
+of the figure's bottom edge ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page);
+A17). As built, the cut-off is taken per unit of the axis's length, since a
+direction has no length of its own ([C158](decisions.md#changes-since-draft-v2)). The figure carries `EdgeOnMark` too when some figure of its page states a valley or a mountain ([C157](decisions.md#changes-since-draft-v2)).
 
 **Extent, measured.** A `python3` script on `examples/bird-base-sequence.fold`
 (run on 2026-09-14, and again on 2026-09-15 with the same output): take

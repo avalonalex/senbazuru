@@ -186,6 +186,10 @@ data PageFitError
     -- the figures. Drawn smaller, the captions only wrap to more lines, so
     -- that total is a lower bound, not the height a page needs.
     TooShortForCaptions !Double !Double !Double
+  | -- | The page is too narrow for the marks beside its figures: its width,
+    -- its margin, and the room the marks need beside the columns, in page
+    -- units, at the scale where none was left for the figures.
+    TooNarrowForMarks !Double !Double !Double
   deriving stock (Eq, Show)
 
 -- | The page's own numbers through 'decimal', since the reader typed them;
@@ -199,6 +203,15 @@ instance Explain PageFitError where
         <> decimal margin
         <> " on each side, has no room across for its figures and their captions"
     FiguresHaveNoWidth -> "the figures have no width, so their captions have nothing to be wrapped to"
+    TooNarrowForMarks width margin room ->
+      "a page "
+        <> decimal width
+        <> " wide is too narrow for the marks beside its figures: they need "
+        <> num room
+        <> " across, and it has "
+        <> decimal (width - 2 * margin)
+        <> " inside its margins of "
+        <> decimal margin
     TooShortForCaptions height margin bands ->
       "a page "
         <> decimal height
@@ -236,11 +249,29 @@ fitPage theme grid height page captioned = case gridOf grid (map fst captioned) 
     -- are as wide at every scale.
     -- A width that is not a number fails the comparison, and is refused
     -- with the rest.
+    --
+    -- Marks beside the columns take page-unit room the figures cannot have
+    -- ('rowsLeft', 'rowsRight'), and how much depends on the scale, since a
+    -- mark's point is in model units. So the width is fitted in rounds, as
+    -- the height is: each takes the room at the scale reached so far and the
+    -- scale that room leaves, until the room stops growing. Drawn smaller,
+    -- the figures leave their marks further past their cells, never less, so
+    -- the scale only falls. A page with no mark beside a column takes one
+    -- round, at the scale it always had.
     widthScale plain
-      | across > 0 = maybe (Left FiguresHaveNoWidth) Right (pageScale (across / figuresWide))
+      | across > 0 = maybe (Left FiguresHaveNoWidth) Right (pageScale (across / figuresWide)) >>= settleAcross (20 :: Int)
       | otherwise = Left (NoRoomAcross (pageWidth page) margin)
       where
         V2 figuresWide _ = boxSize (diagramExtent plain)
+        sideRoom scale = maybe 0 (\rows -> sum (rowsLeft rows) + sum (rowsRight rows)) (rowsAt scale)
+        settleAcross rounds scale
+          | room <= 0 = Left (TooNarrowForMarks (pageWidth page) margin (sideRoom scale))
+          | otherwise = case pageScale (room / figuresWide) of
+              Just next | next < scale && rounds > 0 -> settleAcross (rounds - 1) next
+              Just next -> Right (min scale next)
+              Nothing -> Left FiguresHaveNoWidth
+          where
+            room = across - sideRoom scale
 
     -- As tall as the layout at the width's scale needs: its extent's height
     -- drawn at that scale, and the margins.

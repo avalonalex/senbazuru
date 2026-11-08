@@ -8,13 +8,13 @@
 -- steady becomes a union of boxes measured in different projections.
 module Senbazuru.Render.StepsSpec (spec) where
 
-import Control.Monad (forM, forM_, (>=>))
+import Control.Monad (forM, forM_, void, (>=>))
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..), solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
-import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), fitPage)
+import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), PageFitError (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
 import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
@@ -534,13 +534,62 @@ turningOver = beforeAll turnRuns . describe "a turn-over loop" $ do
     loopOn top figure3 (V3 0.6 0.3 0, V3 0 1 0) `shouldBe` Right [loopAt (V2 0 18) (V2 0.6 0) (V2 0 1)]
     loopOn top figure3 (V3 0.7 0.25 0, V3 1 0 0) `shouldBe` Right [loopAt (V2 18 0) (V2 1 0.25) (V2 (-1) 0)]
     loopOn top figure3 (V3 0 2 0, V3 1 0 0) `shouldBe` Right [loopAt (V2 0 18) (V2 0.75 0) (V2 0 1)]
+    -- A line through the figure's top-right corner running down to the
+    -- right at 45° only touches it, (1, 1/2) being the one point of the
+    -- figure on it: the loop falls back too, rather than standing on that
+    -- corner pointing away from the paper.
+    loopOn top figure3 (V3 1 0.5 0, V3 1 (-1) 0) `shouldBe` Right [loopAt (V2 0 18) (V2 0.75 0) (V2 0 1)]
+
+  -- Only an axis's direction counts: one too long or too short to square
+  -- gives the loop a unit one does, and one tilted out of the paper, whose
+  -- projection is shorter than it, still moves the loop three quarters of
+  -- its size. Red if the length overflowed into an axis seen end on, or the
+  -- nudge followed the projection's length.
+  it "moves the loop by three quarters of its size, however long or tilted the axis is" $ \runs -> do
+    let figure3 = quarterFigure3 runs
+        nudges axis = [n | Right shapes <- [loopOn top figure3 axis], Offset n _ <- shapes]
+    forM_ [V3 0 1e200 0, V3 0 1e-200 0] $ \direction ->
+      loopOn top figure3 (V3 0.6 0.3 0, direction) `shouldBe` Right [loopAt (V2 0 18) (V2 0.6 0) (V2 0 1)]
+    loopOn top figure3 (V3 0.7 0.25 0, V3 1e200 0 0) `shouldBe` Right [loopAt (V2 18 0) (V2 1 0.25) (V2 (-1) 0)]
+    map (\(V2 x y) -> abs (sqrt (x * x + y * y) - 18) < 1e-9) (nudges (V3 0.6 0.3 0, V3 0 1 1)) `shouldBe` [True]
+
+  -- On a page turned a quarter, an axis across it is level only to within
+  -- 6e-17, and an axis up it has a part of that size across: both still
+  -- count as level or upright. So the left-right axis of figure 3, across
+  -- this page, leaves at the figure's right end, and an axis lying along
+  -- the figure's left side leaves at its lower end, the corner, not where
+  -- its given point is. Red if either test were exact.
+  it "takes an axis 6e-17 off level or upright on a page turned a quarter as level or upright" $ \runs -> do
+    let turned = View (Just topDown) (pi / 2)
+        figure3 = quarterFigure3 runs
+        extentOf frame = [diagramExtent d | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget turned [(frame, silentNote)]]]
+        anchors axis = [(p, v) | Right shapes <- [loopOn turned figure3 axis], Offset _ (Symbol _ _ p (TurnOverLoop v)) <- shapes]
+        near (V2 a b) (V2 c d) = abs (a - c) < 1e-12 && abs (b - d) < 1e-12
+    case (extentOf figure3, anchors (quarterAxis runs), anchors (V3 0.75 0.5 0, V3 1 0 0)) of
+      ([Box (V2 left bottom) (V2 rightSide _)], [(acrossAt, acrossBy)], [(uprightAt, uprightBy)]) -> do
+        let V2 acrossX _ = acrossAt
+        (abs (acrossX - rightSide) < 1e-12, near acrossBy (V2 (-1) 0)) `shouldBe` (True, True)
+        (near uprightAt (V2 left bottom), near uprightBy (V2 0 1)) `shouldBe` (True, True)
+      other -> expectationFailure ("expected one figure and two loops, got " <> show other)
+    -- Turned the other way, the left-right axis shows as (1, +6e-17): taken
+    -- as upright it would leave at the left end, taken as level it leaves at
+    -- the right. Red if the level test were exact.
+    let other' = View (Just topDown) (-pi / 2)
+        acrossOn = [(p, v) | Right shapes <- [loopOn other' figure3 (quarterAxis runs)], Offset _ (Symbol _ _ p (TurnOverLoop v)) <- shapes]
+        rightOf = [r | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget other' [(figure3, silentNote)]], let Box _ (V2 r _) = diagramExtent d]
+    case (acrossOn, rightOf) of
+      ([(V2 x _, by)], [r]) -> (abs (x - r) < 1e-12, near by (V2 (-1) 0)) `shouldBe` (True, True)
+      other -> expectationFailure ("expected one loop and one figure, got " <> show other)
 
   -- A17: seen from the front, the left-right axis points at the reader, so
   -- its projection has no direction; the loop is drawn as if the axis ran
   -- up the page, at the middle of figure 3's bottom edge, which seen edge on
   -- is the figure itself, from (1/2, 0) to (1, 0) on the page.
-  it "draws an axis seen end on as if it ran up the page (A17)" $ \runs ->
+  -- An end-on axis through a point off the figure's middle, at x = 0.6,
+  -- tells this apart from the fallback, which would put the loop at 0.75.
+  it "draws an axis seen end on as if it ran up the page (A17)" $ \runs -> do
     loopOn (View (Just frontOn) 0) (quarterFigure3 runs) (quarterAxis runs) `shouldBe` Right [loopAt (V2 0 18) (V2 0.75 0) (V2 0 1)]
+    loopOn (View (Just frontOn) 0) (quarterFigure3 runs) (V3 0.6 0.25 0, V3 0 1 0) `shouldBe` Right [loopAt (V2 0 18) (V2 0.6 0) (V2 0 1)]
 
   -- S27's eye counts a stated kind only where it is drawn, and a turned
   -- figure draws no inferred arrow. Red if the turned figure's stated kind
@@ -569,17 +618,51 @@ turningOver = beforeAll turnRuns . describe "a turn-over loop" $ do
         figures <- right (stepFigures defaultTheme defaultBudget top (zip [a, b] notes))
         fitted <- right (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit defaultPage {pageWidth = 400} figures) >>= maybe (fail "nothing to lay out") pure
         let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
-            lowest = maximum (0 : [y | l <- T.lines svg, " C " `T.isInfixOf` l, V2 _ y <- pathPoints l])
+            loopLines = loopPaths svg
+            lowest = maximum (0 : [y | l <- loopLines, V2 _ y <- pathPoints l])
             captions = [y | l <- T.lines svg, "<text" `T.isInfixOf` l, not (any (`T.isInfixOf` l) [">1<", ">2<"]), Just y <- [attribute "y" l]]
+        length loopLines `shouldBe` 2
         length captions `shouldBe` 2
         [y | y <- captions, y - 10.8 < lowest] `shouldBe` []
       states -> expectationFailure ("expected four states, got " <> show (length states))
 
+  -- A top-bottom turn's axis runs across the page, so its loop stands past
+  -- the figure's right end, and the page leaves room beside that column for
+  -- it: with the turned sheet in the first column the loop stays clear of
+  -- the second figure's paper, and in the last column it stays on the page.
+  -- Red if the layout left no room beside the column ('markRight'). On a
+  -- page too narrow for the loop beside its figures, the fit is refused.
+  it "leaves room beside a column for a loop past its figure's right end" $ \runs ->
+    case quarterStates runs of
+      flatSheet' : _ -> do
+        let turned = silentNote {noteCaption = Just "Turn the sheet over, top to bottom.", notePresentation = Just (PageTurnedOver (V3 0.5 0.5 0) (V3 1 0 0))}
+            plain = silentNote {noteCaption = Just "Turned."}
+            fitted width notes = do
+              figures <- right (stepFigures defaultTheme defaultBudget top (zip [flatSheet', flatSheet'] notes))
+              pure (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit defaultPage {pageWidth = width} figures)
+            draw = \case
+              Right (Just f) -> pure (renderSvg (fittedPage f) (fittedDiagram f))
+              other -> fail ("expected a page, got " <> show (void <$> other))
+            loopRight svg = maximum (0 : [x | l <- loopPaths svg, V2 x _ <- pathPoints l])
+            paperLefts svg = [minimum [x | V2 x _ <- pathPoints l] | l <- T.lines svg, "fill=\"#faf8f3\"" `T.isInfixOf` l]
+        first <- fitted 400 [turned, plain] >>= draw
+        last' <- fitted 400 [plain, turned] >>= draw
+        case paperLefts first of
+          [_, second] -> loopRight first `shouldSatisfy` (< second)
+          lefts -> expectationFailure ("expected two sheets, got " <> show lefts)
+        (loopRight last' > 0, loopRight last' <= 400 - 16) `shouldBe` (True, True)
+        narrow <- fitted 60 [turned, plain]
+        case narrow of
+          Left (TooNarrowForMarks 60 16 _) -> pure ()
+          other -> expectationFailure ("expected the page refused as too narrow, got " <> show (void <$> other))
+      [] -> expectationFailure "no states"
+
   -- 06's turn-over golden: the run's four states, each figure with the arrows
   -- inferred to the next and its state's title as its caption, and figure 3
   -- with the loop of the turn that follows it, fitted to a page 400 wide as
-  -- a run's page is. Red if an arrow joins the loop, or the loop lies along
-  -- the axis, on the edge, or at a size that follows the model.
+  -- a run's page is. Red if the loop lies along the axis, on the edge, or at
+  -- a size that follows the model. Figure 3 is followed by a pure turn, which
+  -- infers no arrow anyway, so A9's test, not this, pins the suppression.
   it "renders the quarter run turned over, with its loop" $
     fittedTurnOver >=> goldenText "test/golden/quarter-fold-turn-over-steps.svg"
   where
@@ -618,6 +701,13 @@ attribute :: T.Text -> T.Text -> Maybe Double
 attribute key line = case T.splitOn (" " <> key <> "=\"") line of
   [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)))
   _ -> Nothing
+
+-- | The turn-over loop's two paths in a page: its stem, the one path drawn
+-- with curves, and its head, the path after it.
+loopPaths :: T.Text -> [T.Text]
+loopPaths svg = case break (" C " `T.isInfixOf`) (T.lines svg) of
+  (_, stem : headLine : _) -> [stem, headLine]
+  _ -> []
 
 -- | The points of a path's @d@ attribute, its letters dropped.
 pathPoints :: T.Text -> [V2]

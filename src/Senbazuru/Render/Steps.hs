@@ -397,8 +397,10 @@ edgeOnMark theme paper =
 -- figure, by three quarters of its size, in page units: below the figure for
 -- a left-right turn seen from above, as books draw it (the owner's choice of
 -- 2026-11-07). Its vector points back into the figure, so the loop rises
--- towards the paper it stands for and never across a neighbour.
--- "Senbazuru.Diagram.Layout" leaves room below the row for it ('markDrop').
+-- towards the paper it stands for. "Senbazuru.Diagram.Layout" leaves room
+-- for it where it lies past its figure's cell, below the row for an axis up
+-- the page and beside the column for one across it (@markDrop@,
+-- @markRight@), so it never lies across a neighbour.
 -- The theme's glyph size sizes it, and it is drawn at an arrow's weight,
 -- since it is an arrow.
 --
@@ -412,24 +414,30 @@ turnOverMark theme basis paper point direction =
     away = 0.75 * size
     (anchor, inward@(V2 ix iy)) = placeLoop (diagramExtent paper) (project basis point) (unitProjection basis direction)
 
--- | A direction as the page shows it, per unit of its length in the model:
--- its projection divided by its own length. 'Nothing' when that is shorter
--- than 1e-6, an axis seen end on, which R-06-11 draws as if it ran up the
--- page, and when the direction has no length or is not a number.
+-- | A direction as the page shows it, as a unit vector on the page.
+-- 'Nothing' when its projection, per unit of its length in the model, is
+-- shorter than 1e-6, an axis seen end on, which R-06-11 draws as if it ran
+-- up the page, and when the direction has no length or is not a number.
 --
 -- A direction has no size of its own, so R-06-11's cut-off, a millionth of
 -- the figure's larger side, which is a length, is taken per unit of the
 -- direction's length: the same test on a direction as long as the figure.
 unitProjection :: Basis -> V3 -> Maybe V2
 unitProjection basis direction
-  | isNaN len || isInfinite len || len <= 0 = Nothing
+  | isNaN biggest || isInfinite biggest || biggest <= 0 = Nothing
   | isNaN shown || shown <= 1e-6 = Nothing
-  | otherwise = Just (V2 (x / len) (y / len))
+  | otherwise = Just (V2 (x / shown') (y / shown'))
   where
     V3 dx dy dz = direction
-    len = sqrt (dx * dx + dy * dy + dz * dz)
-    V2 x y = project basis direction
-    shown = sqrt (x * x + y * y) / len
+    -- Divided by its largest part first, so that a direction too long or too
+    -- short to square keeps its length: only its direction counts.
+    biggest = maximum [abs dx, abs dy, abs dz]
+    scaled = V3 (dx / biggest) (dy / biggest) (dz / biggest)
+    V3 sx sy sz = scaled
+    len = sqrt (sx * sx + sy * sy + sz * sz)
+    V2 x y = project basis scaled
+    shown' = sqrt (x * x + y * y)
+    shown = shown' / len
 
 -- | Where the turn-over loop stands on a figure's extent, and the unit vector
 -- pointing from there back into the figure: where the line through the
@@ -438,16 +446,18 @@ unitProjection basis direction
 -- of a quarter turn leaves a horizontal axis 6e-17 off level. A direction of
 -- 'Nothing' is taken as up the page.
 --
--- A line that misses the box, or only touches it at a point other than on
--- its lower or right side, falls back to the midpoint of the box's bottom
--- edge, with the loop rising up the page: an axis given by hand need not
--- cross the figure, and the bottom middle is where a left-right turn seen
--- from above puts it anyway.
+-- A line that misses the box, or only touches it at a corner, falls back to
+-- the midpoint of the box's bottom edge, with the loop rising up the page:
+-- an axis given by hand need not cross the figure, and the bottom middle is
+-- where a left-right turn seen from above puts it anyway. A box with no
+-- height or no width, a figure seen edge on, is crossed at a single point,
+-- and that point is the anchor. The inward vector is a unit vector on the
+-- page, so the loop is moved by exactly three quarters of its size.
 placeLoop :: Box -> V2 -> Maybe V2 -> (V2, V2)
 placeLoop (Box (V2 x0 y0) (V2 x1 y1)) (V2 px py) shown =
   case (inRange x0 x1 px ux, inRange y0 y1 py uy) of
     (Just (ax, bx), Just (ay, by))
-      | low <= high ->
+      | low < high || (low == high && flat) ->
           if level
             then (at high, V2 (negate ux) (negate uy))
             else (at low, V2 ux uy)
@@ -457,11 +467,15 @@ placeLoop (Box (V2 x0 y0) (V2 x1 y1)) (V2 px py) shown =
     _ -> fallback
   where
     fallback = (V2 (0.5 * (x0 + x1)) y0, V2 0 1)
+    -- A box with no height or no width, a figure seen edge on, is crossed at
+    -- one point; any other box a line meets at one point is only touched,
+    -- at a corner, and the line does not cross the figure.
+    flat = y0 == y1 || x0 == x1
     -- Oriented so that the lower end comes first along it, or, for a level
     -- line, the left end: then the exit is at the smallest parameter, or the
     -- largest for a level line, and the inward vector is the direction
     -- itself, or its reverse.
-    level = maybe False (\(V2 x y) -> abs y <= 1e-9 * abs x) shown
+    level = maybe False (\(V2 _ y) -> abs y <= 1e-9) shown
     V2 ux uy = case shown of
       Nothing -> V2 0 1
       Just (V2 x y)
@@ -470,9 +484,12 @@ placeLoop (Box (V2 x0 y0) (V2 x1 y1)) (V2 px py) shown =
         | otherwise -> V2 x y
     at t = V2 (px + t * ux) (py + t * uy)
     -- The parameters along one axis for which the line lies between lo and
-    -- hi, or 'Nothing' when it runs alongside that slab outside it.
+    -- hi, or 'Nothing' when it runs alongside that slab outside it. A part
+    -- of the unit direction within 1e-9 of 0 is taken as 0, as for level:
+    -- a quarter-turn roll leaves 6e-17, which would otherwise make the slab
+    -- a sliver of parameters around the given point and put the loop there.
     inRange lo hi p u
-      | u == 0 = if lo <= p && p <= hi then Just (-1 / 0, 1 / 0) else Nothing
+      | abs u <= 1e-9 = if lo <= p && p <= hi then Just (-1 / 0, 1 / 0) else Nothing
       | otherwise = let a = (lo - p) / u; b = (hi - p) / u in Just (min a b, max a b)
 
 -- | A kind stated from the reader's side, as a page showing this side sees
