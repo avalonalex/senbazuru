@@ -52,8 +52,9 @@ labels d = mapMaybe text (diagramShapes d)
     text = \case
       Label _ _ _ t -> Just (show t)
       Offset _ shape -> text shape
-      -- A mark has no words (06 R-06-7), and nor has a line or an area,
-      -- fanned or not.
+      -- A mark's words, a rotate's amount or a repeat's range, are its
+      -- glyph's, drawn by the backend, never a Label (06 R-06-7, R-06-13);
+      -- and a line or an area has none, fanned or not.
       Symbol {} -> Nothing
       Fanned {} -> Nothing
       _ -> Nothing
@@ -374,6 +375,23 @@ spec = do
       (markRight 100 shared (at 1), markLeft 100 shared (at 0)) `shouldBe` (12, 12)
       markRight 100 shared looped `shouldSatisfy` near1 30
       markLeft 100 shared looped `shouldBe` 0
+
+  -- How far each glyph reaches from its point. Every glyph but the repeat
+  -- mark fits a square as wide as its size; the repeat mark's box is as wide
+  -- as its words at 0.55 of its type size, 14 at size 24, a character, and
+  -- 0.3 of it padding each side, and 1.45 of it tall. So a repeat box beside
+  -- a cell reaches further than half its size, and the room beside the
+  -- column follows. Red if the layout took every glyph as half its size.
+  describe "a glyph's reach" $ do
+    it "is half its size for every glyph but the repeat mark, whose box is as wide as its words" $ do
+      forM_ [TurnOverLoop (V2 0 1), EdgeOnMark, RotateMark 3] $ \g -> (g, glyphReach 24 g) `shouldBe` (g, V2 12 12)
+      let reachOf g = let V2 w h = glyphReach 24 g in (w, h)
+          close (a, b) (c, d) = abs (a - c) < 1e-9 && abs (b - d) < 1e-9
+      [close (reachOf g) e | (g, e) <- [(RepeatMark 1 2, (15.75, 10.15)), (RepeatMark 10 12, (23.45, 10.15)), (RepeatMark 5 5, (8.05, 10.15))]] `shouldBe` [True, True, True]
+
+    it "leaves room beside a column as wide as a repeat box reaches" $ do
+      let box = (square 1) {diagramShapes = [Symbol (solid ink 1) 24 (V2 1 0.5) (RepeatMark 10 12)]}
+      markRight 100 (Box (V2 0 0) (V2 1 1)) box `shouldSatisfy` near1 23.45
 
   describe "pageScale" $
     it "refuses a scale that is not positive and finite" $

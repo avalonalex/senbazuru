@@ -12,7 +12,7 @@ import Control.Monad (forM, forM_, void, (>=>))
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
-import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..), solid)
+import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..), glyphReach, solid)
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
 import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), PageFitError (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
@@ -20,7 +20,7 @@ import Senbazuru.Fold.Load (loadFoldFile)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..), VertexId (..), allFrames, emptyFrame)
 import Senbazuru.Geometry (Box (..), Transform (..), V2 (..), boxSize)
-import Senbazuru.Geometry.Rigid (applyRigid)
+import Senbazuru.Geometry.Rigid (applyRigid, rotationAboutDegrees)
 import Senbazuru.Geometry.V3 (V3 (..), modelSpan)
 import Senbazuru.Origami.Stacking (defaultBudget)
 import Senbazuru.Origami.Step (Motion (..), motionsBetween)
@@ -233,6 +233,7 @@ spec = do
   foldHere
   statedKinds
   turningOver
+  rotatingAndRepeating
   turning
 
 -- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
@@ -668,6 +669,135 @@ turningOver = beforeAll turnRuns . describe "a turn-over loop" $ do
   where
     loopsOf d = length [() | Offset _ (Symbol _ _ _ (TurnOverLoop _)) <- diagramShapes d]
 
+-- | The rotate and repeat marks (R-06-13, A15 of
+-- PRDs/06-prd-step-diagrams.md): a note's 'PageRotated' puts the rotate mark
+-- above its figure's top-right corner, its sense as the page sees it, and a
+-- note's 'noteRepeat' puts the box holding the range there too, to the
+-- rotate mark's left when the figure has one.
+rotatingAndRepeating :: Spec
+rotatingAndRepeating = describe "rotate and repeat marks" $ do
+  -- A15, restated with the page's constructor: on the quarter fold's three
+  -- figures, a rotate of 3/8 clockwise on figure 1 and a repeat of figures 1
+  -- and 2 on figure 3 give one RotateMark (-3) and one RepeatMark 1 2, each
+  -- on its own figure, at that figure's top-right corner. Red if the sign
+  -- were dropped, the range shifted, or a mark put on another figure.
+  it "puts one rotate mark and one repeat mark on their own figures (A15)" $ do
+    (a, b, c) <- quarterThree
+    let notes = [silentNote {notePresentation = Just (PageRotated (-3) (V3 0.5 0.5 0))}, silentNote, silentNote {noteRepeat = Just (1, 2)}]
+    figures <- right (stepFigures defaultTheme defaultBudget top (zip [a, b, c] notes))
+    [[(g, p == corner d) | shape <- diagramShapes d, Just (p, g) <- [markOf shape]] | (d, _) <- figures]
+      `shouldBe` [[(RotateMark (-3), True)], [], [(RepeatMark 1 2, True)]]
+
+  -- From the paper's other side a clockwise turn looks anticlockwise, so
+  -- the mark's sign flips; seen edge on it is drawn as stated. Red if the
+  -- sign followed the side wrongly or not at all.
+  it "draws a rotate's sense as the page sees it" $ do
+    (a, _, _) <- quarterThree
+    let glyphs view k = [g | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget view [(a, silentNote {notePresentation = Just (PageRotated k (V3 0.5 0.5 0))})]], shape <- diagramShapes d, Just (_, g@(RotateMark _)) <- [markOf shape]]
+    [glyphs view 3 | view <- [top, View (Just bottomUp) 0, View (Just frontOn) 0]] `shouldBe` [[RotateMark 3], [RotateMark (-3)], [RotateMark 3]]
+
+  -- A turn of no eighths, or of eight or more either way, is none a run
+  -- makes: no mark, and no eye on an edge-on page for it. minBound would
+  -- survive a negation and an abs.
+  it "draws no rotate mark for a turn of no eighths or of eight or more" $ do
+    (a, b, c) <- quarterThree
+    forM_ [0, 8, -8, minBound] $ \k -> do
+      let note = silentNote {notePresentation = Just (PageRotated k (V3 0.5 0.5 0))}
+          -- Every mark, the edge-on eye among them: a turn that draws no
+          -- mark must not put eyes on the page either.
+          marks view = [length [() | Offset _ (Symbol {}) <- diagramShapes d] | Right figures <- [stepFigures defaultTheme defaultBudget view [(a, note), (b, silentNote), (c, silentNote)]], (d, _) <- figures]
+      (k, marks top, marks (View (Just frontOn) 0)) `shouldBe` (k, [0, 0, 0], [0, 0, 0])
+
+  -- R-06-4 for a rotate: a pair that folds and turns round infers the
+  -- arrows of every face to where the turn left it; the note suppresses
+  -- them, while a given arrow is still drawn.
+  it "infers no arrow across a turn on the table, and still draws a given one" $ do
+    (a, b, _) <- quarterThree
+    turnedB <- case frameVertices b of
+      Right points -> pure b {verticesCoords = [[x, y, z] | V3 x y z <- map (applyRigid (rotationAboutDegrees (V3 0.75 0.5 0) (V3 0 0 1) (-135))) points]}
+      Left err -> fail (show err)
+    let arrowsWith note = [arrowsOf d | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget top [(a, note), (turnedB, silentNote)]]]
+        rotated note = note {notePresentation = Just (PageRotated (-3) (V3 0.75 0.5 0))}
+    (arrowsWith inferNote, arrowsWith (rotated inferNote), arrowsWith (rotated silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}))
+      `shouldBe` ([1], [0], [1])
+
+  -- A rotate's sense depends on the side, so seen edge on it puts the eye
+  -- on every figure, as a stated valley or mountain does (the owner's
+  -- choice of 2026-11-08). A repeat alone does not.
+  it "puts the edge-on eye on every figure for a rotate, not for a repeat" $ do
+    (a, b, c) <- quarterThree
+    let eyes notes = [length [() | Offset _ (Symbol _ _ _ EdgeOnMark) <- diagramShapes d] | Right figures <- [stepFigures defaultTheme defaultBudget (View (Just frontOn) 0) (zip [a, b, c] notes)], (d, _) <- figures]
+    eyes [silentNote, silentNote {notePresentation = Just (PageRotated 2 (V3 0.5 0.5 0))}, silentNote] `shouldBe` [1, 1, 1]
+    eyes [silentNote {noteRepeat = Just (1, 2)}, silentNote, silentNote] `shouldBe` [0, 0, 0]
+
+  -- The marks above the corner: the rotate mark centred half its size in
+  -- from the right end and half its size above a line 1 page unit over the
+  -- step number's ink, 10.8 above the figure's top at the number's 14; the
+  -- repeat box with its bottom on that line, at the right end alone, or a
+  -- rotate's width and a quarter of the glyph size to its left beside one.
+  -- On a figure with the edge-on eye the line is above the eye, 2.2 of the
+  -- number's size over the top. Red if a mark were on the paper, or beside
+  -- a rotate the box overlapped it.
+  it "places the marks above the figure's top-right corner, clear of the number, and above the eye seen edge on" $ do
+    (a, _, _) <- quarterThree
+    let both = silentNote {notePresentation = Just (PageRotated (-3) (V3 0.5 0.5 0)), noteRepeat = Just (1, 2)}
+        alone = silentNote {noteRepeat = Just (1, 2)}
+        nudges view note = [(g, n) | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget view [(a, note)]], Offset n (Symbol _ _ _ g) <- diagramShapes d, isCornerMark g]
+        V2 boxAcross boxUp = glyphReach 24 (RepeatMark 1 2)
+        near (g, V2 x y) (h, V2 u v) = g == h && abs (x - u) < 1e-9 && abs (y - v) < 1e-9
+        line = 10.8 + 1
+        eyeLine = 2.2 * 14 + 1
+        expect l = [(RotateMark (-3), V2 (-12) (negate (l + 12))), (RepeatMark 1 2, V2 (negate (24 + 6 + boxAcross)) (negate (l + boxUp)))]
+    and (zipWith near (nudges top both) (expect line)) `shouldBe` True
+    length (nudges top both) `shouldBe` 2
+    and (zipWith near (nudges top alone) [(RepeatMark 1 2, V2 (negate boxAcross) (negate (line + boxUp)))]) `shouldBe` True
+    and (zipWith near (nudges (View (Just frontOn) 0) both) (expect eyeLine)) `shouldBe` True
+
+  -- On a page fitted as a run's page is, the marks lie on the page, clear
+  -- of the step numbers and, seen edge on, of the eyes: no two of their
+  -- boxes, read from the SVG, overlap. Red if the layout left no room above
+  -- the row, or the marks met the number or the eye.
+  it "keeps the marks on a fitted page, clear of the numbers and the eyes" $ do
+    (a, b, c) <- quarterThree
+    let cap t = silentNote {noteCaption = Just t}
+        notes = [(cap "Turn it round.") {notePresentation = Just (PageRotated (-3) (V3 0.5 0.5 0))}, (cap "Turn and repeat.") {notePresentation = Just (PageRotated 2 (V3 0.75 0.5 0)), noteRepeat = Just (1, 2)}, (cap "Repeat.") {noteRepeat = Just (1, 12)}]
+    forM_ [top, View (Just frontOn) 0] $ \view -> do
+      figures <- right (stepFigures defaultTheme defaultBudget view (zip [a, b, c] notes))
+      fitted <- right (fitPage defaultTheme (defaultGrid defaultTheme) HeightToFit defaultPage {pageWidth = 400} figures) >>= maybe (fail "nothing to lay out") pure
+      let svg = renderSvg (fittedPage fitted) (fittedDiagram fitted)
+          boxes = markBoxes svg
+          overlap (Box (V2 a0 b0) (V2 a1 b1)) (Box (V2 c0 d0) (V2 c1 d1)) = a0 < c1 && c0 < a1 && b0 < d1 && d0 < b1
+          inside (Box (V2 x0 y0) (V2 x1 y1)) = x0 >= 0 && y0 >= 0 && x1 <= 400 && y1 <= pageHeight (fittedPage fitted)
+          pairs = [(m, o) | (i, m) <- zip [0 :: Int ..] boxes, (j, o) <- zip [0 ..] boxes, i < j]
+      (length boxes >= 7, all (inside . snd) boxes) `shouldBe` (True, True)
+      [(fst m, fst o) | (m, o) <- pairs, overlap (snd m) (snd o)] `shouldBe` []
+  where
+    corner d = let Box _ (V2 r t) = diagramExtent d in V2 r t
+    markOf = \case
+      Offset _ (Symbol _ _ p g) | isCornerMark g -> Just (p, g)
+      _ -> Nothing
+    isCornerMark = \case
+      RotateMark _ -> True
+      RepeatMark _ _ -> True
+      _ -> False
+
+-- | The boxes of a page's step numbers, rotate marks, repeat boxes and eyes,
+-- in page units, each with what it is: a number by its baseline, 10.8 above
+-- it to 3 below and 7.7 a digit across; a rotate mark by its path's points;
+-- a repeat box by its rectangle; an eye by its path.
+markBoxes :: T.Text -> [(String, Box)]
+markBoxes svg =
+  [ ("number", Box (V2 x (y - 10.8)) (V2 (x + 7.7 * fromIntegral (T.length t)) (y + 3))) | l <- ls, "<text" `T.isInfixOf` l, "font-size=\"14\"" `T.isInfixOf` l, not ("text-anchor" `T.isInfixOf` l), let t = T.takeWhile (/= '<') (T.drop 1 (T.dropWhile (/= '>') l)), T.all (`elem` ("0123456789" :: String)) t, not (T.null t), Just x <- [attribute "x" l], Just y <- [attribute "y" l]
+  ]
+    <> [("rotate", boxOf (pathPoints l)) | l <- ls, " C " `T.isInfixOf` l, "stroke-width=\"1.8\"" `T.isInfixOf` l]
+    <> [("repeat", Box (V2 x y) (V2 (x + w) (y + h))) | l <- ls, "<rect" `T.isInfixOf` l, "stroke=" `T.isInfixOf` l, Just x <- [attribute "x" l], Just y <- [attribute "y" l], Just w <- [attribute "width" l], Just h <- [attribute "height" l]]
+    <> [("eye", boxOf (pathPoints l)) | l <- ls, " Q " `T.isInfixOf` l, "stroke-width=\"1\"" `T.isInfixOf` l, not (" C " `T.isInfixOf` l)]
+  where
+    ls = T.lines svg
+    boxOf ps = case ([x | V2 x _ <- ps], [y | V2 _ y <- ps]) of
+      (xs@(_ : _), ys@(_ : _)) -> Box (V2 (minimum xs) (minimum ys)) (V2 (maximum xs) (maximum ys))
+      _ -> Box (V2 0 0) (V2 0 0)
+
 -- | The loops a note turning over about this axis puts on this frame, drawn
 -- alone through this view.
 loopOn :: View -> Frame -> (V3, V3) -> Either StepError [Shape]
@@ -790,8 +920,9 @@ labelsOf d = mapMaybe text (diagramShapes d)
     text = \case
       Label _ _ _ t -> Just (filter (/= '"') (show t))
       Offset _ shape -> text shape
-      -- A mark has no words (06 R-06-7), and nor has a line or an area,
-      -- fanned or not.
+      -- A mark's words, a rotate's amount or a repeat's range, are its
+      -- glyph's, drawn by the backend, never a Label (06 R-06-7, R-06-13);
+      -- and a line or an area has none, fanned or not.
       Symbol {} -> Nothing
       Fanned {} -> Nothing
       _ -> Nothing

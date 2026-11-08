@@ -221,7 +221,8 @@ motionsBetween before after = do
 -- all that happened: some vertex moved, and one proper rigid motion carries
 -- every vertex onto its place in the second frame. That is a turn-over or a
 -- turn of the page, a change of presentation, which gets no arrow. A page
--- marks a turn-over with a loop only when a step note says so
+-- marks a turn-over with a loop, and a turn round with the rotate mark, only
+-- when a step note says so
 -- ("Senbazuru.Render.Steps"): a frame says where the paper is, not that the
 -- reader turned it. 'Nothing' when paper folded, and when nothing moved.
 wholeModelMotion :: Frame -> Frame -> Either FoldError (Maybe Rigid)

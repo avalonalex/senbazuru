@@ -354,7 +354,12 @@ then.
   views or rolls. `StepsSpec` tests it on today's `stepPage`, as A7 and A8
   ([decisions C129](decisions.md#changes-since-draft-v2)).
 - **R-06-13.** Rotate marks show signed eighths; repeat marks show a figure range;
-  both are `Symbol`s inside their figure.
+  both are `Symbol`s inside their figure. Built by S30
+  ([#642](https://github.com/avalonalex/senbazuru/issues/642),
+  [C159](decisions.md#changes-since-draft-v2)): the sign as the arrow's sense, as
+  the page sees it, with |k|/8 inside; both marks above the figure's top-right
+  corner, anchored at it, so in its cell, but not on its paper; their words are
+  the glyph's, drawn by the backend.
 
 **Growing graphs**
 
@@ -555,12 +560,12 @@ data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKi
 data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 without InferFoldLines (S28)
 data PresentationChange
   = PageTurnedOver !V3 !V3    -- a point on the axis and its direction, written coordinates; built by S29 (C158)
-  | PageRotated !Int !V3      -- signed eighths, anticlockwise from the reader's side; a point on the axis (S30)
+  | PageRotated !Int !V3      -- signed eighths, anticlockwise from the reader's side; a point on the axis, carried and not read; built by S30 (C159)
 data StepNote = StepNote
   { noteCaption      :: !(Maybe Text),
     noteArrows       :: !Arrows,
     notePresentation :: !(Maybe PresentationChange),
-    noteRepeat       :: !(Maybe (Int, Int)),   -- figure numbers, from 1 as Layout counts
+    noteRepeat       :: !(Maybe (Int, Int)),   -- figure numbers, from 1 as Layout counts; on the figure the repeating step starts from; built by S30 (C159)
     noteLayers       :: !(Maybe [[V3]]),       -- selected layers' rings at before positions (#48, #49)
     noteFoldLines    :: !FoldLines,
     noteMarks        :: ![(Text, V2)] }        -- label and material point (below)
@@ -683,7 +688,7 @@ fills its own inside and reads as a valley's.
 
 ```haskell
 -- Senbazuru.Diagram (SKETCH), still FOLD-ignorant
-data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark  -- built without RotateMark and RepeatMark (S30); EdgeOnMark an eye (C157)
+data Glyph = TurnOverLoop !V2 | RotateMark !Int | RepeatMark !Int !Int | EdgeOnMark  -- built; EdgeOnMark an eye (C157); RotateMark and RepeatMark by S30, each glyph's reach given by glyphReach (C159)
 data Shape = … | Symbol !Stroke !Double !V2 !Glyph   -- stroke, page-unit size, model anchor, glyph
            | Fanned !Fan                            -- a line or a fill of FanPoints, each with its page-unit displacement (§10, R-06-28)
 ```
@@ -828,7 +833,12 @@ page of the one figure gave on 2026-10-28 as 0.41421 × 0.61183 before and
 turning sense; `RepeatMark a b` a box holding the range (Lang). Both sit inside the
 figure: a leader to other figures would cross cells, and `Layout` exists so a mark
 "can never collide with a different figure"
-([`Layout.hs:42-45`](../src/Senbazuru/Diagram/Layout.hs#L42-L45)).
+([`Layout.hs:42-45`](../src/Senbazuru/Diagram/Layout.hs#L42-L45)). As built by
+S30 ([C159](decisions.md#changes-since-draft-v2)), the owner's choices of
+2026-11-08: 06's sketch for both, the fraction as written, and both above the
+figure's top-right corner rather than inside it, which avoids a leader as well,
+since `Layout` now leaves room above a row (C157); the repeat box beside a rotate
+mark goes to its left.
 
 ### 6. Growing crease graphs and fold-here lines
 
@@ -1248,7 +1258,7 @@ decisions 67 to 69).
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | the equal-graph branch is bypassed, restated from "`motionsAcross` visits rings in another order", which the equal-graph branch makes impossible ([C144](decisions.md#changes-since-draft-v2)) |
 | A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g`; pinned by `LayoutSpec`, S13 | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
-| A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
+| A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell. Restated by S30 ([C159](decisions.md#changes-since-draft-v2)) with `PageRotated (-3) p`: `StepsSpec` checks each anchored at its own figure's top-right corner, and, on a page fitted with captions from above and edge on, every mark on the page and clear of every step number and eye | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
 | A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
 | A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge, moved 18 page units down the page (S29, `StepsSpec`, [C158](decisions.md#changes-since-draft-v2)) | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
 | A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |

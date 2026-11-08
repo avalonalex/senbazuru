@@ -146,6 +146,12 @@ eyePage :: Double -> Double -> Text
 eyePage model size =
   renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 model model)) [Symbol (solid (Colour "#1a1a1a") 1) size (V2 (0.5 * model) (0.5 * model)) EdgeOnMark])
 
+-- | A page holding one glyph of the given size in page units, at the middle
+-- of a square model of the given size.
+glyphPage :: Double -> Double -> Glyph -> Text
+glyphPage model size glyph =
+  renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 model model)) [Symbol (solid (Colour "#1a1a1a") 1.8) size (V2 (0.5 * model) (0.5 * model)) glyph])
+
 -- | Each path's points, as its @d@ attribute lists them, letters dropped.
 pathPointsOf :: Text -> [[V2]]
 pathPointsOf out = [pairs (numbers l) | l <- T.lines out, "<path" `T.isInfixOf` l]
@@ -506,6 +512,57 @@ spec = do
       T.isInfixOf "<circle cx=\"100\" cy=\"100\" r=\"1.82\" fill=\"#1a1a1a\"/>" page `shouldBe` True
       forM_ [0, -1, 0 / 0, 1 / 0] $ \size ->
         (show size, T.count "<path" (eyePage 1 size) + T.count "<circle" (eyePage 1 size)) `shouldBe` (show size, 0)
+
+    -- 06's A4 for the rotate and repeat marks: the same whole page at model
+    -- sizes 1 and 400. Red if either were sized or placed by the page's scale.
+    it "draws the rotate and repeat marks the same on the page however big the model is" $
+      forM_ [RotateMark (-3), RotateMark 7, RepeatMark 1 2, RepeatMark 10 12] $ \glyph ->
+        (glyph, glyphPage 400 24 glyph) `shouldBe` (glyph, glyphPage 1 24 glyph)
+
+    -- The rotate mark: every point of its arc and head within half its size
+    -- of its point, (100, 100) on testPage, the reach the layout leaves room
+    -- for; its amount inside as written; and a turn the other way its mirror
+    -- image across the vertical through the point, the words unchanged. Red
+    -- if the head poked out of its room, the amount were reduced, or the sign
+    -- turned no sense round.
+    it "draws a rotate mark within its reach, its amount inside, the other sense its mirror" $ do
+      let page = glyphPage 1 24 (RotateMark (-3))
+          points = concat (pathPointsOf page)
+          mirrored = concat (pathPointsOf (glyphPage 1 24 (RotateMark 3)))
+          near (V2 a b) (V2 c d) = abs (a - c) < 1e-9 && abs (b - d) < 1e-9
+      (length points > 20, all (\(V2 x y) -> sqrt ((x - 100) ** 2 + (y - 100) ** 2) <= 12 + 1e-9) points) `shouldBe` (True, True)
+      T.isInfixOf ">3/8</text>" page `shouldBe` True
+      T.isInfixOf ">2/8</text>" (glyphPage 1 24 (RotateMark 2)) `shouldBe` True
+      and (zipWith near [V2 (200 - x) y | V2 x y <- points] mirrored) `shouldBe` True
+      length mirrored `shouldBe` length points
+
+    -- A turn a run never makes, and a size that is not a length, draw
+    -- nothing; so does a repeat at such a size.
+    it "draws no rotate mark for a turn of no eighths or of eight or more, and no mark at a size that is not a length" $ do
+      forM_ [0, 8, -8, minBound] $ \k ->
+        (k, T.count "<path" (glyphPage 1 24 (RotateMark k)) + T.count "<text" (glyphPage 1 24 (RotateMark k))) `shouldBe` (k, 0)
+      forM_ [0, -1, 0 / 0, 1 / 0] $ \size ->
+        forM_ [RotateMark 3, RepeatMark 1 2] $ \glyph ->
+          -- Beyond the page's own background, which every page has.
+          (show size, glyph, T.count "<path" (glyphPage 1 size glyph) + T.count "<rect" (glyphPage 1 size glyph) - 1 + T.count "<text" (glyphPage 1 size glyph)) `shouldBe` (show size, glyph, 0)
+
+    -- The repeat mark: a box as wide and tall as 'glyphReach' says, centred
+    -- on its point, holding the range, or the one figure when the range is
+    -- one. Red if the box and the layout's room disagreed about its width.
+    it "draws a repeat mark as a box as wide as its words, holding the range" $ do
+      let V2 hw hh = glyphReach 24 (RepeatMark 10 12)
+          page = glyphPage 1 24 (RepeatMark 10 12)
+          -- The mark's box, stroked, not the page's white background.
+          rectOf l = [(x, y, w, h) | "<rect" `T.isInfixOf` l, " stroke=" `T.isInfixOf` l, Just x <- [number "x" l], Just y <- [number "y" l], Just w <- [number "width" l], Just h <- [number "height" l]]
+          number key line = case T.splitOn (" " <> key <> "=\"") line of
+            [_, rest] -> Just (read (T.unpack (T.takeWhile (/= '"') rest)) :: Double)
+            _ -> Nothing
+          rects = concatMap rectOf (T.lines page)
+          close (x, y, w, h) (a, b, c, d) = all (\(p, q) -> abs (p - q) < 1e-9) [(x, a), (y, b), (w, c), (h, d)]
+      and (zipWith close rects [(100 - hw, 100 - hh, 2 * hw, 2 * hh)]) `shouldBe` True
+      length rects `shouldBe` 1
+      T.isInfixOf ">10\x2013\&12</text>" page `shouldBe` True
+      T.isInfixOf ">5</text>" (glyphPage 1 24 (RepeatMark 5 5)) `shouldBe` True
 
     -- The loop lies across its axis as the page shows it. TurnOverLoop (V2 1 1)
     -- names an axis running up and to the right, y up as the model's is, so
