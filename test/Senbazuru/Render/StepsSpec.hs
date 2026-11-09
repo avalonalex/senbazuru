@@ -234,6 +234,7 @@ spec = do
   statedKinds
   turningOver
   rotatingAndRepeating
+  labellingMarks
   turning
 
 -- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
@@ -783,6 +784,97 @@ rotatingAndRepeating = describe "rotate and repeat marks" $ do
       RotateMark _ -> True
       RepeatMark _ _ -> True
       _ -> False
+
+-- | Mark labels where the paper shows (R-06-22, A16 of
+-- PRDs/06-prd-step-diagrams.md), on the quarter run's written state 1: the
+-- sheet folded in half behind, so its right half shows from above and its
+-- left half lies under it, face to face. Two pairs of points lie together
+-- there: (3/4, 3/4) on the right half and (1/4, 3/4) on the left, both at
+-- (3/4, 3/4); and the corners (1, 1) and (0, 1), both at (1, 1). A mark is a
+-- point of the paper, so each pair gets one label, on the layer the viewer
+-- sees: the right half's from above, the left half's from below.
+labellingMarks :: Spec
+labellingMarks = beforeAll turnRuns . describe "mark labels" $ do
+  -- A16, restated. Red if labels followed the mark's point as a place on
+  -- the page, which labels the right half's from either side; if any face's
+  -- region were taken as seen, which labels all four; if a face held only
+  -- points inside its outline, which drops the corner; or if the side were
+  -- ignored.
+  it "labels the layer the viewer sees of two lying together, a corner's included (A16)" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ -> do
+        let marks = [("A", V2 0.75 0.75), ("B", V2 0.25 0.75), ("C", V2 1 1), ("D", V2 0 1)]
+        [labelled view folded marks | view <- [top, View (Just bottomUp) 0]] `shouldBe` [Right ["A", "C"], Right ["B", "D"]]
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- Each label: a dot of 3.6 page units at the place, and the name at 11
+  -- beside it, toward the middle of the piece of paper the place shows on,
+  -- far enough along that the name's estimated box, 0.55 of its size a
+  -- character wide and 10.8/14 of it tall, clears the dot by 2: the dot's
+  -- radius, the gap, and the box's half extent along the direction.
+  -- (3/4, 3/4) is the middle of state 1's upper right quarter, so its name
+  -- goes straight down. From below, (1/4, 3/4) shows at the same place, which
+  -- the bottom view draws at x = -3/4, so the dot there tests the carry from
+  -- sheet to place. (7/8, 7/8) leans down and to the left, toward the
+  -- quarter's middle. Red if the place were not carried, the name pushed a
+  -- fixed distance, or the direction not toward the piece's middle.
+  it "draws a dot at the place and the name beside it, clear of the dot, toward its piece's middle" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ -> do
+        let shapesOf view marks = [shape | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget view [(folded, silentNote {noteMarks = marks})]], shape <- diagramShapes d, isLabelShape shape]
+            dot at = Symbol (solid (themeInk defaultTheme) (themeCreaseWidth defaultTheme)) 3.6 at PointDot
+            nameAt (V2 ux uy) at name =
+              let size = 11
+                  wide = 0.55 * size * fromIntegral (T.length name)
+                  tall = 10.8 / 14 * size
+                  nudge = 1.8 + 2 + abs ux * 0.5 * wide + abs uy * 0.5 * tall
+               in Offset (V2 (nudge * ux - 0.5 * wide) (nudge * uy + 0.35 * size)) (Label (themeInk defaultTheme) size at name)
+            close a b = show a == show b || nearShapes a b
+            nearShapes (Offset (V2 a b) l) (Offset (V2 c d) m) = abs (a - c) < 1e-9 && abs (b - d) < 1e-9 && l == m
+            nearShapes a b = a == b
+            matches got want = length got == length want && and (zipWith close got want)
+            diagonal = sqrt 0.5
+        shapesOf top [("A", V2 0.75 0.75)] `shouldSatisfy` (`matches` [dot (V2 0.75 0.75), nameAt (V2 0 1) (V2 0.75 0.75) "A"])
+        shapesOf (View (Just bottomUp) 0) [("B", V2 0.25 0.75)] `shouldSatisfy` (`matches` [dot (V2 (-0.75) 0.75), nameAt (V2 0 1) (V2 (-0.75) 0.75) "B"])
+        shapesOf top [("peak", V2 0.875 0.875)] `shouldSatisfy` (`matches` [dot (V2 0.875 0.875), nameAt (V2 (-diagonal) diagonal) (V2 0.875 0.875) "peak"])
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- A point on the edge between two faces is held by both, which carry it
+  -- to one place: it is labelled once there. On state 1, (1, 1/2) is the
+  -- right edge's middle, shared by the two faces of the right half.
+  it "labels a point two faces share once" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ -> labelled top folded [("E", V2 1 0.5)] `shouldBe` Right ["E"]
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- A file that records no faces has them rebuilt from its creases, as
+  -- anything needing paper does: the spec's flat sheet, its border alone,
+  -- labels a mark at its middle. Red if the labels read the recorded faces
+  -- only.
+  it "labels a mark on a flat sheet whose file records no faces" $ \_ ->
+    labelled top flatSheet [("M", V2 0.5 0.5)] `shouldBe` Right ["M"]
+
+  -- No label, and never a refusal: seen edge on; on a frame without
+  -- material coordinates, as 06's fixture's second frame is, though its
+  -- layers can be ordered; and for a point off the paper. Red if any of
+  -- these labelled, or if a figure refused for a mark.
+  it "labels nothing seen edge on, without material coordinates, or off the paper, and refuses nothing" $ \runs -> do
+    (_, halfFixture, _) <- quarterThree
+    case quarterStates runs of
+      _ : folded : _ -> do
+        let marks = [("A", V2 0.75 0.75), ("C", V2 1 1)]
+        labelled (View (Just frontOn) 0) folded marks `shouldBe` Right []
+        labelled top halfFixture marks `shouldBe` Right []
+        labelled top folded [("Z", V2 5 5)] `shouldBe` Right []
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+  where
+    isLabelShape = \case
+      Symbol _ _ _ PointDot -> True
+      Offset _ (Label {}) -> True
+      _ -> False
+    labelled view frame marks = case stepFigures defaultTheme defaultBudget view [(frame, silentNote {noteMarks = marks})] of
+      Right figures -> Right [name | (d, _) <- figures, Offset _ (Label _ _ _ name) <- diagramShapes d]
+      Left err -> Left err
 
 -- | The boxes of a page's step numbers, rotate marks, repeat boxes and eyes,
 -- in page units, each with what it is: a number by its baseline, 10.8 above

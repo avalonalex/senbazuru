@@ -558,6 +558,14 @@ spec = do
            in (y0 < 100, y1 < 100, signum (x0 - 100) /= signum (x1 - 100)) `shouldBe` (True, True, True)
         other -> expectationFailure ("expected an arc, got " <> show other)
 
+    -- A marked point's dot: a filled circle as wide as its size, centred on
+    -- its point, (100, 100) on testPage, the same at model sizes 1 and 400
+    -- (A4), and nothing at a size that is not a length.
+    it "draws a marked point's dot as a filled circle around its point" $ do
+      T.isInfixOf "<circle cx=\"100\" cy=\"100\" r=\"1.8\" fill=\"#1a1a1a\"/>" (glyphPage 1 3.6 PointDot) `shouldBe` True
+      glyphPage 400 3.6 PointDot `shouldBe` glyphPage 1 3.6 PointDot
+      forM_ [0, -1, 0 / 0, 1 / 0] $ \size -> (show size, T.count "<circle" (glyphPage 1 size PointDot)) `shouldBe` (show size, 0)
+
     -- A turn a run never makes, and a size that is not a length, draw
     -- nothing; so does a repeat at such a size.
     it "draws no rotate mark for a turn of no eighths or of eight or more, and no mark at a size that is not a length" $ do

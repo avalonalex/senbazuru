@@ -43,13 +43,15 @@
 -- A book prints more beside a figure than the paper: the arrow for the next
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
--- each figure, from whoever knows it ('stepFigures'). A note says five
+-- each figure, from whoever knows it ('stepFigures'). A note says six
 -- things so far: which arrows the figure carries, inferred to the next
 -- figure or given, which fold-here lines to draw on it, what caption to
 -- print under it, whether the reader turns the model over or round before
 -- the next figure, which draws the turn-over loop or the rotate mark and no
 -- arrow inferred across the turn ('PresentationChange'), and which earlier
--- figures its step repeats, which draws the repeat range ('noteRepeat').
+-- figures its step repeats, which draws the repeat range ('noteRepeat');
+-- and which marked points of the paper to label where they show
+-- ('noteMarks', 'markLabels').
 --
 -- A rotate mark and a repeat range stand above the figure's top-right
 -- corner, clear of its step number, which stands at its top-left, and of
@@ -133,6 +135,7 @@ module Senbazuru.Render.Steps
     noteFoldLines,
     notePresentation,
     noteRepeat,
+    noteMarks,
     noteCaption,
     Arrows (..),
     FoldLines (..),
@@ -147,18 +150,26 @@ module Senbazuru.Render.Steps
 where
 
 import Data.Bifunctor (first)
+import Data.Either (fromRight)
 import Data.Maybe (isNothing)
 import Data.Text (Text)
+import Data.Text qualified as T
 import Senbazuru.Diagram (Diagram (..), Glyph (..), Shape (..), glyphReach, solid)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..))
 import Senbazuru.Explain (Explain (..), tshow)
+import Senbazuru.Fold.Crossings (withPlanarFaces)
+import Senbazuru.Fold.Faces (toleranceOf)
 import Senbazuru.Fold.Query (FoldError, frameVertices)
 import Senbazuru.Fold.Types (Frame (..))
 import Senbazuru.Geometry (Box (..), V2 (..))
+import Senbazuru.Geometry.Polygon (distanceOutside, distanceToSegment, edges, insideRing)
 import Senbazuru.Geometry.V3 (V3 (..))
-import Senbazuru.Origami.Stacking (Budget)
+import Senbazuru.Geometry.VectorSpace (VectorSpace (..))
+import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
 import Senbazuru.Origami.Step (Motion (..), motionsBetween)
+import Senbazuru.Origami.Surface (Sample (..), surfaceFromFrame, surfacePanelSamples)
+import Senbazuru.Origami.Visible (Region (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, project, seenFrom)
 import Senbazuru.Render.CreasePattern
   ( basisFor,
@@ -215,7 +226,14 @@ data StepNote = StepNote
     -- Drawn as a box holding the range above the figure ('repeatMark'), and
     -- drawn as given: a hand-written note may name figures that are not on
     -- the page, or a range backwards, and the page says what it was told.
-    noteRepeat :: !(Maybe (Int, Int))
+    noteRepeat :: !(Maybe (Int, Int)),
+    -- | The marked points to label on this figure where their paper shows:
+    -- each a name and a point of the paper as it lay on the sheet, its
+    -- material point, not a place on the page, since two layers folded onto
+    -- one place are two points ('markLabels'). Drawn as a dot with the name
+    -- beside it, and not at all where the paper is hidden, not lying flat,
+    -- seen edge on, or without material coordinates.
+    noteMarks :: ![(Text, V2)]
   }
   deriving stock (Eq, Show)
 
@@ -295,11 +313,11 @@ data PresentationChange
 -- the sheet already has. And @render --steps@ draws its pages from this note,
 -- so a line here would change every arrowed page.
 inferNote :: StepNote
-inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing}
+inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing, noteMarks = []}
 
 -- | The paper and nothing else.
 silentNote :: StepNote
-silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing}
+silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing, noteMarks = []}
 
 -- | The note 'stepPage' gives every figure: 'inferNote' with arrows asked for,
 -- 'silentNote' without.
@@ -375,9 +393,12 @@ stepFigures theme budget view notes = do
             Nothing -> presented
             Just (from, to) ->
               presented {diagramShapes = diagramShapes presented <> [repeatMark theme marked paper (rotating note) from to]}
+          labelled = case noteMarks note of
+            [] -> repeated
+            marks -> repeated {diagramShapes = diagramShapes repeated <> markLabels theme budget basis side fr marks}
           drawn
-            | marked = repeated {diagramShapes = diagramShapes repeated <> [edgeOnMark theme paper]}
-            | otherwise = repeated
+            | marked = labelled {diagramShapes = diagramShapes labelled <> [edgeOnMark theme paper]}
+            | otherwise = labelled
       pure (drawn, noteCaption note)
 
 -- | Whether a note states a kind whose look depends on the side the page
@@ -405,6 +426,120 @@ statesSidedKind note hasNext = arrows || foldLines || rotates
     foldLines = case noteFoldLines note of
       GivenFoldLines given -> any (\(kind, _, _) -> sided kind) given
       NoFoldLines -> False
+
+-- | The labels of marked points on a figure: for each mark, a dot at every
+-- place its point of paper shows, and its name beside the dot, toward the
+-- middle of the piece of paper it shows on, clear of the dot however long
+-- the name, so that at a corner it leans onto the paper (the owner's
+-- choices of 2026-11-08). A name wider than the paper there still runs past
+-- its edge, and nothing makes room for it.
+--
+-- A mark names a material point, where the paper lay on the sheet, because a
+-- place on the page cannot tell two layers folded onto it apart: on the
+-- quarter fold's state 1, the paper at (3/4, 3/4) and at (1/4, 3/4) lie at
+-- one place, and only the first shows from above. So the point is carried to
+-- the page through each face of the paper that holds it ('shownPositions'),
+-- and labelled only where that face is the one the viewer sees there.
+--
+-- Nothing is labelled, and nothing refused, on a figure seen edge on, where
+-- no layer is nearer than another; on one whose paper does not lie flat, or
+-- whose layers cannot be ordered, or has a face that is not convex, which
+-- the visible form refuses; or on one without material coordinates. A label
+-- that lands on the step number, at the figure's top-left corner, stays
+-- there: the figure is drawn before the page knows where its number sits.
+markLabels :: Theme -> Budget -> Basis -> SeenFrom -> Frame -> [(Text, V2)] -> [Shape]
+markLabels theme budget basis side fr marks
+  | side == EdgeOn = []
+  | otherwise = case shownPositions budget (side /= FromOppositeSide) fr of
+      Nothing -> []
+      Just shown -> concat [labelAt name (project basis place) (project basis toward) | (name, point) <- marks, (place, toward) <- shown point]
+  where
+    -- 11 and 3.6 page units at the default theme: the name a little smaller
+    -- than the step number, so it does not read as one, and the dot a
+    -- fraction of the glyph size.
+    -- Multiplied first, so the default theme's 14 and 24 give 11 and 3.6
+    -- exactly.
+    labelSize = themeLabelSize theme * 11 / 14
+    dotSize = themeGlyphSize theme * 3 / 20
+    labelAt name at toward =
+      [ Symbol (solid (themeInk theme) (themeCreaseWidth theme)) dotSize at PointDot,
+        Offset (V2 (nudge * ux - 0.5 * wide) (nudge * uy + 0.35 * labelSize)) (Label (themeInk theme) labelSize at name)
+      ]
+      where
+        -- Toward the middle of the piece of paper the place shows on, on the
+        -- page, whose y grows downwards; straight down from a point at that
+        -- middle itself. The piece is convex, so its middle is on the paper,
+        -- which the middle of the figure's box is not at an acute corner.
+        V2 dx dy = toward ^-^ at
+        len = sqrt (dx * dx + dy * dy)
+        V2 ux uy = if len > 0 then V2 (dx / len) (negate dy / len) else V2 0 1
+        -- The name, at the width and height a caption's words are estimated
+        -- at, is centred far enough along that direction that its box clears
+        -- the dot by 2 page units however long the name is: the dot's radius,
+        -- the gap, and the box's half extent along the direction. A name
+        -- wider than the paper there still runs past its edge.
+        wide = 0.55 * labelSize * fromIntegral (T.length name)
+        tall = 10.8 / 14 * labelSize
+        nudge = 0.5 * dotSize + 2 + abs ux * 0.5 * wide + abs uy * 0.5 * tall
+
+-- | For a flat figure, where each point of the paper shows to a viewer
+-- above it, or below it: for a material point, the positions of the faces
+-- holding it at which those faces are the paper the viewer sees, each place
+-- once, each with the middle of the visible piece of paper it shows on, for
+-- the label to lean toward. 'Nothing' when the figure has no such answer: its paper does not lie
+-- flat, its layers cannot be ordered within the budget, a face is not
+-- convex, or it has no material coordinates.
+--
+-- A face holds a point when its ring on the sheet does, its outline
+-- included: inside it, or within the sheet's tolerance of one of its edges,
+-- as the runner judges an anchor. Inside alone would hold no point on an
+-- outline, so it would never label a corner. The point is carried to the
+-- face's position by the face's own affine map, sheet to place, found from
+-- the three of its corners spanning the widest triangle on the sheet. And
+-- the face is seen there when the visible region of that face covers the
+-- place, again within the tolerance, since a corner lies on a region's edge.
+shownPositions :: Budget -> Bool -> Frame -> Maybe (V2 -> [(V3, V3)])
+shownPositions budget fromAbove given = do
+  -- A file that records no faces has them rebuilt from its creases, as
+  -- anything needing paper rather than lines does.
+  fr <- if null (facesVertices given) then either (const Nothing) Just (withPlanarFaces given) else Just given
+  orders <- fromRight Nothing (layerOrderFor budget fr)
+  form <- either (const Nothing) Just (visibleForm fromAbove fr orders)
+  sheet <- either (const Nothing) Just (surfaceFromFrame fr)
+  panels <- either (const Nothing) Just (surfacePanelSamples sheet)
+  faces <- traverse (\(fid, samples) -> (,) fid <$> traverse (\smp -> (,) <$> sampleMaterial smp <*> pure (position smp)) samples) panels
+  let room = toleranceOf [m | (_, corners) <- faces, (m, _) <- corners]
+      -- The middle of the first piece of the face's visible region covering
+      -- the place, or 'Nothing' when none does.
+      seen fid place = case [piece | region <- formRegions form, regionFace region == fid, piece <- regionPieces region, distanceOutside (map flat piece) (flat place) <= room] of
+        piece@(_ : _) : _ -> Just ((1 / fromIntegral (length piece)) *^ foldr (^+^) (V3 0 0 0) piece)
+        _ -> Nothing
+      holds corners m = let ring = map fst corners in insideRing room ring m || any ((<= room) . (`distanceToSegment` m)) (edges ring)
+      shown m = nubPlaces room [(place, toward) | (fid, corners) <- faces, holds corners m, Just place <- [carry corners m], Just toward <- [seen fid place]]
+  pure shown
+  where
+    flat (V3 x y _) = V2 x y
+    nubPlaces room = foldr (\p kept -> if any (near room (fst p) . fst) kept then kept else p : kept) []
+    near room (V3 a b c) (V3 d e f) = sqrt ((a - d) ^ (2 :: Int) + (b - e) ^ (2 :: Int) + (c - f) ^ (2 :: Int)) <= room
+
+-- | A point of the sheet carried to a face's position by the face's affine
+-- map: its barycentric coordinates in the triangle of three of the face's
+-- corners that spans the most area on the sheet, applied to those corners'
+-- positions. 'Nothing' for a face whose corners span no area.
+carry :: [(V2, V3)] -> V2 -> Maybe V3
+carry corners m = case [(area a b c, (a, b, c)) | (a, b, c) <- triples corners] of
+  [] -> Nothing
+  first' : rest ->
+    let (best, ((ma, pa), (mb, pb), (mc, pc))) = foldr widest first' rest
+        (wb, wc) = barycentric ma mb mc m
+     in if best <= 0 then Nothing else Just (pa ^+^ (wb *^ (pb ^-^ pa)) ^+^ (wc *^ (pc ^-^ pa)))
+  where
+    area (V2 ax ay, _) (V2 bx by, _) (V2 cx cy, _) = abs ((bx - ax) * (cy - ay) - (cx - ax) * (by - ay))
+    triples xs = [(a, b, c) | (i, a) <- zip [0 :: Int ..] xs, (j, b) <- zip [0 ..] xs, i < j, (k, c) <- zip [0 ..] xs, j < k]
+    widest a b = if fst a >= fst b then a else b
+    barycentric (V2 ax ay) (V2 bx by) (V2 cx cy) (V2 px py) =
+      let d = (bx - ax) * (cy - ay) - (cx - ax) * (by - ay)
+       in (((px - ax) * (cy - ay) - (cx - ax) * (py - ay)) / d, ((bx - ax) * (py - ay) - (px - ax) * (by - ay)) / d)
 
 -- | Whether a note turns the model round by an amount the rotate mark draws:
 -- 1 to 7 eighths either way, the turns a run makes.

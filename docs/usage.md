@@ -1996,8 +1996,9 @@ lengths, `mark A: the paper at (1, 0)`. A point off the paper is refused as
 `OffThePaper`, and a typed `(u, v)` near a vertex is the vertex or a near
 miss, as it is in a fold. A point measured where the paper lies now, `meet`, and
 `in face containing S`, which picks one of the layers lying there, are
-refused as not run yet until milestone M4, as is a mark used as a point. No
-page labels a mark yet.
+refused as not run yet until milestone M4, as is a mark used as a point. A
+run's page does not label a mark yet; the library can, from a step note (#643
+draws a run's marks).
 
 The flag rules and every line `run` prints are functions of
 `Senbazuru.Sequence.RunPlan`, tested there, since the command line is not.

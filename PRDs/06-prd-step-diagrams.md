@@ -473,7 +473,12 @@ then.
   `stepNotes` takes each from its state's `frame_title`, so the rule lives
   once, in `writtenStates` ([C136](decisions.md#changes-since-draft-v2)).
 - **R-06-22.** A `mark` is labelled on each flat figure where `Origami.Visible`
-  shows its material point.
+  shows its material point. Built by S31
+  ([#642](https://github.com/avalonalex/senbazuru/issues/642),
+  [C160](decisions.md#changes-since-draft-v2)) for `noteMarks`: a dot at each
+  place and the name beside it, toward the middle of the piece of paper it shows
+  on and clear of the dot; none seen edge on,
+  on paper not lying flat, or without material coordinates, and never a refusal.
 - **R-06-23.** A step's authored `sample` poses are figures of their own, after the
   figure of the state the step starts from and before its end state's, in parameter
   order, each with no caption and `NoArrows`. A step that writes no state (every
@@ -569,7 +574,7 @@ data StepNote = StepNote
     noteRepeat       :: !(Maybe (Int, Int)),   -- figure numbers, from 1 as Layout counts; on the figure the repeating step starts from; built by S30 (C159)
     noteLayers       :: !(Maybe [[V3]]),       -- selected layers' rings at before positions (#48, #49)
     noteFoldLines    :: !FoldLines,
-    noteMarks        :: ![(Text, V2)] }        -- label and material point (below)
+    noteMarks        :: ![(Text, V2)] }        -- label and material point (below); built by S31 (C160)
 inferNote, silentNote :: StepNote            -- InferArrows / NoArrows; every other field empty
 data SeenFrom = FromReadersSide | FromOppositeSide | EdgeOn
 ```
@@ -1260,7 +1265,7 @@ decisions 67 to 69).
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | the equal-graph branch is bypassed, restated from "`motionsAcross` visits rings in another order", which the equal-graph branch makes impossible ([C144](decisions.md#changes-since-draft-v2)) |
 | A14 | For every glyph, `shapePoints (Symbol s k a g) == [a]` and `mapShapePoints f (Symbol s k a g) == Symbol s k (f a) g`; pinned by `LayoutSpec`, S13 | a glyph's page-unit geometry, or `TurnOverLoop`'s vector, enters the extent or is moved by layout |
 | A15 | `stepFigures`, laid out by `gridOf`, on the quarter fixture's frames with `Rotated (-3) p` on figure 1 and `noteRepeat = Just (1, 2)` on figure 3 emits one `RotateMark (-3)` and one `RepeatMark 1 2`, each anchored inside its own figure's cell. Restated by S30 ([C159](decisions.md#changes-since-draft-v2)) with `PageRotated (-3) p`: `StepsSpec` checks each anchored at its own figure's top-right corner, and, on a page fitted with captions from above and edge on, every mark on the page and clear of every step number and eye | the sign is dropped, the range is shifted, or a mark is anchored in another figure's cell |
-| A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none | labelling ignores `Visible` |
+| A16 | On the quarter fixture's state 1, a mark on a face `Origami.Visible` shows gets one `Label` and a mark on a face it hides gets none. Restated by S31 ([C160](decisions.md#changes-since-draft-v2)) on the quarter run's written state 1, since the fixture has no material coordinates: of an interior pair, (3/4, 3/4) and (1/4, 3/4), and a corner pair, (1, 1) and (0, 1), each lying together, the first of each is labelled from above and the second from below | labelling ignores `Visible` |
 | A17 | Under `View (Just frontOn) 0`, the frames and notes of `quarter-fold-turn-over-steps.svg` (below) give figure 3 one `TurnOverLoop (V2 0 1)` anchored at the midpoint of that figure's bottom edge, moved 18 page units down the page (S29, `StepsSpec`, [C158](decisions.md#changes-since-draft-v2)) | the zero-length projected axis is normalised into NaN, or the loop is dropped because the axis has no page direction |
 | A18 | On the helmet base's last state, a fanned figure draws vertex 1 4.5 and vertex 3 3 page units toward the lower left of where they lie, and vertices 0, 2, 4, 5 and 8 where they lie; on its state 2, vertices 1, 7 and 8 1.5 page units out and the rest where they lie; each fold's two faces draw its vertices at one page position | the count is a face's layer number (state 2 moves vertex 1 4.5 and vertex 3 3); a covering face counts only where it covers the whole corner (the tip moves 1.5); a face is moved whole; the direction's sign is flipped |
 | A19 | A fanned figure emits equal page bytes at model sizes 1 and 400, extending A4 | the fan step is in model units |
