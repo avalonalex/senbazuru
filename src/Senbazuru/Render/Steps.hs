@@ -43,12 +43,19 @@
 -- A book prints more beside a figure than the paper: the arrow for the next
 -- fold, the step's instruction, a mark for turning the model over. Two frames
 -- cannot say most of that, so it reaches the page as a /step note/, one for
--- each figure, from whoever knows it ('stepFigures'). A note says four
+-- each figure, from whoever knows it ('stepFigures'). A note says five
 -- things so far: which arrows the figure carries, inferred to the next
 -- figure or given, which fold-here lines to draw on it, what caption to
--- print under it, and whether the reader turns the model over before the
--- next figure, which draws the turn-over loop and no arrow inferred across
--- the turn ('PresentationChange').
+-- print under it, whether the reader turns the model over or round before
+-- the next figure, which draws the turn-over loop or the rotate mark and no
+-- arrow inferred across the turn ('PresentationChange'), and which earlier
+-- figures its step repeats, which draws the repeat range ('noteRepeat').
+--
+-- A rotate mark and a repeat range stand above the figure's top-right
+-- corner, clear of its step number, which stands at its top-left, and of
+-- the paper ('rotateMark', 'repeatMark'). Both carry words, the amount and
+-- the range, drawn by the backend as part of the glyph: a mark's words are
+-- its glyph's, never a 'Senbazuru.Diagram.Label'.
 --
 -- == Kinds as the page sees them
 --
@@ -68,8 +75,9 @@
 -- so it draws each kind as stated and puts an eye over every figure's step
 -- number to say so ('edgeOnMark'). Every figure, because a mark on one alone
 -- would read as that figure's own view; and only when some figure states a
--- valley or a mountain, the kinds whose look depends on the side, so a page
--- of inferred arrows, as every @render --steps@ page is, gets none. Edge on
+-- valley or a mountain, or turns the model round, the marks whose look
+-- depends on the side, so a page of inferred arrows, as every
+-- @render --steps@ page is, gets none. Edge on
 -- is a fact about the camera alone, its line of sight lying exactly in the
 -- plane ("Senbazuru.Render.Camera", @seenFrom@): a model standing in the air
 -- seen from the front is edge on too, and a camera tilted by a hair is not.
@@ -124,6 +132,7 @@ module Senbazuru.Render.Steps
     noteArrows,
     noteFoldLines,
     notePresentation,
+    noteRepeat,
     noteCaption,
     Arrows (..),
     FoldLines (..),
@@ -140,7 +149,7 @@ where
 import Data.Bifunctor (first)
 import Data.Maybe (isNothing)
 import Data.Text (Text)
-import Senbazuru.Diagram (Diagram (..), Glyph (..), Shape (..), solid)
+import Senbazuru.Diagram (Diagram (..), Glyph (..), Shape (..), glyphReach, solid)
 import Senbazuru.Diagram.Layout (Grid, gridOf)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..))
 import Senbazuru.Explain (Explain (..), tshow)
@@ -197,9 +206,16 @@ data StepNote = StepNote
     -- step that starts from it.
     noteCaption :: !(Maybe Text),
     -- | What the reader does to the whole model before the next figure, if
-    -- anything: turn it over. Drawn as a mark on this figure, and the arrows
-    -- this figure would infer to the next are not drawn ('PresentationChange').
-    notePresentation :: !(Maybe PresentationChange)
+    -- anything: turn it over, or turn it round on the table. Drawn as a mark
+    -- on this figure, and the arrows this figure would infer to the next are
+    -- not drawn ('PresentationChange').
+    notePresentation :: !(Maybe PresentationChange),
+    -- | The figures whose steps the step starting from this figure repeats,
+    -- if any: their numbers as the page numbers them, from 1, first and last.
+    -- Drawn as a box holding the range above the figure ('repeatMark'), and
+    -- drawn as given: a hand-written note may name figures that are not on
+    -- the page, or a range backwards, and the page says what it was told.
+    noteRepeat :: !(Maybe (Int, Int))
   }
   deriving stock (Eq, Show)
 
@@ -253,6 +269,19 @@ data PresentationChange
     -- "Senbazuru.Sequence.Record"'s @presentationAxis@ gives it for a run.
     -- Drawn as the turn-over loop below the figure ('turnOverMark').
     PageTurnedOver !V3 !V3
+  | -- | Turned round on the table by this many eighths of a turn,
+    -- anticlockwise as the reader sees the model and signed so, about the
+    -- line up through this point, in the frame's own coordinates: the
+    -- turn's axis as @presentationAxis@ gives it, whose direction is always
+    -- towards the reader. Drawn as the rotate mark above the figure
+    -- ('rotateMark'), its sense as the page sees it.
+    --
+    -- The point is carried, and not read: the mark stands at the figure's
+    -- corner, since at the point, the model's middle, it would cover the
+    -- folds. It is kept so that a run's record maps onto this as it does
+    -- onto 'PageTurnedOver', point and direction both, and a later page
+    -- that wants the axis has it.
+    PageRotated !Int !V3
   deriving stock (Eq, Show)
 
 -- | Arrows inferred from the frames, and nothing else: no fold-here line and
@@ -266,11 +295,11 @@ data PresentationChange
 -- the sheet already has. And @render --steps@ draws its pages from this note,
 -- so a line here would change every arrowed page.
 inferNote :: StepNote
-inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing}
+inferNote = StepNote {noteArrows = InferArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing}
 
 -- | The paper and nothing else.
 silentNote :: StepNote
-silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing}
+silentNote = StepNote {noteArrows = NoArrows, noteFoldLines = NoFoldLines, noteCaption = Nothing, notePresentation = Nothing, noteRepeat = Nothing}
 
 -- | The note 'stepPage' gives every figure: 'inferNote' with arrows asked for,
 -- 'silentNote' without.
@@ -320,12 +349,12 @@ stepFigures theme budget view notes = do
             NoFoldLines -> paper
             GivenFoldLines foldLines ->
               withFoldLines theme basis [(asSeen side kind, a, b) | (kind, a, b) <- foldLines] paper
-      let unturned = isNothing (notePresentation note)
+      let unpresented = isNothing (notePresentation note)
       arrowed <- case (noteArrows note, drop (position + 1) order) of
-        (InferArrows, next : _) | unturned -> do
+        (InferArrows, next : _) | unpresented -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withArrows theme basis motions lined)
-        (InferArrowsAs kind, next : _) | unturned -> do
+        (InferArrowsAs kind, next : _) | unpresented -> do
           motions <- first (StepError i) (motionsBetween fr next)
           pure (withKindedArrows theme basis [(asSeen side kind, motionFrom m, motionTo m) | m <- motions] lined)
         (GivenArrows arrows, _) ->
@@ -340,19 +369,28 @@ stepFigures theme budget view notes = do
             Nothing -> arrowed
             Just (PageTurnedOver point direction) ->
               arrowed {diagramShapes = diagramShapes arrowed <> [turnOverMark theme basis paper point direction]}
+            Just (PageRotated eighths _) ->
+              arrowed {diagramShapes = diagramShapes arrowed <> rotateMark theme marked paper (asSeenTurn side eighths)}
+          repeated = case noteRepeat note of
+            Nothing -> presented
+            Just (from, to) ->
+              presented {diagramShapes = diagramShapes presented <> [repeatMark theme marked paper (rotating note) from to]}
           drawn
-            | marked = presented {diagramShapes = diagramShapes presented <> [edgeOnMark theme paper]}
-            | otherwise = presented
+            | marked = repeated {diagramShapes = diagramShapes repeated <> [edgeOnMark theme paper]}
+            | otherwise = repeated
       pure (drawn, noteCaption note)
 
 -- | Whether a note states a kind whose look depends on the side the page
 -- shows: a valley or a mountain, in its arrows or its fold-here lines.
 -- An unfold looks the same from either side, so it does not count, nor does
 -- an empty list, nor arrows inferred on the last figure or across a turn,
--- which draw none.
+-- which draw none. A rotate counts: its arrow turns one way seen from the
+-- reader's side and the other from behind.
 statesSidedKind :: StepNote -> Bool -> Bool
-statesSidedKind note hasNext = arrows || foldLines
+statesSidedKind note hasNext = arrows || foldLines || rotates
   where
+    -- A rotate's sense is the side's too, as the owner chose on 2026-11-08.
+    rotates = rotating note
     -- Named one by one, so a kind added later, such as a push, has to be
     -- placed here by whoever adds it.
     sided = \case
@@ -367,6 +405,73 @@ statesSidedKind note hasNext = arrows || foldLines
     foldLines = case noteFoldLines note of
       GivenFoldLines given -> any (\(kind, _, _) -> sided kind) given
       NoFoldLines -> False
+
+-- | Whether a note turns the model round by an amount the rotate mark draws:
+-- 1 to 7 eighths either way, the turns a run makes.
+rotating :: StepNote -> Bool
+rotating note = case notePresentation note of
+  Just (PageRotated eighths _) -> eighths /= 0 && eighths >= -7 && eighths <= 7
+  _ -> False
+
+-- | A turn on the table as the page sees it: anticlockwise from the reader's
+-- side is clockwise from the other, so a page that shows the opposite side
+-- negates it, as 'asSeen' swaps valley and mountain; seen edge on, it is
+-- drawn as stated, and the eye says so.
+asSeenTurn :: SeenFrom -> Int -> Int
+asSeenTurn FromOppositeSide eighths = negate eighths
+asSeenTurn _ eighths = eighths
+
+-- | The rotate mark for a figure turned round by these eighths as the page
+-- sees them, above the figure's top-right corner: the owner's choices of
+-- 2026-11-08, 06's sketch at the theme's glyph size, on the line the edge-on
+-- eye stands on but at the right end. Its bottom is 1 page unit above the
+-- highest the step number's ink reaches, 10.8 of the number's 14 above its
+-- baseline, which is never above the figure's top, so it clears the number
+-- at any scale; and above the figure it covers no paper and meets no
+-- turn-over loop. "Senbazuru.Diagram.Layout" leaves room above the row for
+-- it (@markRise@). None for a turn of no eighths or of eight or more, which
+-- draws nothing.
+rotateMark :: Theme -> Bool -> Diagram -> Int -> [Shape]
+rotateMark theme eyed paper eighths
+  | eighths == 0 || eighths < -7 || eighths > 7 = []
+  | otherwise =
+      [Offset (V2 (negate across) (negate (clear + up))) (Symbol (solid (themeInk theme) (themeArrowWidth theme)) size (V2 right top) glyph)]
+  where
+    glyph = RotateMark eighths
+    size = themeGlyphSize theme
+    V2 across up = glyphReach size glyph
+    clear = markClearance theme eyed
+    Box _ (V2 right top) = diagramExtent paper
+
+-- | The repeat mark for a figure whose step repeats these figures' steps: the
+-- box holding the range, on the rotate mark's line, its bottom with the
+-- rotate mark's, at its right end when the figure has no rotate mark and to
+-- its left, a quarter of the glyph size apart, when it has.
+repeatMark :: Theme -> Bool -> Diagram -> Bool -> Int -> Int -> Shape
+repeatMark theme eyed paper besideRotate from to =
+  Offset (V2 (negate (beside + across)) (negate (clear + up))) (Symbol (solid (themeInk theme) (themeCreaseWidth theme)) size (V2 right top) glyph)
+  where
+    glyph = RepeatMark from to
+    size = themeGlyphSize theme
+    V2 across up = glyphReach size glyph
+    V2 rotateAcross _ = glyphReach size (RotateMark 1)
+    beside = if besideRotate then 2 * rotateAcross + 0.25 * size else 0
+    clear = markClearance theme eyed
+    Box _ (V2 right top) = diagramExtent paper
+
+-- | How far above a figure's top the marks over its corner start, in page
+-- units: the most the step number's ink rises above the figure's top, 10.8 at
+-- the number's size of 14 and as much again in proportion at any other, and
+-- a page unit to spare. On a figure that carries the edge-on eye, above the
+-- eye's top instead, 2.2 of the number's size: the eye stands over the
+-- number at the figure's left end and these marks at its right, and on a
+-- figure narrower on the page than the two together they would meet, which
+-- the figure, drawn before the page knows its scale, cannot tell. One line
+-- higher, they meet nothing at any width.
+markClearance :: Theme -> Bool -> Double
+markClearance theme eyed
+  | eyed = 2.2 * themeLabelSize theme + 1
+  | otherwise = 10.8 / 14 * themeLabelSize theme + 1
 
 -- | The eye that marks a figure seen edge on, centred above the figure's step
 -- number. "Senbazuru.Diagram.Layout" puts the number's baseline at the

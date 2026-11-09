@@ -116,8 +116,10 @@ import Data.Text qualified as T
 import Senbazuru.Diagram
   ( Colour,
     Diagram (..),
+    Glyph,
     Shape (..),
     diagramWithExtent,
+    glyphReach,
     mapShapePoints,
   )
 import Senbazuru.Diagram.Style (Theme (..))
@@ -394,8 +396,10 @@ hasBands captioned = hasCaptions captioned || any (any isMark . diagramShapes . 
 -- | How far, in page units at the given scale, the marks on a figure rise
 -- above the top of the cell it is centred in, and 0 when none rises above it.
 --
--- A mark ('Symbol') reaches half its size from its point, the most any glyph
--- does, and an 'Offset' around it moves that point up or down the page. Its
+-- A mark ('Symbol') reaches as far from its point as its glyph does
+-- ('glyphReach': half its size for every glyph but the repeat mark, whose box
+-- is as wide as its words), and an 'Offset' around it moves that point up or
+-- down the page. Its
 -- point is in model units, so where it lies against the cell's top is turned
 -- into page units by the scale; the nudge and the size are page units
 -- already. The edge-on eye ("Senbazuru.Render.Steps") is the case this is
@@ -412,8 +416,8 @@ markRise scale shared d = maximum (0 : concatMap rise (diagramShapes d))
     V2 _ shift = boxCentre shared ^-^ boxCentre (diagramExtent d)
     above y = (y + shift - cellTop) * scale
     rise = \case
-      Symbol _ size (V2 _ y) _ -> [above y + 0.5 * size]
-      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [above y - nudge + 0.5 * size]
+      Symbol _ size (V2 _ y) g -> [above y + tall size g]
+      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) g) -> [above y - nudge + tall size g]
       _ -> []
 
 -- | How far, in page units at the given scale, the marks on a figure hang
@@ -431,13 +435,13 @@ markDrop scale shared d = maximum (0 : concatMap hang (diagramShapes d))
     V2 _ shift = boxCentre shared ^-^ boxCentre (diagramExtent d)
     below y = (cellBottom - (y + shift)) * scale
     hang = \case
-      Symbol _ size (V2 _ y) _ -> [below y + 0.5 * size]
-      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) _) -> [below y + nudge + 0.5 * size]
+      Symbol _ size (V2 _ y) g -> [below y + tall size g]
+      Offset (V2 _ nudge) (Symbol _ size (V2 _ y) g) -> [below y + nudge + tall size g]
       _ -> []
 
 -- | How far, in page units at the given scale, the marks on a figure reach
 -- past the left side of the cell it is centred in, and 0 when none does;
--- 'markRise' turned on its side. A mark reaches half its size from its point,
+-- 'markRise' turned on its side. A mark reaches as far across as its glyph does,
 -- moved by any 'Offset' around it, whose @x@ grows to the right as the
 -- model's does.
 markLeft :: Double -> Box -> Diagram -> Double
@@ -447,8 +451,8 @@ markLeft scale shared d = maximum (0 : concatMap reach (diagramShapes d))
     V2 shift _ = boxCentre shared ^-^ boxCentre (diagramExtent d)
     past x = (cellLeft - (x + shift)) * scale
     reach = \case
-      Symbol _ size (V2 x _) _ -> [past x + 0.5 * size]
-      Offset (V2 nudge _) (Symbol _ size (V2 x _) _) -> [past x - nudge + 0.5 * size]
+      Symbol _ size (V2 x _) g -> [past x + wide size g]
+      Offset (V2 nudge _) (Symbol _ size (V2 x _) g) -> [past x - nudge + wide size g]
       _ -> []
 
 -- | 'markLeft' for the right side: the turn-over loop of an axis across the
@@ -460,9 +464,17 @@ markRight scale shared d = maximum (0 : concatMap reach (diagramShapes d))
     V2 shift _ = boxCentre shared ^-^ boxCentre (diagramExtent d)
     past x = (x + shift - cellRight) * scale
     reach = \case
-      Symbol _ size (V2 x _) _ -> [past x + 0.5 * size]
-      Offset (V2 nudge _) (Symbol _ size (V2 x _) _) -> [past x + nudge + 0.5 * size]
+      Symbol _ size (V2 x _) g -> [past x + wide size g]
+      Offset (V2 nudge _) (Symbol _ size (V2 x _) g) -> [past x + nudge + wide size g]
       _ -> []
+
+-- | How far a glyph reaches from its point up or down, and across: half its
+-- height and half its width ('glyphReach'). Every glyph but the repeat mark
+-- reaches half its size each way; the repeat mark's box is as wide as its
+-- words.
+tall, wide :: Double -> Glyph -> Double
+tall size g = let V2 _ h = glyphReach size g in h
+wide size g = let V2 w _ = glyphReach size g in w
 
 -- | How far the first line's baseline sits below its figure's box, in page
 -- units: far enough that the line's ink, at most 10.8 above the baseline at

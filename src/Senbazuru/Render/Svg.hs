@@ -72,6 +72,9 @@ import Senbazuru.Diagram
     Glyph (..),
     Shape (..),
     Stroke (..),
+    glyphReach,
+    repeatText,
+    repeatTypeSize,
   )
 import Senbazuru.Diagram.Page (Page (..), defaultPage, pageContentBox, pageTransform)
 import Senbazuru.Geometry
@@ -311,6 +314,105 @@ shapeToSvg toPage (Symbol st size anchor EdgeOnMark)
   where
     V2 cx cy = applyTransform toPage anchor
     point u w = formatNumber (cx + size * u) <> " " <> formatNumber (cy + size * w)
+-- The rotate mark: seven eighths of a circle of radius 0.4 of its size,
+-- open at the top, drawn in the turning sense and ending in a filled head
+-- 0.22 of its size long, and the amount inside, |k|/8, at 0.38 of its size.
+-- Laid out in model axes, x right and y up, turned by the signs of the page's
+-- scales as the loop is, so anticlockwise in the model is anticlockwise on
+-- the page, and a page that turns the drawing round keeps the sense. The arc
+-- is seven cubic pieces of an eighth of a circle each. Everything stays
+-- within half its size of the point, the reach the layout leaves room for:
+-- the head's tip is 0.46 of the size out. A turn of no eighths, or of eight
+-- or more, is none a run makes, and draws nothing; so does a size that is not
+-- a length.
+shapeToSvg toPage (Symbol st size anchor (RotateMark k))
+  | isNaN size || isInfinite size || size <= 0 = mempty
+  | k == 0 || k < -7 || k > 7 = mempty
+  | otherwise =
+      "    <path"
+        <> attr "d" ("M " <> at (angle 0) radius <> T.concat [arcPiece i | i <- [0 .. 6]])
+        <> attr "stroke" (colourText (strokeColour st))
+        <> attrNum "stroke-width" (strokeWidth st)
+        <> "/>\n"
+        <> "    <path"
+        <> attr "d" ("M " <> pointText tip <> " L " <> pointText (base ^+^ (headHalf *^ outward)) <> " L " <> pointText (base ^-^ (headHalf *^ outward)) <> " Z")
+        <> attr "fill" (colourText (strokeColour st))
+        <> "/>\n"
+        <> "    <text"
+        <> attrNum "x" cx
+        <> attrNum "y" (cy + 0.35 * typeSize)
+        <> attrNum "font-size" typeSize
+        <> attr "font-family" "sans-serif"
+        <> attr "fill" (colourText (strokeColour st))
+        <> attr "text-anchor" "middle"
+        <> ">"
+        <> TB.fromText (T.pack (show (abs k)) <> "/8")
+        <> "</text>\n"
+  where
+    centre@(V2 cx cy) = applyTransform toPage anchor
+    Transform (V2 sx sy) _ = toPage
+    signOf x = if x < 0 || isNegativeZero x then -1 else 1
+    -- Model x and y as page directions: x right and y up on a page that
+    -- flips y, both turned round on a page that turns the drawing round.
+    across = V2 (signOf sx) 0
+    up = V2 0 (signOf sy)
+    radius = 0.4 * size
+    typeSize = 0.38 * size
+    turning = if k > 0 then 1 else -1 :: Double
+    -- Angles in degrees from model x, anticlockwise: the gap is the eighth
+    -- of the circle centred on the top, so the arc starts at the gap's edge
+    -- it leaves from, half an eighth past the top against its sense, and
+    -- turns seven eighths in its sense, ending with its head at the gap's
+    -- other edge.
+    start = 90 + turning * 22.5
+    angle :: Int -> Double
+    angle i = start + turning * 45 * fromIntegral i
+    direction a = (cos (a * pi / 180) *^ across) ^+^ (sin (a * pi / 180) *^ up)
+    at a r = pointText (centre ^+^ (r *^ direction a))
+    -- One eighth of the circle as a cubic, its control points along the
+    -- tangents at 4/3 tan (pi/16) of the radius.
+    handle = 4 / 3 * tan (pi / 16) * radius
+    tangent a = turning *^ direction (a + 90)
+    arcPiece i =
+      let a0 = angle i
+          a1 = angle (i + 1)
+          p0 = centre ^+^ (radius *^ direction a0)
+          p1 = centre ^+^ (radius *^ direction a1)
+       in " C " <> pointText (p0 ^+^ (handle *^ tangent a0)) <> " " <> pointText (p1 ^-^ (handle *^ tangent a1)) <> " " <> pointText p1
+    end = angle 7
+    base = centre ^+^ (radius *^ direction end)
+    tip = base ^+^ ((0.22 * size) *^ tangent end)
+    headHalf = 0.09 * size
+    outward = direction end
+    pointText (V2 x y) = formatNumber x <> " " <> formatNumber y
+-- The repeat mark: a box as wide as its words, 'glyphReach' each way from
+-- the point, stroked, and the range inside at 'repeatTypeSize', centred.
+-- The same on every page, since a box and its words have no sense to turn.
+shapeToSvg toPage (Symbol st size anchor glyph@(RepeatMark from to))
+  | isNaN size || isInfinite size || size <= 0 = mempty
+  | otherwise =
+      "    <rect"
+        <> attrNum "x" (cx - hw)
+        <> attrNum "y" (cy - hh)
+        <> attrNum "width" (2 * hw)
+        <> attrNum "height" (2 * hh)
+        <> attr "stroke" (colourText (strokeColour st))
+        <> attrNum "stroke-width" (strokeWidth st)
+        <> "/>\n"
+        <> "    <text"
+        <> attrNum "x" cx
+        <> attrNum "y" (cy + 0.35 * typeSize)
+        <> attrNum "font-size" typeSize
+        <> attr "font-family" "sans-serif"
+        <> attr "fill" (colourText (strokeColour st))
+        <> attr "text-anchor" "middle"
+        <> ">"
+        <> TB.fromText (escapeXml (repeatText from to))
+        <> "</text>\n"
+  where
+    V2 cx cy = applyTransform toPage anchor
+    V2 hw hh = glyphReach size glyph
+    typeSize = repeatTypeSize size
 shapeToSvg toPage (Fill colour rings) = filledPath colour ((< 0) . signedArea) (applyTransform toPage) rings
 shapeToSvg toPage (Polyline stroke pts) = strokedPath stroke (applyTransform toPage) pts
 -- Each point through the transform its own displacement moves, as an Offset

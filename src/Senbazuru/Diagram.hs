@@ -58,6 +58,9 @@ module Senbazuru.Diagram
     ArrowPath (..),
     ArrowHead (..),
     Glyph (..),
+    glyphReach,
+    repeatTypeSize,
+    repeatText,
     Fan (..),
     FanPoint (..),
     fanPoints,
@@ -77,7 +80,7 @@ where
 import Data.Char (digitToInt, isHexDigit)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Senbazuru.Geometry (Box, V2, boxFromPoints)
+import Senbazuru.Geometry (Box, V2 (..), boxFromPoints)
 
 -- | A stroke colour, as whatever string the backend understands.
 --
@@ -329,7 +332,50 @@ data Glyph
     -- than as seen, and marks every figure so a reader knows
     -- ("Senbazuru.Render.Steps"). Symmetric, so it has no direction to turn.
     EdgeOnMark
+  | -- | The mark that says \"turn the model round on the table\": seven
+    -- eighths of a circle with an arrowhead in the turning sense, and the
+    -- amount inside, as written, in eighths of a turn (@3/8@). The number is
+    -- signed eighths as the page shows the turn: positive anticlockwise, in
+    -- model axes, so a page that turns the drawing round keeps its sense.
+    -- Whoever places it has already flipped the sign for a page seen from
+    -- the paper's other side. One that is not 1 to 7 eighths either way is
+    -- no turn a run makes, and draws nothing.
+    RotateMark !Int
+  | -- | The mark that says \"repeat these figures' steps\": a box holding the
+    -- range of figure numbers, "1–2", or the one number when the two
+    -- are equal. Its width grows with its digits ('glyphReach').
+    RepeatMark !Int !Int
   deriving stock (Eq, Show)
+
+-- | How far a glyph of the given size reaches from its point, across and up
+-- or down, in __page units__: half its width and half its height.
+--
+-- Every glyph but the repeat mark fits in a square as wide as its size. The
+-- repeat mark's box is as wide as its words, estimated at 0.55 of its type
+-- size a character, as captions are ("Senbazuru.Diagram.Layout"), so a range
+-- of two-digit figures is wider than one of single digits. One function for
+-- this, used by the backend to draw the box and by the layout to leave room
+-- for it, so the two cannot disagree about how wide a mark is.
+glyphReach :: Double -> Glyph -> V2
+glyphReach size = \case
+  RepeatMark from to -> V2 (0.5 * (0.55 * typeSize * fromIntegral (T.length (repeatText from to)) + 2 * pad)) (0.5 * 1.45 * typeSize)
+  _ -> V2 (0.5 * size) (0.5 * size)
+  where
+    typeSize = repeatTypeSize size
+    pad = 0.3 * typeSize
+
+-- | The type size of a repeat mark's words, for a mark of the given size:
+-- seven twelfths of it, so 14 page units, the step number's size, at the
+-- theme's 24.
+repeatTypeSize :: Double -> Double
+repeatTypeSize size = 7 / 12 * size
+
+-- | A repeat mark's words: the range with an en dash between, or the one
+-- figure number when the range is one figure.
+repeatText :: Int -> Int -> Text
+repeatText from to
+  | from == to = T.pack (show from)
+  | otherwise = T.pack (show from) <> "\x2013" <> T.pack (show to)
 
 -- | The model-space points a shape passes through.
 shapePoints :: Shape -> [V2]

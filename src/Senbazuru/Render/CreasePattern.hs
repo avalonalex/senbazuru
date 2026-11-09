@@ -648,8 +648,8 @@ creaseOrder = \case
 -- anywhere the reader can see it go — a model turned over, or a flap folded
 -- straight up out of the page and looked at from above. Books mark those with a
 -- different symbol altogether, a loop or a pair of arrows. senbazuru draws the
--- loop, but only from a step note that says the model is turned over, never
--- from two frames ("Senbazuru.Render.Steps"). An arrow with no length would be
+-- loop and the rotate mark, but only from a step note that says the model is
+-- turned over or round, never from two frames ("Senbazuru.Render.Steps"). An arrow with no length would be
 -- given a direction by whatever the arithmetic happened to produce, and would
 -- say something confident and untrue.
 --
