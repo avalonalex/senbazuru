@@ -18,7 +18,7 @@
     <path d="M 221.429 95.714 L 221.429 10" stroke="#1a1a1a" stroke-width="1.6"/>
     <path d="M 221.429 10 L 178.571 10" stroke="#1a1a1a" stroke-width="1.6"/>
     <path d="M 200 52.857 Q 178.571 63.571 166.982 57.776" stroke="#1a1a1a" stroke-width="1.8"/>
-    <path d="M 157.143 52.857 L 168.949 53.841 L 165.014 61.712 Z" fill="#1a1a1a"/>
+    <path d="M 157.143 52.857 L 168.949 53.841 L 165.014 61.712 Z" stroke="#1a1a1a" stroke-width="1.8"/>
     <text x="178.571" y="20.286" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
     <path d="M 294.286 10 L 294.286 95.714 L 337.143 95.714 L 337.143 10 Z M 251.429 10 L 251.429 95.714 L 294.286 95.714 L 294.286 10 Z" fill="#faf8f3"/>
     <path d="M 294.286 10 L 294.286 95.714" stroke="#bdbdbd" stroke-width="0.6"/>

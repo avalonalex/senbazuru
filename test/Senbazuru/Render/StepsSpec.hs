@@ -910,8 +910,11 @@ growing = beforeAll (frames growingFile) . describe "a growing crease graph" $ d
   -- make: the vertical midline on the sheet, and the horizontal one, in its
   -- two pieces, on the opened sheet. Figure 2 comes before the unfold, which
   -- makes no crease, and figure 4 is the last: neither carries any. Red if
-  -- the lines came from the after frame's positions, from a later state, or
-  -- from the last figure, or if inference kept to two equal crease patterns.
+  -- the lines came from a later state or from the last figure, or if
+  -- inference kept to two equal crease patterns. Not if they came from the
+  -- next frame's positions: a fold's new crease is its hinge, which the fold
+  -- does not move, so on this file both places agree; the next test moves
+  -- the next frame to tell them apart.
   it "draws the fold-here lines of the creases each move makes, and no others (S28)" $ \states -> do
     let notes = [inferNote {noteFoldLines = InferFoldLines ValleyArrow} | _ <- states]
         valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
@@ -919,6 +922,22 @@ growing = beforeAll (frames growingFile) . describe "a growing crease graph" $ d
     [[ps | Polyline stroke ps <- diagramShapes d, stroke == valleyDash] | (d, _) <- figures]
       `shouldBe` [[[V2 0.5 1, V2 0.5 0]], [], [[V2 1 0.5, V2 0.5 0.5], [V2 0.5 0.5, V2 0 0.5]], []]
     map (arrowsOf . fst) figures `shouldBe` [1, 1, 1, 0]
+
+  -- A line goes where this figure has the paper, wherever the next frame
+  -- lies: the folded state moved 5 along x, its points of the sheet
+  -- unchanged, still gives the sheet its vertical midline at x = 1/2. Red
+  -- if the lines took the next frame's positions, which would put it at
+  -- x = 11/2.
+  it "draws an inferred line where this figure has the paper, wherever the next frame lies" $ \states -> do
+    let moved fr = fr {verticesCoords = [zipWith (+) [5, 0, 0] p | p <- verticesCoords fr]}
+        valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
+        linesOnly = silentNote {noteFoldLines = InferFoldLines ValleyArrow}
+    case states of
+      sheet' : folded : _ -> do
+        figures <- right (stepFigures defaultTheme defaultBudget top [(sheet', linesOnly), (moved folded, silentNote)])
+        [[ps | Polyline stroke ps <- diagramShapes d, stroke == valleyDash] | (d, _) <- figures]
+          `shouldBe` [[[V2 0.5 1, V2 0.5 0]], []]
+      _ -> expectationFailure "expected four states"
 
   -- The kind is the note's, drawn as the page sees it: from below, a valley
   -- written in front reads as a mountain, as a given line's does. Red if the
@@ -971,7 +990,7 @@ growing = beforeAll (frames growingFile) . describe "a growing crease graph" $ d
   -- states' paper lay, and the page is refused at frame 1, the sheet, whose
   -- note asked for the arrows to the next. (The key frame, which holds no
   -- geometry, is frame 0.)
-  it "refuses a growing file without material coordinates, naming the frame before" $ \states -> do
+  it "refuses a growing file without material coordinates, at the figure drawn" $ \states -> do
     let stripped = [fr {frameExtras = KM.delete "senbazuru:material_coords" (frameExtras fr)} | fr <- emptyFrame : states]
     void <$> stepFigures defaultTheme defaultBudget top [(fr, inferNote) | fr <- stripped] `shouldBe` Left (StepError 1 (InNextFrame MaterialCoordinatesMissing))
     -- And the same of a note asking for inferred lines and no arrows: red if
@@ -991,10 +1010,13 @@ growing = beforeAll (frames growingFile) . describe "a growing crease graph" $ d
     copy `shouldBe` original
 
   -- 06's golden for a growing crease graph: every figure with its arrows
-  -- and its fold-here lines inferred, all of the valley kind the moves were
-  -- written in, laid out as render --steps lays out its page.
+  -- and its fold-here lines inferred, each of the kind its step's move was
+  -- written as: the two folds in front, valleys, and the unfold between
+  -- them an unfold, whose arrow takes the unfold head and which has no
+  -- line. Laid out as render --steps lays out its page.
   it "renders the growing crease graph with its arrows and fold-here lines" $ \states -> do
-    let notes = [silentNote {noteArrows = InferArrowsAs ValleyArrow, noteFoldLines = InferFoldLines ValleyArrow} | _ <- states]
+    let kinds = [ValleyArrow, UnfoldArrow, ValleyArrow, ValleyArrow]
+        notes = [silentNote {noteArrows = InferArrowsAs kind, noteFoldLines = InferFoldLines kind} | kind <- kinds]
     page' <- right (stepFigures defaultTheme defaultBudget defaultView (zip states notes)) >>= maybe (fail "nothing to lay out") pure . gridOf grid . map fst
     goldenText "test/golden/quarter-fold-growing-steps.svg" (renderSvg defaultPage {pageWidth = 400, pageHeight = 200, pageMargin = 10, pageTitle = Just "fixture"} page')
   where

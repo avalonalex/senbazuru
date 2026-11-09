@@ -248,7 +248,10 @@ then.
   Built by S29 ([C158](decisions.md#changes-since-draft-v2)) for a turn-over:
   `notePresentation = Just (PageTurnedOver point direction)` puts the loop on
   the figure and suppresses `InferArrows` and `InferArrowsAs` there; a figure's
-  `GivenArrows` are still drawn.
+  `GivenArrows` are still drawn. Inferred fold-here lines are the stated
+  exception: S28 ([C161](decisions.md#changes-since-draft-v2)) draws `InferFoldLines` on a turned figure, at the
+  owner's word, since they are placed by the point of paper each runs through,
+  which a turn does not move.
 
 **Diagram**
 
@@ -864,8 +867,8 @@ in use, inside `motionsAcross`, whenever graphs are equal (R-06-14), which keeps
 goldens structurally unchanged: all pass `motionsBetween` today. One behaviour
 changes from refusal to drawing: `render --steps --arrows` on a growing file
 with `senbazuru:material_coords`, refused before S28 with `FramesDiffer`. As
-built ([C161](decisions.md#changes-since-draft-v2)), a growing file without them is refused naming the frame after
-the one drawn (`InNextFrame MaterialCoordinatesMissing`), and
+built ([C161](decisions.md#changes-since-draft-v2)), a growing file without them is refused at the figure drawn, its
+message blaming the frame after it (`InNextFrame MaterialCoordinatesMissing`), and
 `examples/quarter-fold-growing.fold` draws.
 
 Fold-here lines are styled by the kind as seen because the quarter fixture's second
@@ -1314,7 +1317,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2, each with its fold's fold-here line; drawn by `stepFigures` and fitted by `fitPage` with `HeightToFit` to the `renderSteps` page's 400 width, as a run's page is (C157) | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `PageTurnedOver` goes on figure 3, which draws state 2. As built (S29, [C158](decisions.md#changes-since-draft-v2)): a run of the quarter fold and a turn-over, its states' titles as captions, `inferNote` on every figure, the axis the turn's record gives (`presentationAxis`), fitted by `fitPage` to a 400-wide page | the runner's axis is at x = 0 (every coordinate moves), which A7 catches too; the loop stands on the edge, lies along the axis or follows model size. A page-side axis at x = 0 cannot turn it red: that line misses figure 3, and the fallback gives the same anchor, so `StepsSpec` tests the anchor rule on off-centre axes |
-| `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | As built (S28, [C161](decisions.md#changes-since-draft-v2)): `examples/quarter-fold-growing.fold`, the run of `examples/quarter-fold-growing.foldseq` on `sheet square`, copied byte for byte to `test/fixtures/`: folded in half, opened, folded in half the other way, so [state-rule](glossary-additions.md#the-fold-format) frames of 4, 6, 6 and 9 vertices with `senbazuru:material_coords`, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)), which `StepsSpec` checks. `InferArrowsAs ValleyArrow` and `InferFoldLines ValleyArrow` on every figure | a figure draws a fold-here line along a crease it does not add, such as figure 3's existing vertical one; `motionsAcross` refuses; a line is solid or mountain-dashed; figure 2, before a frame with the same graph, or figure 4, the last, draws a line |
+| `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | As built (S28, [C161](decisions.md#changes-since-draft-v2)): `examples/quarter-fold-growing.fold`, the run of `examples/quarter-fold-growing.foldseq` on `sheet square`, copied byte for byte to `test/fixtures/`: folded in half, opened, folded in half the other way, so [state-rule](glossary-additions.md#the-fold-format) frames of 4, 6, 6 and 9 vertices with `senbazuru:material_coords`, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)), which `StepsSpec` checks. Each figure's `InferArrowsAs` and `InferFoldLines` of the kind its step's move was written as: valley for the two folds, written in front, and unfold for figure 2 | a figure draws a fold-here line along a crease it does not add, such as figure 3's existing vertical one; `motionsAcross` refuses; a line is solid or mountain-dashed; figure 2, before a frame with the same graph, or figure 4, the last, draws a line; figure 2's unfold arrow has a solid head |
 | `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
 | `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `runPage` on the blintz run with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
 | `quarter-fold-run-steps.svg` (**SKETCH** name; S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | The quarter-fold run (`test/fixtures/quarter-fold.foldseq`), drawn as `blintz-sequence-steps.svg` is | "Folded into quarters.", its `closing` caption, is not under figure 3; `blintz.foldseq` has no `closing` line, so no other golden pins it |

@@ -432,8 +432,8 @@ smaller. `--columns` sets how many figures go across.
 
 The paper in those three frames carries the same creases throughout, so
 comparing them is comparing like with like. A run that creases as it goes does
-not: unfold a fold and the sheet has a crease it lacked before, so the next
-frame has more vertices and edges than this one, and no vertex of one can be
+not: each fold writes its crease into the state it leaves, so that state has
+more vertices and edges than the one before it, and no vertex of one can be
 matched to a vertex of the other by its number. The arrows are still found,
 because a run writes where each vertex lay on the unfolded sheet
 (`senbazuru:material_coords`), and that pairs paper with paper:
@@ -444,8 +444,8 @@ stack run -- render examples/quarter-fold-growing.fold --steps --arrows \
 ```
 
 A file whose crease pattern grows and that does not say where its paper lay is
-refused, naming the frame after the one being drawn, rather than drawn with
-arrows that guess. The same pairing finds the creases the next frame adds, and
+refused at the figure being drawn, the message blaming the frame after it,
+rather than drawn with arrows that guess. The same pairing finds the creases the next frame adds, and
 a program calling the library can have each figure draw them as fold-here
 lines; `render --steps` does not, since nothing in a frame says whether a fold
 was a valley or a mountain as the reader sees it.

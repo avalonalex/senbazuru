@@ -319,7 +319,8 @@ stack run -- render examples/blintz-sequence.fold --steps --columns 3 -o blintz.
 `senbazuru run quarter-fold-growing.foldseq` writes, from the sequence beside it
 on the built-in square sheet. A square is folded in half, opened out and folded
 in half the other way, so its four states have 4, 6, 6 and 9 vertices: each
-fold-and-open leaves a crease the state before it lacks. Nothing in it was
+fold writes its crease into the state it leaves, the unfold adds none, and the
+last fold's crease is never opened. Nothing in it was
 written by hand, and nothing was taken from another tool.
 
 It is the fixture for drawing a page of steps across a growing crease graph:
