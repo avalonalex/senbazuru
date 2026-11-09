@@ -234,6 +234,7 @@ spec = do
   statedKinds
   turningOver
   rotatingAndRepeating
+  labellingMarks
   turning
 
 -- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
@@ -783,6 +784,74 @@ rotatingAndRepeating = describe "rotate and repeat marks" $ do
       RotateMark _ -> True
       RepeatMark _ _ -> True
       _ -> False
+
+-- | Mark labels where the paper shows (R-06-22, A16 of
+-- PRDs/06-prd-step-diagrams.md), on the quarter run's written state 1: the
+-- sheet folded in half behind, so its right half shows from above and its
+-- left half lies under it, face to face. Two pairs of points lie together
+-- there: (3/4, 3/4) on the right half and (1/4, 3/4) on the left, both at
+-- (3/4, 3/4); and the corners (1, 1) and (0, 1), both at (1, 1). A mark is a
+-- point of the paper, so each pair gets one label, on the layer the viewer
+-- sees: the right half's from above, the left half's from below.
+labellingMarks :: Spec
+labellingMarks = beforeAll turnRuns . describe "mark labels" $ do
+  -- A16, restated. Red if labels followed the mark's point as a place on
+  -- the page, which labels the right half's from either side; if any face's
+  -- region were taken as seen, which labels all four; if a face held only
+  -- points inside its outline, which drops the corner; or if the side were
+  -- ignored.
+  it "labels the layer the viewer sees of two lying together, a corner's included (A16)" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ -> do
+        let marks = [("A", V2 0.75 0.75), ("B", V2 0.25 0.75), ("C", V2 1 1), ("D", V2 0 1)]
+        [labelled view folded marks | view <- [top, View (Just bottomUp) 0]] `shouldBe` [Right ["A", "C"], Right ["B", "D"]]
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- Each label: a dot of 3.6 page units at the place, and the name at 11
+  -- beside it, moved 10 page units toward the figure's middle and centred
+  -- there. From above, (3/4, 3/4) on state 1, whose middle is (3/4, 1/2),
+  -- moves straight down the page.
+  it "draws a dot at the place and the name beside it, toward the figure's middle" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ ->
+        case stepFigures defaultTheme defaultBudget top [(folded, silentNote {noteMarks = [("A", V2 0.75 0.75)]})] of
+          Right ((d, _) : _) ->
+            [shape | shape <- diagramShapes d, isLabelShape shape]
+              `shouldBe` [ Symbol (solid (themeInk defaultTheme) (themeCreaseWidth defaultTheme)) 3.6 (V2 0.75 0.75) PointDot,
+                           Offset (V2 (negate (0.5 * 0.55 * 11)) (10 + 0.35 * 11)) (Label (themeInk defaultTheme) 11 (V2 0.75 0.75) "A")
+                         ]
+          other -> expectationFailure ("expected one figure, got " <> show (void <$> other))
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- A point on the edge between two faces is held by both, which carry it
+  -- to one place: it is labelled once there. On state 1, (1, 1/2) is the
+  -- right edge's middle, shared by the two faces of the right half.
+  it "labels a point two faces share once" $ \runs ->
+    case quarterStates runs of
+      _ : folded : _ -> labelled top folded [("E", V2 1 0.5)] `shouldBe` Right ["E"]
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- No label, and never a refusal: seen edge on; on a frame without
+  -- material coordinates, as 06's fixture's second frame is, though its
+  -- layers can be ordered; and for a point off the paper. Red if any of
+  -- these labelled, or if a figure refused for a mark.
+  it "labels nothing seen edge on, without material coordinates, or off the paper, and refuses nothing" $ \runs -> do
+    (_, halfFixture, _) <- quarterThree
+    case quarterStates runs of
+      _ : folded : _ -> do
+        let marks = [("A", V2 0.75 0.75), ("C", V2 1 1)]
+        labelled (View (Just frontOn) 0) folded marks `shouldBe` Right []
+        labelled top halfFixture marks `shouldBe` Right []
+        labelled top folded [("Z", V2 5 5)] `shouldBe` Right []
+      states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+  where
+    isLabelShape = \case
+      Symbol _ _ _ PointDot -> True
+      Offset _ (Label {}) -> True
+      _ -> False
+    labelled view frame marks = case stepFigures defaultTheme defaultBudget view [(frame, silentNote {noteMarks = marks})] of
+      Right figures -> Right [name | (d, _) <- figures, Offset _ (Label _ _ _ name) <- diagramShapes d]
+      Left err -> Left err
 
 -- | The boxes of a page's step numbers, rotate marks, repeat boxes and eyes,
 -- in page units, each with what it is: a number by its baseline, 10.8 above

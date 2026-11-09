@@ -345,6 +345,10 @@ data Glyph
     -- range of figure numbers, "1–2", or the one number when the two
     -- are equal. Its width grows with its digits ('glyphReach').
     RepeatMark !Int !Int
+  | -- | A filled dot as wide as its size, centred on its point: where a
+    -- marked point of the paper lies, its name beside it as a 'Label'
+    -- ("Senbazuru.Render.Steps").
+    PointDot
   deriving stock (Eq, Show)
 
 -- | How far a glyph of the given size reaches from its point, across and up

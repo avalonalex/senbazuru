@@ -385,6 +385,19 @@ shapeToSvg toPage (Symbol st size anchor (RotateMark k))
     headHalf = 0.09 * size
     outward = direction end
     pointText (V2 x y) = formatNumber x <> " " <> formatNumber y
+-- A marked point's dot: a filled circle as wide as its size, centred on
+-- the point, in the stroke's colour.
+shapeToSvg toPage (Symbol st size anchor PointDot)
+  | isNaN size || isInfinite size || size <= 0 = mempty
+  | otherwise =
+      "    <circle"
+        <> attrNum "cx" cx
+        <> attrNum "cy" cy
+        <> attrNum "r" (0.5 * size)
+        <> attr "fill" (colourText (strokeColour st))
+        <> "/>\n"
+  where
+    V2 cx cy = applyTransform toPage anchor
 -- The repeat mark: a box as wide as its words, 'glyphReach' each way from
 -- the point, stroked, and the range inside at 'repeatTypeSize', centred.
 -- The same on every page, since a box and its words have no sense to turn.

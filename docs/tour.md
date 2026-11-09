@@ -1032,8 +1032,10 @@ turned, where "the bottom corner" would change from one picture to the next.
 So `mark A = corner south-east` names one point of paper even after folding
 has laid the other three corners on top of it, as the quarter fold does: the
 mark keeps the corner, not the spot, for a page to label on later figures
-wherever that corner shows. A mark moves no paper. No page labels one yet,
-and a point measured where the paper lies now, `meet`, waits for milestone M4.
+wherever that corner shows. A mark moves no paper. A run's page does not
+label one yet, though the library can, from a step note, with a dot where the
+paper shows; and a point measured where the paper lies now, `meet`, waits for
+milestone M4.
 
 `run --check` reads a source and says whether it means anything, before any
 paper is involved:
