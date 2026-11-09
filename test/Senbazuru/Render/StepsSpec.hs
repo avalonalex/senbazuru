@@ -808,19 +808,35 @@ labellingMarks = beforeAll turnRuns . describe "mark labels" $ do
       states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
 
   -- Each label: a dot of 3.6 page units at the place, and the name at 11
-  -- beside it, moved 10 page units toward the figure's middle and centred
-  -- there. From above, (3/4, 3/4) on state 1, whose middle is (3/4, 1/2),
-  -- moves straight down the page.
-  it "draws a dot at the place and the name beside it, toward the figure's middle" $ \runs ->
+  -- beside it, toward the middle of the piece of paper the place shows on,
+  -- far enough along that the name's estimated box, 0.55 of its size a
+  -- character wide and 10.8/14 of it tall, clears the dot by 2: the dot's
+  -- radius, the gap, and the box's half extent along the direction.
+  -- (3/4, 3/4) is the middle of state 1's upper right quarter, so its name
+  -- goes straight down. From below, (1/4, 3/4) shows at the same place, which
+  -- the bottom view draws at x = -3/4, so the dot there tests the carry from
+  -- sheet to place. (7/8, 7/8) leans down and to the left, toward the
+  -- quarter's middle. Red if the place were not carried, the name pushed a
+  -- fixed distance, or the direction not toward the piece's middle.
+  it "draws a dot at the place and the name beside it, clear of the dot, toward its piece's middle" $ \runs ->
     case quarterStates runs of
-      _ : folded : _ ->
-        case stepFigures defaultTheme defaultBudget top [(folded, silentNote {noteMarks = [("A", V2 0.75 0.75)]})] of
-          Right ((d, _) : _) ->
-            [shape | shape <- diagramShapes d, isLabelShape shape]
-              `shouldBe` [ Symbol (solid (themeInk defaultTheme) (themeCreaseWidth defaultTheme)) 3.6 (V2 0.75 0.75) PointDot,
-                           Offset (V2 (negate (0.5 * 0.55 * 11)) (10 + 0.35 * 11)) (Label (themeInk defaultTheme) 11 (V2 0.75 0.75) "A")
-                         ]
-          other -> expectationFailure ("expected one figure, got " <> show (void <$> other))
+      _ : folded : _ -> do
+        let shapesOf view marks = [shape | Right ((d, _) : _) <- [stepFigures defaultTheme defaultBudget view [(folded, silentNote {noteMarks = marks})]], shape <- diagramShapes d, isLabelShape shape]
+            dot at = Symbol (solid (themeInk defaultTheme) (themeCreaseWidth defaultTheme)) 3.6 at PointDot
+            nameAt (V2 ux uy) at name =
+              let size = 11
+                  wide = 0.55 * size * fromIntegral (T.length name)
+                  tall = 10.8 / 14 * size
+                  nudge = 1.8 + 2 + abs ux * 0.5 * wide + abs uy * 0.5 * tall
+               in Offset (V2 (nudge * ux - 0.5 * wide) (nudge * uy + 0.35 * size)) (Label (themeInk defaultTheme) size at name)
+            close a b = show a == show b || nearShapes a b
+            nearShapes (Offset (V2 a b) l) (Offset (V2 c d) m) = abs (a - c) < 1e-9 && abs (b - d) < 1e-9 && l == m
+            nearShapes a b = a == b
+            matches got want = length got == length want && and (zipWith close got want)
+            diagonal = sqrt 0.5
+        shapesOf top [("A", V2 0.75 0.75)] `shouldSatisfy` (`matches` [dot (V2 0.75 0.75), nameAt (V2 0 1) (V2 0.75 0.75) "A"])
+        shapesOf (View (Just bottomUp) 0) [("B", V2 0.25 0.75)] `shouldSatisfy` (`matches` [dot (V2 (-0.75) 0.75), nameAt (V2 0 1) (V2 (-0.75) 0.75) "B"])
+        shapesOf top [("peak", V2 0.875 0.875)] `shouldSatisfy` (`matches` [dot (V2 0.875 0.875), nameAt (V2 (-diagonal) diagonal) (V2 0.875 0.875) "peak"])
       states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
 
   -- A point on the edge between two faces is held by both, which carry it
@@ -830,6 +846,13 @@ labellingMarks = beforeAll turnRuns . describe "mark labels" $ do
     case quarterStates runs of
       _ : folded : _ -> labelled top folded [("E", V2 1 0.5)] `shouldBe` Right ["E"]
       states -> expectationFailure ("expected the quarter run's states, got " <> show (length states))
+
+  -- A file that records no faces has them rebuilt from its creases, as
+  -- anything needing paper does: the spec's flat sheet, its border alone,
+  -- labels a mark at its middle. Red if the labels read the recorded faces
+  -- only.
+  it "labels a mark on a flat sheet whose file records no faces" $ \_ ->
+    labelled top flatSheet [("M", V2 0.5 0.5)] `shouldBe` Right ["M"]
 
   -- No label, and never a refusal: seen edge on; on a frame without
   -- material coordinates, as 06's fixture's second frame is, though its

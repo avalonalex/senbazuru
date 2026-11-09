@@ -476,7 +476,8 @@ then.
   shows its material point. Built by S31
   ([#642](https://github.com/avalonalex/senbazuru/issues/642),
   [C160](decisions.md#changes-since-draft-v2)) for `noteMarks`: a dot at each
-  place and the name beside it, toward the figure's middle; none seen edge on,
+  place and the name beside it, toward the middle of the piece of paper it shows
+  on and clear of the dot; none seen edge on,
   on paper not lying flat, or without material coordinates, and never a refusal.
 - **R-06-23.** A step's authored `sample` poses are figures of their own, after the
   figure of the state the step starts from and before its end state's, in parameter
