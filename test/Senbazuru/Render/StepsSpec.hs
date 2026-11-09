@@ -9,6 +9,10 @@
 module Senbazuru.Render.StepsSpec (spec) where
 
 import Control.Monad (forM, forM_, void, (>=>))
+import Data.Aeson (Value (..))
+import Data.Aeson.KeyMap qualified as KM
+import Data.ByteString qualified as BS
+import Data.Foldable (toList)
 import Data.Map.Strict qualified as M
 import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
@@ -16,7 +20,7 @@ import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (.
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
 import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), PageFitError (..), fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
-import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Load (loadFoldFile, readSequenceText)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types (Assignment (..), FoldFile (..), Frame (..), VertexId (..), allFrames, emptyFrame)
 import Senbazuru.Geometry (Box (..), Transform (..), V2 (..), boxSize)
@@ -30,9 +34,12 @@ import Senbazuru.Render.Svg (defaultPage, pageTransform, renderSvg)
 import Senbazuru.Sequence.Build (edge, fold, inFront, rotate, sequenceOf, step_, turnOver)
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
+import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Record (Run (..), WrittenState (..), presentationAxis, writtenStates)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, turnOverAbout)
 import Senbazuru.Sequence.Syntax (Compass (..), Line (..), PageAxis (..), Sequence (..), Turning (..))
+import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
+import Test.FoldFiles (goldenFoldFile)
 import Test.Golden (goldenText)
 import Test.Hspec
 import Test.SequenceExamples (quarterFold)
@@ -196,16 +203,19 @@ spec = do
       pageWith top [(a, inferNote), (b, silentNote), (c, inferNote)]
         `shouldNotBe` pageWith top [(a, silentNote), (b, inferNote), (c, silentNote)]
 
-    -- The flat sheet and the creased one have different creases, which
-    -- motionsBetween refuses to compare. So inferring the arrows between them
-    -- is refused, naming the figure whose note asked by its place in the
-    -- list, the skipped frame counted, while a silent note on that figure
-    -- draws the page. Red if arrows were worked out for every figure and
-    -- dropped where a note says none.
+    -- The flat sheet gains a crease, so the arrows to the next frame are
+    -- inferred across a growing crease graph, which needs to know where the
+    -- later frame's paper lay on the sheet. Classed a folded form and given
+    -- no material coordinates, it cannot say, so inferring the arrows is
+    -- refused, about the frame after the figure but naming the figure whose
+    -- note asked by its place in the list, the skipped frame counted, while a
+    -- silent note on that figure draws the page. Red if arrows were worked
+    -- out for every figure and dropped where a note says none, or a refusal
+    -- named the later frame.
     it "refuses only the arrows a note asks for, naming its frame by its place in the list" $ do
-      let creased = flatSheet {edgesVertices = edgesVertices flatSheet <> [(VertexId 0, VertexId 2)], edgesAssignment = edgesAssignment flatSheet <> [Valley]}
+      let creased = flatSheet {edgesVertices = edgesVertices flatSheet <> [(VertexId 0, VertexId 2)], edgesAssignment = edgesAssignment flatSheet <> [Valley], frameClasses = ["foldedForm"]}
       pageWith defaultView [(emptyFrame, silentNote), (flatSheet, inferNote), (creased, silentNote)]
-        `shouldBe` Left (StepError 1 (FramesDiffer "edges_vertices" 4 5))
+        `shouldBe` Left (StepError 1 (InNextFrame MaterialCoordinatesMissing))
       fmap (fmap labelsOf) (pageWith defaultView [(emptyFrame, inferNote), (flatSheet, silentNote), (creased, inferNote)])
         `shouldBe` Right (Just ["1", "2"])
 
@@ -235,6 +245,7 @@ spec = do
   turningOver
   rotatingAndRepeating
   labellingMarks
+  growing
   turning
 
 -- | Fold-here lines (R-06-15 of PRDs/06-prd-step-diagrams.md): the dashed
@@ -875,6 +886,121 @@ labellingMarks = beforeAll turnRuns . describe "mark labels" $ do
     labelled view frame marks = case stepFigures defaultTheme defaultBudget view [(frame, silentNote {noteMarks = marks})] of
       Right figures -> Right [name | (d, _) <- figures, Offset _ (Label _ _ _ name) <- diagramShapes d]
       Left err -> Left err
+
+-- | Inference across a growing crease graph (R-06-14, R-06-15 of
+-- PRDs/06-prd-step-diagrams.md), on examples/quarter-fold-growing.fold: a
+-- run of a square folded in half in front, opened out, and folded in half
+-- the other way in front. Its four states have 4, 6, 6 and 9 vertices: the
+-- first fold adds the vertical crease, the unfold none, and the last fold
+-- the horizontal one, cut in two at the middle by the vertical. So between
+-- states 1 and 2, and 3 and 4, the next frame adds creases, and arrows and
+-- fold-here lines are worked out by where each point lay on the sheet.
+growing :: Spec
+growing = beforeAll (frames growingFile) . describe "a growing crease graph" $ do
+  -- The prefix rule: each state lists the points of the state before, in
+  -- order, then its own new ones, so a point keeps its index from state to
+  -- state. Red if the fixture were remade with points renumbered.
+  it "lists each state's points of the sheet as a prefix of the next's" $ \states -> do
+    let materials = [points | fr <- states, Just (Array points) <- [KM.lookup "senbazuru:material_coords" (frameExtras fr)]]
+        prefixOf xs ys = toList xs == take (length xs) (toList ys)
+    map length materials `shouldBe` [4, 6, 6, 9]
+    and (zipWith prefixOf materials (drop 1 materials)) `shouldBe` True
+
+  -- Figures 1 and 3 carry the fold-here lines of the creases their moves
+  -- make: the vertical midline on the sheet, and the horizontal one, in its
+  -- two pieces, on the opened sheet. Figure 2 comes before the unfold, which
+  -- makes no crease, and figure 4 is the last: neither carries any. Red if
+  -- the lines came from the after frame's positions, from a later state, or
+  -- from the last figure, or if inference kept to two equal crease patterns.
+  it "draws the fold-here lines of the creases each move makes, and no others (S28)" $ \states -> do
+    let notes = [inferNote {noteFoldLines = InferFoldLines ValleyArrow} | _ <- states]
+        valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
+    figures <- right (stepFigures defaultTheme defaultBudget top (zip states notes))
+    [[ps | Polyline stroke ps <- diagramShapes d, stroke == valleyDash] | (d, _) <- figures]
+      `shouldBe` [[[V2 0.5 1, V2 0.5 0]], [], [[V2 1 0.5, V2 0.5 0.5], [V2 0.5 0.5, V2 0 0.5]], []]
+    map (arrowsOf . fst) figures `shouldBe` [1, 1, 1, 0]
+
+  -- The kind is the note's, drawn as the page sees it: from below, a valley
+  -- written in front reads as a mountain, as a given line's does. Red if the
+  -- inferred lines skipped 'asSeen'.
+  it "draws an inferred line's kind as seen from below" $ \states -> do
+    let notes = [silentNote {noteFoldLines = InferFoldLines ValleyArrow} | _ <- states]
+        dashes = [themeValleyDash defaultTheme, themeMountainDash defaultTheme]
+        counted d = [length [() | Polyline (Stroke _ _ dash) _ <- diagramShapes d, dash == wanted] | wanted <- dashes]
+    figures <- right (stepFigures defaultTheme defaultBudget (View (Just bottomUp) 0) (zip states notes))
+    map (counted . fst) figures `shouldBe` [[0, 1], [0, 0], [0, 2], [0, 0]]
+
+  -- A figure the reader turns keeps its inferred lines, as the owner chose
+  -- on 2026-11-08: they are placed by where the paper lay on the sheet, so a
+  -- turn does not move them. Its inferred arrows are still dropped. Red if
+  -- the lines were dropped across a turn with the arrows.
+  it "keeps the inferred lines on a figure the reader turns" $ \states -> do
+    let turned = silentNote {noteArrows = InferArrowsAs ValleyArrow, noteFoldLines = InferFoldLines ValleyArrow, notePresentation = Just (PageTurnedOver (V3 0.5 0.5 0) (V3 0 1 0))}
+        valleyDash = Stroke (themeInk defaultTheme) (themeCreaseWidth defaultTheme) (themeValleyDash defaultTheme)
+    figures <- right (stepFigures defaultTheme defaultBudget top (zip states (turned : repeat silentNote)))
+    case figures of
+      (flat, _) : _ -> do
+        [ps | Polyline stroke ps <- diagramShapes flat, stroke == valleyDash] `shouldBe` [[V2 0.5 1, V2 0.5 0]]
+        arrowsOf flat `shouldBe` 0
+      [] -> expectationFailure "expected four figures, got none"
+
+  -- Seen edge on, a page whose notes infer valley lines carries the edge-on
+  -- mark on every figure, as one stating valley arrows does; unfold lines,
+  -- which look the same from either side, and lines asked of the last
+  -- figure alone, which draws none, do not. Red if the inferred arm of
+  -- 'statesSidedKind' were dropped or ignored whether a next frame exists.
+  it "marks an edge-on page whose notes infer valley lines" $ \states -> do
+    let eyes figures = [length [() | Offset _ (Symbol _ _ _ EdgeOnMark) <- diagramShapes d] | (d, _) <- figures]
+        eyesFor kinds = eyes <$> stepFigures defaultTheme defaultBudget (View (Just frontOn) 0) (zip states [silentNote {noteFoldLines = kind} | kind <- kinds])
+    eyesFor (repeat (InferFoldLines ValleyArrow)) `shouldBe` Right [1, 1, 1, 1]
+    eyesFor (repeat (InferFoldLines UnfoldArrow)) `shouldBe` Right [0, 0, 0, 0]
+    eyesFor [NoFoldLines, NoFoldLines, NoFoldLines, InferFoldLines MountainArrow] `shouldBe` Right [0, 0, 0, 0]
+
+  -- No figure draws a crease made later: the opened sheet, figure 3, draws
+  -- its vertical crease and no horizontal one, apart from the fold-here
+  -- lines of the crease to come.
+  it "draws no crease a later state makes" $ \states -> do
+    figures <- right (stepFigures defaultTheme defaultBudget top [(fr, silentNote) | fr <- states])
+    case figures of
+      _ : _ : (opened, _) : _ ->
+        [ps | Polyline _ ps <- diagramShapes opened, length ps == 2, all (\(V2 _ y) -> abs (y - 0.5) < 1e-12) ps, any (\(V2 x _) -> x > 0 && x < 1) ps] `shouldBe` []
+      other -> expectationFailure ("expected four figures, got " <> show (length other))
+
+  -- The refusal about the frame after a figure names the figure: the same
+  -- file without its material coordinates cannot say where its folded
+  -- states' paper lay, and the page is refused at frame 1, the sheet, whose
+  -- note asked for the arrows to the next. (The key frame, which holds no
+  -- geometry, is frame 0.)
+  it "refuses a growing file without material coordinates, naming the frame before" $ \states -> do
+    let stripped = [fr {frameExtras = KM.delete "senbazuru:material_coords" (frameExtras fr)} | fr <- emptyFrame : states]
+    void <$> stepFigures defaultTheme defaultBudget top [(fr, inferNote) | fr <- stripped] `shouldBe` Left (StepError 1 (InNextFrame MaterialCoordinatesMissing))
+    -- And the same of a note asking for inferred lines and no arrows: red if
+    -- the lines swallowed the refusal or named another frame.
+    let linesOnly = silentNote {noteFoldLines = InferFoldLines ValleyArrow}
+    void <$> stepFigures defaultTheme defaultBudget top [(fr, linesOnly) | fr <- stripped] `shouldBe` Left (StepError 1 (InNextFrame MaterialCoordinatesMissing))
+
+  -- The committed file is the run of its committed source, so the fixture
+  -- cannot drift from what the runner writes; the copy in test/fixtures is
+  -- the same bytes.
+  it "is the run of its committed source" $ \_ -> do
+    source <- readSequenceText growingSource >>= right
+    run <- right (parseSequence growingSource source >>= checkSequence >>= runSequence defaultRunSettings M.empty . elaborate)
+    right (writeSequence noFileHeader run) >>= goldenFoldFile 0 growingFile
+    copy <- BS.readFile "test/fixtures/quarter-fold-growing.fold"
+    original <- BS.readFile growingFile
+    copy `shouldBe` original
+
+  -- 06's golden for a growing crease graph: every figure with its arrows
+  -- and its fold-here lines inferred, all of the valley kind the moves were
+  -- written in, laid out as render --steps lays out its page.
+  it "renders the growing crease graph with its arrows and fold-here lines" $ \states -> do
+    let notes = [silentNote {noteArrows = InferArrowsAs ValleyArrow, noteFoldLines = InferFoldLines ValleyArrow} | _ <- states]
+    page' <- right (stepFigures defaultTheme defaultBudget defaultView (zip states notes)) >>= maybe (fail "nothing to lay out") pure . gridOf grid . map fst
+    goldenText "test/golden/quarter-fold-growing-steps.svg" (renderSvg defaultPage {pageWidth = 400, pageHeight = 200, pageMargin = 10, pageTitle = Just "fixture"} page')
+  where
+    growingFile = "examples/quarter-fold-growing.fold"
+    growingSource = "examples/quarter-fold-growing.foldseq"
+    frames path = filter (not . null . verticesCoords) . allFrames <$> (loadFoldFile path >>= right)
 
 -- | The boxes of a page's step numbers, rotate marks, repeat boxes and eyes,
 -- in page units, each with what it is: a number by its baseline, 10.8 above

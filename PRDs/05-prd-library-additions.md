@@ -146,9 +146,9 @@ Each line is something a runner cannot do with today's exports.
 Users: `Sequence.Run` (every item); `Render.Sequence` (L3,
 [06](06-prd-step-diagrams.md)); `Render.Steps` (L5, at M3: `motionsAcross`
 for the arrows `render --steps --arrows` infers on a file, and `creasesToCome`
-for `InferFoldLines` (**SKETCH**), fold-here lines inferred only for a
-`stepPageWith` caller that asks for them with a kind, S28 in
-[#642](https://github.com/avalonalex/senbazuru/issues/642); `render --steps`
+for `InferFoldLines`, fold-here lines inferred only for a `stepFigures`
+caller that asks for them with a kind, built by S28 in
+[#642](https://github.com/avalonalex/senbazuru/issues/642) ([C161](decisions.md#changes-since-draft-v2)); `render --steps`
 itself draws no fold-here lines, and a run's page takes its arrows from move
 records ([06](06-prd-step-diagrams.md)) and, by owner decision 74, its
 fold-here lines from their hinges); the study consumer and animated glTF

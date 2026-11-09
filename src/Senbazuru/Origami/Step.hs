@@ -85,10 +85,10 @@
 -- == The moves between two such frames
 --
 -- 'motionsAcross' finds the moves between two frames, whether or not the
--- crease pattern grew between them, and it alone decides which they are. A
--- page of steps is to ask it from S28 (#642); until then
--- "Senbazuru.Render.Steps" and @render --frame k --arrows@ ask
--- 'motionsBetween', which refuses a pair whose pattern grew. Two frames with
+-- crease pattern grew between them, and it alone decides which they are.
+-- "Senbazuru.Render.Steps" and @render --frame k --arrows@ ask it, so a page
+-- of steps draws the folds of a run that creases as it goes, where
+-- 'motionsBetween' refuses a pair whose pattern grew. Two frames with
 -- the same vertices, edges and faces go to 'motionsBetween', unchanged, and
 -- need no material points. Any other pair is placed: the later frame's
 -- vertices put where the earlier frame has its paper ('placeOn'), and each
@@ -113,7 +113,8 @@
 -- the paper where it is about to be folded. A page drawn from frames alone
 -- can find such a line in the creases the next frame has and this one lacks,
 -- and 'creasesToCome' lists them, each with its ends where the earlier frame
--- has that paper; nothing draws them until S28 (#642). A fold along a crease
+-- has that paper; a step note's @InferFoldLines@ draws them
+-- ("Senbazuru.Render.Steps"). A fold along a crease
 -- the paper already has adds none, and the frames show which crease it was
 -- only by that crease's angle changing ('motionCreases'). So a page drawn
 -- from a run of a fold sequence is to take its lines from each fold's and
