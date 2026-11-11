@@ -39,10 +39,11 @@
 -- where a book prints an instruction and the arrow for it: next to the picture
 -- it starts from. Every note has its state's title as its caption, so each
 -- figure's paper is the one @render --steps@ draws of that state of the
--- written file. Each row is followed by a band for its captions, so the rows
--- stand further apart than @render --steps@' rows, the page is as tall as
--- they need, and with a height given the figures are drawn smaller
--- ("Senbazuru.Diagram.Page").
+-- written file. A page none of whose captions has a word, and that carries
+-- no mark above its figures, is laid out as @render --steps@ lays out that
+-- file; otherwise each row is followed by a band for its captions, so the
+-- rows stand further apart, the page is as tall as they need, and with a
+-- height given the figures are drawn smaller ("Senbazuru.Diagram.Page").
 --
 -- == Arrows come from records, not from the states
 --
@@ -156,8 +157,9 @@ stepNotes run = writtenStates run >>= notesFor run
 
 -- | Why a run's page could not be drawn.
 data RunPageError
-  = -- | The run's own refusal: a state that cannot be written, or a figure
-    -- the page cannot draw, named by the step that ended at its state.
+  = -- | The run's own refusal: a state that cannot be written; a figure
+    -- the page cannot draw, named by the step that ended at its state; or
+    -- an arrow it cannot work out, named by the step whose move it shows.
     RunRefused !SequenceError
   | -- | The page, as given, has no room for its figures and their captions.
     -- Not a fault of the run, which a larger page draws.
@@ -171,8 +173,9 @@ instance Explain RunPageError where
     PageDoesNotFit err -> explain err
 
 -- | The run's page: 'stepFigures' over 'stepNotes', fitted to the page with
--- their captions ('fitPage'), and a figure the page cannot draw refused as the
--- step that ended at its state. 'Nothing' only for a run whose states hold no
+-- their captions ('fitPage'), a figure the page cannot draw refused as the
+-- step that ended at its state, and an arrow it cannot work out as the step
+-- whose move it shows. 'Nothing' only for a run whose states hold no
 -- geometry, which a run never writes.
 runPage ::
   Theme ->

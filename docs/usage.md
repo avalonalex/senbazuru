@@ -1863,15 +1863,20 @@ stack run -- run blintz.foldseq > blintz.fold
   hollow half head for a fold `behind`, a mountain; and the hollow head of an
   unfold. Two frames of a file cannot say which kind a fold was, which is why
   `render --steps --arrows` draws every head solid. An arrow runs from the
-  middle of the paper a move turns to where that paper lands; a step of
-  several moves draws each move's; and an `unfold` that turns back several
-  folds draws one arrow for the whole move. The last figure has none, and
+  middle of the paper a move turns to where that paper lands, one arrow for
+  each piece of paper that moves as one; a step of several moves draws each
+  move's; and an `unfold` that turns back several folds is drawn as one move,
+  from the paper as its figure shows it to the paper opened, so two folds of
+  the same paper opened together make one arrow, and four separate corners
+  opened together make four. The last figure has none, and
   neither has the last figure of a run stopped at `not modelled`, whose
   caption names a step the page does not draw the end of. `--view bottom`
   shows the paper from behind, where a valley is a mountain, so it swaps the
   two heads; `--view front` and `--view side` see flat paper edge on, cannot
   show which side they see, and so draw each head as written and put the
-  [edge-on mark](glossary.md#geometry) on every figure.
+  [edge-on mark](glossary.md#geometry) on every figure. An arrow there
+  bows below the line the paper is, into the caption under its figure,
+  which nothing moves out of its way yet.
 
   Under each figure is its [caption](glossary.md#origami), the instruction
   of the step that starts from that state, because that is the picture the
@@ -1899,7 +1904,9 @@ stack run -- run blintz.foldseq > blintz.fold
   from (chosen from the geometry); `--width PT` (400); and `--height PT`.
   With no `--height`, a page with captions is as tall as its rows need, the
   figures as large as the width allows, and a page with none is 400 tall, as
-  `render --steps`' page is. With
+  `render --steps`' page is, unless it is seen edge on: the arrows then
+  bring the edge-on mark, and a page with a mark above its figures is
+  fitted to its rows as one with captions is. With
   `--height`, the figures shrink until the bands under their rows fit the
   height. Only the height is fitted: shrinking a figure narrows its
   captions' lines too, so on a page much shorter than its rows need a

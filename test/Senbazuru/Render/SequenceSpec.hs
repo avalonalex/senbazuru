@@ -62,9 +62,14 @@ data Runs = Runs
     -- | The quarter fold after a step that turns the sheet a quarter turn
     -- clockwise on the page, so every fold is shown turned.
     rotatedRun :: Run,
-    -- | The quarter fold with a turn-over between its two folds.
+    -- | The quarter fold with a turn-over, top to bottom, between its two
+    -- folds: about a line across the second fold's, so that fold's arrow
+    -- is not the same shown turned and as folded, as it would be after a
+    -- turn-over left to right, about the line the arrow lies along.
     turnedRun :: Run,
-    -- | The blintz's four corners folded behind in one step of four moves.
+    -- | The blintz's four corners folded behind in one step of four moves,
+    -- then all four opened by one @unfold@: one move that turns four
+    -- separate pieces of paper.
     cornersRun :: Run,
     -- | The quarter fold's first step, then a step that folds the top half
     -- down and stops at @not modelled@: its fold leaves a record and the
@@ -134,10 +139,11 @@ runs = do
       step_ "Fold the top half down in front, onto the bottom." north
     turned = sequenceOf (seqHeader quarterFold) $ do
       step_ "Fold the left half behind, onto the right." west
-      step_ "Turn the model over." (turnOver LeftRight)
+      step_ "Turn the model over." (turnOver TopBottom)
       step_ "Fold the top half down in front, onto the bottom." north
     corners = sequenceOf (seqHeader blintz) $ do
-      step_ "Fold all four corners behind, to the centre." (forM_ [SouthEast, NorthEast, NorthWest, SouthWest] (\c -> fold mountain (cornerOf c `onto` centre)))
+      folded <- step "corners" "Fold all four corners behind, to the centre." (forM_ [SouthEast, NorthEast, NorthWest, SouthWest] (\c -> fold mountain (cornerOf c `onto` centre)))
+      step_ "Open all four." (unfold [folded])
     stoppedAfterFold = sequenceOf (seqHeader quarterFold) $ do
       step_ "Fold the left half behind, onto the right." west
       step_ "Fold the top half down, then squash the corner." (north >> notModelled "a squash fold")
@@ -221,15 +227,16 @@ spec = describe "a run's page" . beforeAll runs $ do
     -- carries that move's arrows, and their ends are where the written
     -- states put them: what motionsAcross finds between the figure's state
     -- and the next, which is what InferArrowsAs draws, within 1e-12 of the
-    -- model's span, in order. Checked on five runs because no one of them
-    -- shows every fault. On the blintz every record is shown as folded, so
-    -- a page that skipped the records' displays would pass; the anchored
-    -- quarter is shown by a half turn after its second fold, the rotated
-    -- one by a quarter turn throughout, and the turned one over; and the
-    -- creased square's fold makes a crease, so its record's paper before
-    -- has vertices its figure's state lacks. Red if the ends came from the
-    -- surfaces as folded and not as shown, or a step's records went to the
-    -- wrong figure.
+    -- model's span, in order. Checked on six runs because no one of them
+    -- shows every fault. The blintz and the quarter fold are the two runs
+    -- S37 pins as pages, and every record of either is shown as folded, so a
+    -- page that skipped the records' displays would pass on them; the
+    -- anchored quarter is shown by a half turn after its second fold, the
+    -- rotated one by a quarter turn throughout, and the turned one over;
+    -- and the creased square's fold makes a crease, so its record's paper
+    -- before has vertices its figure's state lacks. Red if the ends came
+    -- from the surfaces as folded and not as shown, or a step's records went
+    -- to the wrong figure.
     it "puts each single-move figure's arrows where the written states infer them (A10)" $ \r ->
       forM_ [("blintz" :: String, blintzRun r), ("quarter", quarterRun r), ("anchored", anchoredRun r), ("rotated", rotatedRun r), ("turned", turnedRun r), ("creased", creasedRun r)] $ \(name, run) -> do
         notes <- right (stepNotes run)
@@ -240,10 +247,11 @@ spec = describe "a run's page" . beforeAll runs $ do
         (name, maximum (0 : zipWith apart (concat given) (concat inferred))) `shouldSatisfy` ((<= 1e-12 * scale) . snd)
 
     -- The runs above are worth checking only if some record is shown other
-    -- than as folded: these three are, the blintz is not.
+    -- than as folded: these three are, the blintz and the quarter fold are
+    -- not.
     it "holds runs whose records are shown turned, so the displays are tested" $ \r -> do
       let shownTurned run = [() | record <- runRecords run, recordKind record == Turn, displayBefore record /= identity || displayAfter record /= identity]
-      map (null . shownTurned) [blintzRun r, anchoredRun r, rotatedRun r, turnedRun r] `shouldBe` [True, False, False, False]
+      map (null . shownTurned) [blintzRun r, quarterRun r, anchoredRun r, rotatedRun r, turnedRun r] `shouldBe` [True, True, False, False, False]
 
     -- The kind is the move's as written: the blintz's corners are folded
     -- behind, mountains, and its last step unfolds; the quarter fold is one
@@ -295,28 +303,41 @@ spec = describe "a run's page" . beforeAll runs $ do
     -- the blintz's four corners in one step are four arrows on the sheet,
     -- in the order the moves were written, each where the written states
     -- put one, compared as a set since the states list motions by face.
-    -- No single move makes two arrows yet: a fold's moving paper is one
-    -- connected piece. Red if only a step's first move were drawn.
-    it "draws an arrow for each move of a step that holds several" $ \r -> do
+    -- Red if only a step's first move were drawn.
+    --
+    -- And one move draws an arrow for each piece of paper it turns: the
+    -- next step opens all four corners with one unfold, one move of four
+    -- records, and its figure carries four unfold arrows, one from each
+    -- corner's triangle as it lies folded onto the centre. Red if only a
+    -- move's first piece were drawn.
+    it "draws an arrow for each move of a step, and for each piece of paper a move turns" $ \r -> do
+      [(recordStep record, recordMoveIndex record) | record <- runRecords (cornersRun r), recordStep record == 2] `shouldBe` replicate 4 (2, 1)
       notes <- right (stepNotes (cornersRun r))
       inferred <- right (inferredEnds (map fst notes))
       case (notes, inferred) of
-        ([(_, sheet), (_, folded)], [motions]) -> do
+        ([(_, sheet), (_, folded), (_, opened)], [folding, opening]) -> do
           let given = givenArrows sheet
           map kindOf given `shouldBe` replicate 4 MountainArrow
           -- Each tail is the middle of its corner's triangle, in the order
           -- written: south-east, north-east, north-west, south-west.
           let corners' = [V3 x y 0 | (x, y) <- [(5 / 6, 1 / 6), (5 / 6, 5 / 6), (1 / 6, 5 / 6), (1 / 6, 1 / 6)]]
           maximum (0 : zipWith (\(_, a, _) c -> apart (a, a) (c, c)) given corners') `shouldSatisfy` (<= 1e-12)
-          length motions `shouldBe` 4
-          -- Each given arrow has an inferred one at its place, and each
-          -- inferred one a given: paired by nearness, since sorting would
-          -- order two lists differently where they differ in a last digit.
-          let nearest arrow others = minimum (map (apart arrow) others)
-              ends = [(a, b) | (_, a, b) <- given]
-          maximum (map (`nearest` motions) ends <> map (`nearest` ends) motions) `shouldSatisfy` (<= 1e-12)
-          noteArrows folded `shouldBe` NoArrows
-        _ -> expectationFailure "expected two figures and one pair of states"
+          length folding `shouldBe` 4
+          paired [(a, b) | (_, a, b) <- given] folding `shouldSatisfy` (<= 1e-12)
+          map kindOf (givenArrows folded) `shouldBe` replicate 4 UnfoldArrow
+          length opening `shouldBe` 4
+          paired [(a, b) | (_, a, b) <- givenArrows folded] opening `shouldSatisfy` (<= 1e-12)
+          noteArrows opened `shouldBe` NoArrows
+        _ -> expectationFailure "expected three figures and two pairs of states"
+
+    -- The other place where steps and states disagree: a step of only
+    -- expect refused writes no state, so the fold after it starts from the
+    -- state before it, and that figure carries the fold's arrow. Red if a
+    -- figure took the records of the step numbered one more than the step
+    -- that ended at its state.
+    it "draws the arrow of the step after one that wrote no state, on the state before it" $ \r -> do
+      notes <- right (stepNotes (skippingRun r))
+      map (map kindOf . givenArrows . snd) notes `shouldBe` [[MountainArrow], [ValleyArrow], []]
 
     -- 06 §2's not modelled row, and D21: a step that folds and then stops
     -- at not modelled leaves its fold's record in the run and writes no
@@ -449,6 +470,13 @@ spec = describe "a run's page" . beforeAll runs $ do
     wordsOfOne :: Text -> [Text]
     wordsOfOne = T.words
     kindOf (kind, _, _) = kind
+    -- How far the worst-matched arrow of either list is from its nearest in
+    -- the other: each given arrow has an inferred one at its place, and each
+    -- inferred one a given. Paired by nearness, since sorting would order
+    -- two lists differently where they differ in a last digit.
+    paired :: [(V3, V3)] -> [(V3, V3)] -> Double
+    paired as bs = maximum (0 : map (`nearest` bs) as <> map (`nearest` as) bs)
+    nearest arrow others = minimum (map (apart arrow) others)
     isGiven note = not (null (givenArrows note))
 
 -- | The arrows a note gives, or none for a note that gives none.
