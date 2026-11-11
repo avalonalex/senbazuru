@@ -1191,7 +1191,9 @@ the reader's side
 (§1.3), and [06](06-prd-step-diagrams.md#2-from-a-run-to-notes) draws this
 note's arrow as `GivenArrows` (R-06-16): one arrow per connected moving group,
 from `motionsBetween` over the record's before surface under `displayBefore` and
-its after surface under `displayAfter`, with the record's kind
+its after surface under `displayAfter` (asked through `motionsAcross`, which
+is `motionsBetween` for a move of one record,
+[C162](decisions.md#changes-since-draft-v2)), with the record's kind
 ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). There is no
 presentation mark and no crease to come. Its fold-here line comes from the
 record's hinge instead ([owner decision 74](decisions.md#9-owner-decisions)):

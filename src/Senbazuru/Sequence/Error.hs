@@ -140,6 +140,15 @@ data SequenceError
     -- that step's name, or 'Nothing' for state 0, which no step made, and why.
     -- Named by step and not by figure, as "Senbazuru.Render.Sequence" says.
     PageRefused Int (Maybe (Int, Maybe Name)) FoldError
+  | -- | The page of steps cannot work out the arrow of a move: the step the
+    -- move is in, by number and name, and why. Not a 'PageRefused', which is
+    -- about a state's paper and names the step that ended there; an arrow
+    -- shows a step's own move, on the figure that step starts from, so it is
+    -- that step the author has to look at. No run is known to reach it: a
+    -- move's record holds the same paper before and after, which is always
+    -- comparable, and it is here so that a run that does is told so, not
+    -- drawn with an arrow missing.
+    ArrowRefused Int (Maybe Name) FoldError
   deriving stock (Eq, Show)
 
 -- | Where in a sequence a static problem is, in words an author can use
@@ -330,6 +339,7 @@ instance Explain SequenceError where
     WriteRefused k problem -> "state " <> tshow k <> ": " <> explain problem
     PageRefused k Nothing why -> "state " <> tshow k <> ": the page cannot draw it: " <> explain why
     PageRefused _ (Just (n, name)) why -> placeWords (InStep n name) <> ": the page cannot draw the state it ends at: " <> explain why
+    ArrowRefused n name why -> placeWords (InStep n name) <> ": the page cannot draw its arrow: " <> explain why
     where
       placeWords = \case
         InHeader -> "header"
@@ -1009,6 +1019,7 @@ errorSpan = \case
   StepRefused _ _ sp _ -> sp
   WriteRefused {} -> NoSpan
   PageRefused {} -> NoSpan
+  ArrowRefused {} -> NoSpan
 
 -- | @path:line:col@ of where the error starts, counted from 1, with a column
 -- counting characters and a tab counting as one. 'Nothing' for 'NoSpan'.

@@ -104,6 +104,7 @@ everyType =
     ("SequenceError, a move", explain (StepRefused 5 Nothing NoSpan (UnfoldChangedSince (EdgeId 8)))),
     ("SequenceError, a state", explain (WriteRefused 2 (WriteNonFinite "senbazuru:material_coords[3]" (0 / 0)))),
     ("SequenceError, a page", explain (PageRefused 2 (Just (3, Just (Name "crane"))) (GaveUpStacking 1))),
+    ("SequenceError, an arrow", explain (ArrowRefused 3 (Just (Name "crane")) (FramesDiffer "vertices_coords" 4 6))),
     ("WriteProblem", explain (WriteMissingAngles 12 11)),
     ("MoveFailure", explain (MoveNotRunYet "\"turn over\"")),
     ("SelectionError", explain (SeedMissing ["corner south-west", "centre"])),
@@ -287,6 +288,16 @@ spec = do
         `shouldBe` "step 3: the page cannot draw the state it ends at: " <> explain (FaceOrderSelf (FaceId 4))
       explain (PageRefused 0 Nothing (FaceOrderSelf (FaceId 4)))
         `shouldBe` "state 0: the page cannot draw it: " <> explain (FaceOrderSelf (FaceId 4))
+
+    -- An arrow is a step's own move, drawn on the figure that step starts
+    -- from, so its refusal names that step, and says it is the arrow and
+    -- not the paper that failed. No run is known to make one, so only its
+    -- words are held here.
+    it "names a refused arrow by the step whose move it shows" $ do
+      explain (ArrowRefused 3 (Just (Name "crane")) (FramesDiffer "vertices_coords" 4 6))
+        `shouldBe` "step 3 (crane): the page cannot draw its arrow: " <> explain (FramesDiffer "vertices_coords" 4 6)
+      explain (ArrowRefused 3 Nothing (FramesDiffer "vertices_coords" 4 6))
+        `shouldBe` "step 3: the page cannot draw its arrow: " <> explain (FramesDiffer "vertices_coords" 4 6)
 
     -- A quarter turn of (1, 0) is (-0.0, 1), and a reader should not be
     -- shown a sign on nothing. A coordinate to type back in has no exponent:

@@ -1852,9 +1852,26 @@ stack run -- run blintz.foldseq > blintz.fold
 - **`.svg`**: the *page of steps*, one numbered figure for each state the
   run writes, in order, so figure k is state k − 1 and `--frame k` of the
   written `.fold`. A step whose moves were all `expect refused` moved no
-  paper, writes no state and has no figure. Each figure is drawn as
+  paper, writes no state and has no figure. Each figure's paper is drawn as
   `render --steps` draws that state of the written `.fold`, and the page is
   titled with the source's `title`.
+
+  On each figure are the [fold arrows](glossary.md#origami) of the step that
+  starts from it, read from the run's
+  [move records](glossary.md#fold-sequences) and so drawn by the kind each
+  move was written as: a solid head for a fold `in front`, a valley; a
+  hollow half head for a fold `behind`, a mountain; and the hollow head of an
+  unfold. Two frames of a file cannot say which kind a fold was, which is why
+  `render --steps --arrows` draws every head solid. An arrow runs from the
+  middle of the paper a move turns to where that paper lands; a step of
+  several moves draws each move's; and an `unfold` that turns back several
+  folds draws one arrow for the whole move. The last figure has none, and
+  neither has the last figure of a run stopped at `not modelled`, whose
+  caption names a step the page does not draw the end of. `--view bottom`
+  shows the paper from behind, where a valley is a mountain, so it swaps the
+  two heads; `--view front` and `--view side` see flat paper edge on, cannot
+  show which side they see, and so draw each head as written and put the
+  [edge-on mark](glossary.md#geometry) on every figure.
 
   Under each figure is its [caption](glossary.md#origami), the instruction
   of the step that starts from that state, because that is the picture the
@@ -1881,8 +1898,8 @@ stack run -- run blintz.foldseq > blintz.fold
   `--columns N`, figures across the page (3); `--view NAME`, where to look
   from (chosen from the geometry); `--width PT` (400); and `--height PT`.
   With no `--height`, a page with captions is as tall as its rows need, the
-  figures as large as the width allows, and a page with none is 400 tall,
-  the page `render --steps` draws of the written file, byte for byte. With
+  figures as large as the width allows, and a page with none is 400 tall, as
+  `render --steps`' page is. With
   `--height`, the figures shrink until the bands under their rows fit the
   height. Only the height is fitted: shrinking a figure narrows its
   captions' lines too, so on a page much shorter than its rows need a
@@ -1904,10 +1921,9 @@ stack run -- run blintz.foldseq > blintz.fold
   figure's number:
   `step 2 (quarter): the page cannot draw the state it ends at: …`.
 
-  The page draws the paper, the figure numbers and the captions, and nothing
-  else yet. Not drawn so far:
-  - [fold arrows](glossary.md#origami);
-    [fold-here lines](glossary.md#origami), the dashed line on the figure
+  The page draws the paper, the figure numbers, the captions and the fold
+  arrows, and nothing else yet. Not drawn so far:
+  - [fold-here lines](glossary.md#origami), the dashed line on the figure
     before a fold showing where it falls, which the library can draw from a
     step note but which does not read where it lies along a crease: over a
     folded figure's crease, drawn solid, its dash vanishes, and over a crease

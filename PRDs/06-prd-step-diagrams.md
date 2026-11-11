@@ -237,8 +237,11 @@ then.
   ([#641](https://github.com/avalonalex/senbazuru/issues/641)), as
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page) says. S22 settled the
   paper's as `PageRefused`, named by the step that ended at the state
-  ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s falls to
-  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)). S5 settled
+  ([C132](decisions.md#changes-since-draft-v2)); `motionsBetween`'s fell to
+  S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643)), which settled it at the owner's word: an arrow the page cannot
+  work out is `ArrowRefused`, named by the step whose move it shows, since
+  an arrow belongs to the step that starts from a state and not to the one
+  that ended there ([C162](decisions.md#changes-since-draft-v2)). S5 settled
   `SurfaceError`'s: `placeOn` maps each by name to a `FoldError`, four of them
   new, so it reaches a page as any `FoldError` does, and a refusal about the
   later of two frames comes inside `InNextFrame`
@@ -388,7 +391,15 @@ then.
 
 **Several moves**
 
-- **R-06-16.** For each moving record of a step, in order, `Render.Sequence`
+- **R-06-16.** Built by S32 ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C162](decisions.md#changes-since-draft-v2)), with one change, the
+  owner's choice of 2026-11-11: the arrows are a move's, not a record's. An
+  `unfold` that turns back several folds leaves a record for each under one
+  place in its step, and a later record starts from paper an earlier one
+  turned, which the figure does not show; so the records of one move are read
+  together, from the first one's before surface to the last one's after, by
+  `motionsAcross`, which is `motionsBetween` for a move of one record and
+  answers where a later record re-anchored and `motionsBetween` refuses. As
+  planned: for each moving record of a step, in order, `Render.Sequence`
   gives that record's arrows, with the kind of its move as written, from
   `motionsBetween` over its before surface under `displayBefore` and its after
   surface under `displayAfter`, each made a frame by `Sequence.Record`'s
@@ -651,12 +662,12 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 | A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78; refused as `MoveAfterPresentation`, [decisions C154](decisions.md#changes-since-draft-v2)), so a figure carries at most one presentation mark |
 | `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
 | `checkpoint` (M4) | `NoArrows`: the pair breaks the *prefix rule*, under which each frame's vertex list begins with the previous frame's, with equal material coordinates, so ids carry over ([D6](decisions.md#d6-crease-graphs-grow-between-frames), [D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused); [05 L5](05-prd-library-additions.md#l5-motionsacross-creasestocome-and-a-non-convex-point-test), [02 §9](02-language-semantics.md#9-repeat-checkpoint-not-modelled-expect-refused)) |
-| `not modelled` | Caption, `NoArrows`. The run stops there and keeps every state before it, so this is the last figure ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
+| `not modelled` | Caption, `NoArrows`. The run stops there and keeps every state before it, so this is the last figure ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)). As built (S32, [C162](decisions.md#changes-since-draft-v2)): the stopped step's earlier moves leave records in `runRecords` and the step writes no state, so a figure's records are those of the step that ended at the next written state, and the stopped step's are found by no figure |
 | `expect refused` | Nothing. It is a move inside a step that produces no record and no state; its outcome is kept in the run's `runExpected`, with its step ([C96](decisions.md#changes-since-draft-v2)), and printed by `run --report`, never drawn. A step whose moves are all `expect refused` writes no state, so it has no figure and its caption is drawn nowhere ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused), [D24](decisions.md#d24-states-figures-and-their-numbers)) |
 | A macro's authored `sample` poses (M5) | Nothing on this figure. Each pose is a state and a figure of its own, between this figure and the end state's, with no caption and `NoArrows` (R-06-23). A macro with no `sample` adds no figure: the interior poses the runner also checks, `RunSettings.macroChecks` of them, are evidence, not states ([D9](decisions.md#d9-macro-moves-as-named-angle-relations)) |
 
 **A record's kind is not an arrow's kind.** `MoveKind` is `Turn`, `Precrease`,
-`Presentation` or `Anchoring`
+`Presentation`, `Anchoring` or `Marking`
 ([`Record.hs:260-278`](../src/Senbazuru/Sequence/Record.hs#L260-L278)). `Turn`
 covers a fold and an unfold alike, and `Precrease` carries no sense, so neither
 says whether an arrow is valley, mountain or unfold. S17
@@ -1272,7 +1283,7 @@ decisions 67 to 69).
 | A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
 | A8 | On `iso`, bird `file_frames[13]`'s extent changes across the turn (0.4142 × 0.6118 → 0.9981 × 0.3335, within 1e-4) | the turn is computed about a page axis, or the page re-fits figures after a turn, so the `iso` extent stays equal |
 | A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn`. Restated by S29 ([C158](decisions.md#changes-since-draft-v2)): on a pair that folds and turns, since a pure turn infers no arrow anyway, `StepsSpec` counts one `TurnOverLoop` and no `Arrow` under `InferArrows` and `InferArrowsAs` from above, where the pair without the note infers one; given arrows are still drawn | inference is not suppressed on the marked pair |
-| A10 | On each single-move figure of the blintz sequence (M2), `GivenArrows` from its record equal `InferArrowsAs` ends within 1e-12 × span | `displayBefore` or `displayAfter` is not applied, or record ids are not in `recordBefore`'s numbering |
+| A10 | Restated by S32 ([C162](decisions.md#changes-since-draft-v2)), since on the blintz every record is shown as folded and the row's red-if could not fail. On each single-move figure of six runs, the `GivenArrows` read from its records have the ends `motionsAcross` finds between the figure's written state and the next, which are `InferArrowsAs`'s, in order, within 1e-12 × span: the blintz, the quarter fold, the quarter fold anchored at (3/4, 3/4), which re-anchors, the quarter fold after a quarter turn on the page, the quarter fold with a turn-over between its folds, and a square pre-creased and folded, whose fold makes a crease | the ends are read from the surfaces as folded and not as shown (`displayBefore`, `displayAfter`); a step's records go to the wrong figure. On every `Turn` record the two displays are equal, so applying one in place of the other cannot turn it red |
 | A11 | For the quarter-fold run, `fmap (map fst) (stepNotes run)` equals the `file_frames` of `writeSequence`'s file, both `Right`. In review: `Render.Sequence` imports `Sequence.Record` and `Sequence.Error` and no other sequence module, and no `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`. Sharing `writtenStates` makes the frames equal by construction; the test guards what the construction does not, `stepNotes` dropping or reordering states | `stepNotes` filters `writtenStates` (for example drops sample states) or rebuilds frames without the [state rule](glossary-additions.md#the-fold-format); `Render.Sequence` imports `Sequence.Write` or `Sequence.Run`; a `View` reaches the runner, the writer or `stepNotes` |
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | the equal-graph branch is bypassed, restated from "`motionsAcross` visits rings in another order", which the equal-graph branch makes impossible ([C144](decisions.md#changes-since-draft-v2)) |

@@ -1514,7 +1514,9 @@ with the sheet path as written, a `SheetProblem`; `ResolveRefused` a
 number, a `WriteProblem`. As built it has a seventh, `PageRefused`, a page of
 steps that cannot draw a state, with the state number, the step that ended at
 it and that step's name, and a `FoldError`
-([C132](decisions.md#changes-since-draft-v2)).
+([C132](decisions.md#changes-since-draft-v2)); and an eighth, `ArrowRefused`,
+a page of steps that cannot work out a move's arrow, with the move's step,
+that step's name and a `FoldError` ([C162](decisions.md#changes-since-draft-v2)).
 
 The example below (**SKETCH**) is a hypothetical step on `bird-base.fold`:
 

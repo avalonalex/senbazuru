@@ -11,7 +11,8 @@
 -- moves none and names a point of paper ('MoveKind'); the section \"What is
 -- not here yet\" says what the other moves will bring. Three
 -- readers take records rather than the folded frames a run also writes: the
--- page of steps, which draws one arrow for each move; the material study,
+-- page of steps, which draws each move's arrows by the kind it was written
+-- as ("Senbazuru.Render.Sequence"); the material study,
 -- which settles a move's paper as a sheet that bends; and the animated export.
 -- A record is the one value all three read, so its shape is an agreement
 -- between them, and this header is where that agreement is kept.
