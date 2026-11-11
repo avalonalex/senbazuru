@@ -430,6 +430,26 @@ blown up to fill its cell, and the page would tell the reader, in the most
 convincing way a picture can, that folding a sheet in half does not make it
 smaller. `--columns` sets how many figures go across.
 
+The paper in those three frames carries the same creases throughout, so
+comparing them is comparing like with like. A run that creases as it goes does
+not: each fold writes its crease into the state it leaves, so that state has
+more vertices and edges than the one before it, and no vertex of one can be
+matched to a vertex of the other by its number. The arrows are still found,
+because a run writes where each vertex lay on the unfolded sheet
+(`senbazuru:material_coords`), and that pairs paper with paper:
+
+```bash
+stack run -- render examples/quarter-fold-growing.fold --steps --arrows \
+  --width 700 --height 300 -o growing.svg
+```
+
+A file whose crease pattern grows and that does not say where its paper lay is
+refused at the figure being drawn, the message blaming the frame after it,
+rather than drawn with arrows that guess. The same pairing finds the creases the next frame adds, and
+a program calling the library can have each figure draw them as fold-here
+lines; `render --steps` does not, since nothing in a frame says whether a fold
+was a valley or a mountain as the reader sees it.
+
 ## What it exports
 
 Everything above is a picture from one angle. A folded form is an object, and

@@ -224,9 +224,10 @@ substantial collections are GPL-licensed and therefore off-limits to this
 MIT-licensed repo — see the third-party rules in `AGENTS.md`. They are useful
 for *checking understanding*, not for copying.
 
-So `examples/quarter-fold-steps.fold` is ours, and it is the only multi-frame
-file here. Its folded coordinates were computed by senbazuru's own folding
-rather than typed out, which is how a sequence can be authored at all without a
+So `examples/quarter-fold-steps.fold` is ours, and it was the first
+multi-frame file here; the others are written by senbazuru, by a run or a
+study. Its folded coordinates were computed by senbazuru's own folding rather
+than typed out, which is how a sequence can be authored at all without a
 FOLD writer: fold the same crease pattern to each step's angles and record where
 the paper landed. Each frame repeats the whole graph, because `frame_inherit` is
 decoded and not resolved.

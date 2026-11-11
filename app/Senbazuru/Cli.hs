@@ -67,7 +67,7 @@ import Senbazuru.Origami.Stacking
     stackingSpace,
     stateCount,
   )
-import Senbazuru.Origami.Step (Motion, motionsBetween)
+import Senbazuru.Origami.Step (Motion, motionsAcross)
 import Senbazuru.Origami.ThroughLayers (creaseThroughLayers)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View (..), defaultView, namedView, viewNames)
 import Senbazuru.Render.CreasePattern (basisFor, creasePatternAuto, withArrows)
@@ -1168,13 +1168,14 @@ pageFor o title =
 -- | The motions to draw on this frame, given the frames that come after it.
 --
 -- The final picture of a sequence shows the finished model, and a book draws no
--- arrow on it. Neither do we.
+-- arrow on it. Neither do we. Across a growing crease graph, as @--steps@
+-- infers its arrows ('motionsAcross').
 stepMotions :: RenderOptions -> Frame -> [Frame] -> IO [Motion]
 stepMotions o frame later
   | not (roArrows o) = pure []
   | otherwise = case later of
       [] -> pure []
-      (next : _) -> case motionsBetween frame next of
+      (next : _) -> case motionsAcross frame next of
         Left err ->
           die ("cannot work out the step in " <> T.pack (roInput o) <> ": " <> explain err)
         Right ms -> pure ms

@@ -162,9 +162,9 @@ then.
    makes, so its six written states all have 12 edges (owner decision 74,
    [decisions §9](decisions.md#9-owner-decisions)). `render --steps` draws
    none, since `inferNote` carries `NoFoldLines` (§1, A1); `InferFoldLines`
-   infers them from `creasesToCome` (05 L5) only for a `stepPageWith` caller
-   that states the kind (S28,
-   [#642](https://github.com/avalonalex/senbazuru/issues/642)).
+   infers them from `creasesToCome` (05 L5) only for a `stepFigures` caller
+   that states the kind (built by S28, [#642](https://github.com/avalonalex/senbazuru/issues/642),
+   [C161](decisions.md#changes-since-draft-v2)).
 2. Kinds, lines and marks come from move records, never from guessing at frames.
 3. `render --steps`, every gallery and every tracked golden stay byte-identical.
 4. A view flag changes how a step is drawn, never what it means.
@@ -248,7 +248,10 @@ then.
   Built by S29 ([C158](decisions.md#changes-since-draft-v2)) for a turn-over:
   `notePresentation = Just (PageTurnedOver point direction)` puts the loop on
   the figure and suppresses `InferArrows` and `InferArrowsAs` there; a figure's
-  `GivenArrows` are still drawn.
+  `GivenArrows` are still drawn. Inferred fold-here lines are the stated
+  exception: S28 ([C161](decisions.md#changes-since-draft-v2)) draws `InferFoldLines` on a turned figure, at the
+  owner's word, since they are placed by the point of paper each runs through,
+  which a turn does not move.
 
 **Diagram**
 
@@ -367,7 +370,9 @@ then.
 - **R-06-14.** For `InferArrows` and `InferArrowsAs`, `stepFigures` calls
   `motionsAcross` alone, which returns `motionsBetween` when the graphs are equal
   (R-05-16): only `motionsAcross` decides whether two graphs are equal
-  ([C139](decisions.md#changes-since-draft-v2)).
+  ([C139](decisions.md#changes-since-draft-v2)). Built by S28 ([#642](https://github.com/avalonalex/senbazuru/issues/642),
+  [C161](decisions.md#changes-since-draft-v2)), and `render --frame k --arrows` asks `motionsAcross` too, at the
+  owner's word.
 - **R-06-15.** Fold-here lines go on the figure before the move, at `before`
   positions, styled by the note's kind as seen, never by the crease's assignment.
   Built by S26 ([#642](https://github.com/avalonalex/senbazuru/issues/642),
@@ -375,6 +380,11 @@ then.
   over the paper and under the arrows, on any figure the note is on, the last
   included; an unfold draws none. A line lying along a crease is drawn over it
   and does not read, so S33 has to settle that before a run's page draws one.
+  Built by S28 ([C161](decisions.md#changes-since-draft-v2)) for `InferFoldLines`: the next frame's
+  `creasesToCome`, each drawn with the note's kind as seen, on a turned figure
+  too, and none on the last figure or before a frame with the same graph; a
+  crease creasing cut into collinear pieces is drawn as its pieces, so the dash
+  restarts at each cut, a recorded limitation.
 
 **Several moves**
 
@@ -563,7 +573,7 @@ foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valle
 
 -- Senbazuru.Render.Steps
 data Arrows    = InferArrows | InferArrowsAs !ArrowKind | GivenArrows ![(ArrowKind, V3, V3)] | NoArrows  -- built by S27 (C157)
-data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 without InferFoldLines (S28)
+data FoldLines = NoFoldLines | InferFoldLines !ArrowKind | GivenFoldLines ![(ArrowKind, V3, V3)]  -- built by S26 (C156); InferFoldLines by S28 (C161)
 data PresentationChange
   = PageTurnedOver !V3 !V3    -- a point on the axis and its direction, written coordinates; built by S29 (C158)
   | PageRotated !Int !V3      -- signed eighths, anticlockwise from the reader's side; a point on the axis, carried and not read; built by S30 (C159)
@@ -856,7 +866,10 @@ in [05](05-prd-library-additions.md) and decided in
 in use, inside `motionsAcross`, whenever graphs are equal (R-06-14), which keeps the 14 arrow-bearing
 goldens structurally unchanged: all pass `motionsBetween` today. One behaviour
 changes from refusal to drawing: `render --steps --arrows` on a growing file
-with `senbazuru:material_coords`, refused today with `FramesDiffer`.
+with `senbazuru:material_coords`, refused before S28 with `FramesDiffer`. As
+built ([C161](decisions.md#changes-since-draft-v2)), a growing file without them is refused at the figure drawn, its
+message blaming the frame after it (`InNextFrame MaterialCoordinatesMissing`), and
+`examples/quarter-fold-growing.fold` draws.
 
 Fold-here lines are styled by the kind as seen because the quarter fixture's second
 fold makes a `V` and an `M` crease in one valley fold; styling by assignment
@@ -872,8 +885,8 @@ names folds and pre-creases, and S33
 ([#643](https://github.com/avalonalex/senbazuru/issues/643)) asks the owner to
 confirm it. `render --steps` draws no fold-here line, since `inferNote` carries
 `NoFoldLines` (§1, A1). `creasesToCome` is the source only for a `stepFigures`
-caller that states the kind, as `InferFoldLines` (S28,
-[#642](https://github.com/avalonalex/senbazuru/issues/642)).
+caller that states the kind, as `InferFoldLines` (built by S28,
+[#642](https://github.com/avalonalex/senbazuru/issues/642), [C161](decisions.md#changes-since-draft-v2)).
 
 ### 7. Figures holding several moves
 
@@ -1304,7 +1317,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `quarter-fold-steps-noted.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | Fixture frames; hand notes: captions on 1–2, `closing` on 3, `InferArrowsAs MountainArrow` on 1 and `ValleyArrow` on 2, each with its fold's fold-here line; drawn by `stepFigures` and fitted by `fitPage` with `HeightToFit` to the `renderSteps` page's 400 width, as a run's page is (C157) | the mountain head reverts to solid; a caption is not wrapped to its figure's width by owner decision 7's estimate; a captioned row's band is not in page units, so it changes with the scale; the last row has no band |
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `PageTurnedOver` goes on figure 3, which draws state 2. As built (S29, [C158](decisions.md#changes-since-draft-v2)): a run of the quarter fold and a turn-over, its states' titles as captions, `inferNote` on every figure, the axis the turn's record gives (`presentationAxis`), fitted by `fitPage` to a 400-wide page | the runner's axis is at x = 0 (every coordinate moves), which A7 catches too; the loop stands on the edge, lies along the axis or follows model size. A page-side axis at x = 0 cannot turn it red: that line misses figure 3, and the fallback gives the same anchor, so `StepsSpec` tests the anchor rule on off-centre axes |
-| `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | New fixture `test/fixtures/quarter-fold-growing.fold`: an uncreased square, one fold, two folds; [state-rule](glossary-additions.md#the-fold-format) frames with `senbazuru:material_coords`. **UNVERIFIED**, not yet written: `jq` must show 4, 6, 9 vertices, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)). | figure 1 draws the second crease; `motionsAcross` refuses; figure 2's fold-here line is solid or half mountain |
+| `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | As built (S28, [C161](decisions.md#changes-since-draft-v2)): `examples/quarter-fold-growing.fold`, the run of `examples/quarter-fold-growing.foldseq` on `sheet square`, copied byte for byte to `test/fixtures/`: folded in half, opened, folded in half the other way, so [state-rule](glossary-additions.md#the-fold-format) frames of 4, 6, 6 and 9 vertices with `senbazuru:material_coords`, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)), which `StepsSpec` checks. Each figure's `InferArrowsAs` and `InferFoldLines` of the kind its step's move was written as: valley for the two folds, written in front, and unfold for figure 2 | a figure draws a fold-here line along a crease it does not add, such as figure 3's existing vertical one; `motionsAcross` refuses; a line is solid or mountain-dashed; figure 2, before a frame with the same graph, or figure 4, the last, draws a line; figure 2's unfold arrow has a solid head |
 | `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
 | `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `runPage` on the blintz run with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
 | `quarter-fold-run-steps.svg` (**SKETCH** name; S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | The quarter-fold run (`test/fixtures/quarter-fold.foldseq`), drawn as `blintz-sequence-steps.svg` is | "Folded into quarters.", its `closing` caption, is not under figure 3; `blintz.foldseq` has no `closing` line, so no other golden pins it |
@@ -1483,7 +1496,7 @@ Each has a recommended default in
   (`recordHinge`) at the before positions, styled by the move's sense as seen
   (§2, §6). The option as asked said `render --steps` keeps inferring them from
   new creases, but it draws none (§1); `creasesToCome` serves only a
-  `stepFigures` caller that states the kind (S28,
+  `stepFigures` caller that states the kind (built by S28,
   [#642](https://github.com/avalonalex/senbazuru/issues/642)). 75: M3 runs
   `mark`, pinned by the point forms the resolver already evaluates on the
   sheet, and labels it on the figures where that paper shows; `meet`, and a

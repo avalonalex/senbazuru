@@ -137,7 +137,7 @@ format cannot say.
 | `--hide-flat` | Do not draw flat (`F`) or unassigned (`U`) creases |
 | `--no-fill` | Draw every crease and fill nothing: a wireframe. Also the way to render a file whose layers cannot be stacked, since nothing then needs to know which is on top |
 | `--fold` | Fold the crease pattern along its fold angles and draw the result |
-| `--arrows` | Draw the fold that takes this frame to the next one |
+| `--arrows` | Draw the fold that takes this frame to the next one. When the next frame has creases this one lacks, as a run's states do, the file must say where each vertex lay on the unfolded sheet (`senbazuru:material_coords`, which a run writes), or be a crease pattern lying flat, whose positions are that sheet; otherwise it is refused |
 | `--steps` | Lay every frame out as one numbered page of figures, at one scale. A frame's `frame_title` is never drawn under its figure: a file cannot say whether its titles name the state they sit on or give the next step's instruction, as a run's do |
 | `--columns N` | Figures across the page, with `--steps` (default `3`) |
 | `--stacking N[,N...]` | Which layer order to draw, when a model has several: one index per component that has a choice, in the order `info --fold` lists them (default: the first of each) |

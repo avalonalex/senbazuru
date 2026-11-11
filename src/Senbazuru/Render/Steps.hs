@@ -167,7 +167,7 @@ import Senbazuru.Geometry.Polygon (distanceOutside, distanceToSegment, edges, in
 import Senbazuru.Geometry.V3 (V3 (..))
 import Senbazuru.Geometry.VectorSpace (VectorSpace (..))
 import Senbazuru.Origami.Stacking (Budget, layerOrderFor)
-import Senbazuru.Origami.Step (Motion (..), motionsBetween)
+import Senbazuru.Origami.Step (Motion (..), creasesToCome, motionsAcross)
 import Senbazuru.Origami.Surface (Sample (..), surfaceFromFrame, surfacePanelSamples)
 import Senbazuru.Origami.Visible (Region (..), VisibleForm (..), visibleForm)
 import Senbazuru.Render.Camera (Basis, SeenFrom (..), View, project, seenFrom)
@@ -239,9 +239,11 @@ data StepNote = StepNote
 
 -- | Which arrows a figure carries.
 data Arrows
-  = -- | The ones 'motionsBetween' finds from this figure's frame to the next
-    -- figure's, as @render --steps --arrows@ draws them. They state no kind,
-    -- so each has the solid head from either side of the paper.
+  = -- | The ones 'motionsAcross' finds from this figure's frame to the next
+    -- figure's, as @render --steps --arrows@ draws them: between two states of
+    -- one crease pattern, or across a crease pattern the next state grows,
+    -- matched by where each point lay on the sheet. They state no kind, so
+    -- each has the solid head from either side of the paper.
     InferArrows
   | -- | The same arrows, each of this kind as the move was written, from the
     -- reader's side, and drawn as the page sees it ('asSeen'). None on the
@@ -269,6 +271,18 @@ data FoldLines
     -- sees each kind ('asSeen'); and drawn not at all for an unfold, which
     -- has no line ("Senbazuru.Diagram.Style", @foldLineStroke@).
     GivenFoldLines ![(ArrowKind, V3, V3)]
+  | -- | The creases the next figure's frame adds, each where the paper is on
+    -- this figure ('creasesToCome'), all of this kind as the move was
+    -- written, drawn as the page sees it. None on the last figure, which has
+    -- no next frame, and none between two states of one crease pattern,
+    -- which add no crease; a fold along a crease the paper already has gets
+    -- none here, and a run's page is to draw it from its record's hinge
+    -- instead (owner decision 74, S33 of #643), which nothing does yet. Drawn on a
+    -- figure the reader turns, unlike inferred arrows, since a crease to come
+    -- is placed on this figure by the point of paper it runs through, which
+    -- a turn does not move. A crease an older one crosses comes as its
+    -- pieces, so its dash starts again at each cut.
+    InferFoldLines !ArrowKind
   deriving stock (Eq, Show)
 
 -- | A change of presentation: the reader moving the whole model, not folding
@@ -363,17 +377,21 @@ stepFigures theme budget view notes = do
           (StepError i)
           (creasePatternFrom theme budget (defaultNotationFor (frameClasses fr) verts) basis fr)
       -- Lines before arrows, so an arrow is painted over a line it crosses.
-      let lined = case noteFoldLines note of
-            NoFoldLines -> paper
-            GivenFoldLines foldLines ->
-              withFoldLines theme basis [(asSeen side kind, a, b) | (kind, a, b) <- foldLines] paper
+      lined <- case (noteFoldLines note, drop (position + 1) order) of
+        (NoFoldLines, _) -> pure paper
+        (GivenFoldLines foldLines, _) ->
+          pure (withFoldLines theme basis [(asSeen side kind, a, b) | (kind, a, b) <- foldLines] paper)
+        (InferFoldLines kind, next : _) -> do
+          coming <- first (StepError i) (creasesToCome fr next)
+          pure (withFoldLines theme basis [(asSeen side kind, a, b) | (_, a, b) <- coming] paper)
+        (InferFoldLines _, []) -> pure paper
       let unpresented = isNothing (notePresentation note)
       arrowed <- case (noteArrows note, drop (position + 1) order) of
         (InferArrows, next : _) | unpresented -> do
-          motions <- first (StepError i) (motionsBetween fr next)
+          motions <- first (StepError i) (motionsAcross fr next)
           pure (withArrows theme basis motions lined)
         (InferArrowsAs kind, next : _) | unpresented -> do
-          motions <- first (StepError i) (motionsBetween fr next)
+          motions <- first (StepError i) (motionsAcross fr next)
           pure (withKindedArrows theme basis [(asSeen side kind, motionFrom m, motionTo m) | m <- motions] lined)
         (GivenArrows arrows, _) ->
           pure (withKindedArrows theme basis [(asSeen side kind, a, b) | (kind, a, b) <- arrows] lined)
@@ -425,6 +443,7 @@ statesSidedKind note hasNext = arrows || foldLines || rotates
       NoArrows -> False
     foldLines = case noteFoldLines note of
       GivenFoldLines given -> any (\(kind, _, _) -> sided kind) given
+      InferFoldLines kind -> hasNext && sided kind
       NoFoldLines -> False
 
 -- | The labels of marked points on a figure: for each mark, a dot at every

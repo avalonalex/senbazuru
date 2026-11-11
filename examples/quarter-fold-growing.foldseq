@@ -1,0 +1,19 @@
+foldseq 1
+# A sheet whose crease pattern grows between states: folded in half, which
+# adds a crease, opened out, which adds none, then folded in half the other
+# way, which adds another. Run with `senbazuru run` to write
+# examples/quarter-fold-growing.fold, the states a page of steps draws across
+# a growing crease graph (PRD 06 §6). Each fold is written in front, so each
+# fold-here line is a valley.
+title "A square folded in half, opened, and folded the other way"
+sheet square
+anchor (3/4, 1/4)          # south-east quarter, which no step moves
+
+step half "Fold the left half over in front, onto the right." {
+  fold in front edge west to edge east
+}
+step "Unfold it." { unfold half }
+step "Fold the top half down in front, onto the bottom." {
+  fold in front edge north to edge south
+}
+closing "Folded in half the other way."
