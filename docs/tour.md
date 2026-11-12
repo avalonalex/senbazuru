@@ -1082,7 +1082,7 @@ stack run -- run helmet.foldseq -o helmet.svg
 
 The page has a figure for each state the run writes: the sheet, then the paper
 as each step left it, a turn-over included, except a step whose moves were all
-`expect refused`, which writes no state. Each figure is drawn as
+`expect refused`, which writes no state. Each figure's paper is drawn as
 `render --steps` draws that state of the `.fold`, and under it is its
 caption, the instruction of the step that starts from it, since that is the
 picture the reader folds it from. That reads as an off-by-one and is not: the
@@ -1103,9 +1103,19 @@ it, and a font wider than the estimate can run past it too. Under each row
 of figures is a band of page units tall enough for its longest caption, so
 with no `--height` the page is as tall as its rows need, which can be
 shorter than the 400 of a page without captions as well as taller, and with
-one the figures shrink until the bands fit. The arrows and
-the marks a book prints beside each figure come one at a time
-([usage.md](usage.md#run) lists them). The crane does not get far:
+one the figures shrink until the bands fit.
+
+Each figure also carries the arrows of the step that starts from it, and here
+a run says something its file cannot. A file's two frames show where paper
+went, and not whether it was folded towards the reader or away, so
+`render --steps --arrows` draws every head solid. A run kept a
+[move record](glossary.md#fold-sequences) of each move as the author wrote
+it, so its page draws the helmet's three folds `in front` with the solid head
+of a valley, and the blintz's four corners, folded `behind`, with the hollow
+half head of a mountain, and its last step with the hollow head of an unfold.
+The rest of what a book prints beside each figure comes one mark at a time
+([usage.md](usage.md#run) lists what is still missing). The crane does not get
+far:
 
 ```console
 $ senbazuru run examples/traditional-crane.foldseq

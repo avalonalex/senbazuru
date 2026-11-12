@@ -294,7 +294,7 @@ data FoldLines
 -- turn, and the arrows inferred across that pair would follow every face to
 -- where the turn left it, which no reader folding along could follow. So the
 -- mark stands for the pair, and a fold's arrow on it has to be given
--- ('GivenArrows'), as a run's records will give it.
+-- ('GivenArrows'), as a run's records give it ("Senbazuru.Render.Sequence").
 data PresentationChange
   = -- | Turned over about the line through this point in this direction,
     -- both in the frame's own coordinates: the turn's axis, as
