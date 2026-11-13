@@ -276,8 +276,8 @@ data FoldLines
     -- written, drawn as the page sees it. None on the last figure, which has
     -- no next frame, and none between two states of one crease pattern,
     -- which add no crease; a fold along a crease the paper already has gets
-    -- none here, and a run's page is to draw it from its record's hinge
-    -- instead (owner decision 74, S33 of #643), which nothing does yet. Drawn on a
+    -- none here, and a run's page draws it from its record's hinge instead
+    -- (owner decision 74; "Senbazuru.Render.Sequence"). Drawn on a
     -- figure the reader turns, unlike inferred arrows, since a crease to come
     -- is placed on this figure by the point of paper it runs through, which
     -- a turn does not move. A crease an older one crosses comes as its

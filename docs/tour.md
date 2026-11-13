@@ -1113,6 +1113,11 @@ went, and not whether it was folded towards the reader or away, so
 it, so its page draws the helmet's three folds `in front` with the solid head
 of a valley, and the blintz's four corners, folded `behind`, with the hollow
 half head of a mountain, and its last step with the hollow head of an unfold.
+The same records give each fold's fold-here line, the dashed line along where
+it folds, drawn along the line the record turned its paper about. Two frames
+can find such a line only in a crease the next frame adds, and the helmet's
+folds and the blintz's lie along creases their sheets already have, so they
+add none; a record keeps the line whether or not the move creased it.
 The rest of what a book prints beside each figure comes one mark at a time
 ([usage.md](usage.md#run) lists what is still missing). The crane does not get
 far:

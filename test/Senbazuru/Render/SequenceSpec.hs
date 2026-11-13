@@ -4,19 +4,22 @@
 -- under each figure, against its state's title (R-06-21, §9); which steps
 -- have a figure; how a figure the page cannot draw is refused; and the
 -- arrows each figure carries, read from the records of the step that starts
--- from it, against the arrows the written states infer (R-06-16, A10).
+-- from it, against the arrows the written states infer (R-06-16, A10); and
+-- the fold-here lines it carries, along each fold's and pre-crease's hinge
+-- (owner decision 74).
 module Senbazuru.Render.SequenceSpec (spec) where
 
 import Control.Monad (forM, forM_)
+import Data.List (sort)
 import Data.Map.Strict qualified as M
 import Data.Maybe (isJust)
 import Data.Text (Text)
 import Data.Text qualified as T
-import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..))
+import Senbazuru.Diagram (ArrowHead (..), ArrowPath (..), Diagram (..), Glyph (..), Shape (..), Stroke (..))
 import Senbazuru.Diagram.Layout (Grid (..), defaultGrid, gridOf)
 import Senbazuru.Diagram.Page (FittedPage (..), Height (..), Page (..), PageFitError (..), defaultPage, fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme (..), defaultTheme)
-import Senbazuru.Fold.Load (loadFoldFile)
+import Senbazuru.Fold.Load (loadFoldFile, readSequenceText)
 import Senbazuru.Fold.Query (FoldError (..), frameVertices)
 import Senbazuru.Fold.Types (FoldFile (..), Frame (..))
 import Senbazuru.Geometry.Rigid (identity)
@@ -27,11 +30,12 @@ import Senbazuru.Origami.Step (Motion (..), motionsAcross)
 import Senbazuru.Origami.Surface (surfaceFromFolded)
 import Senbazuru.Render.Camera (View (..), bottomUp, defaultView, frontOn, topDown)
 import Senbazuru.Render.Sequence
-import Senbazuru.Render.Steps (Arrows (..), StepNote, noteArrows, noteCaption, silentNote, stepFigures, stepPage)
+import Senbazuru.Render.Steps (Arrows (..), FoldLines (..), StepNote, noteArrows, noteCaption, noteFoldLines, silentNote, stepFigures, stepPage)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
 import Senbazuru.Sequence.Error (SequenceError (..))
+import Senbazuru.Sequence.Parse (parseSequence)
 import Senbazuru.Sequence.Record (MoveKind (..), Run (..), StepOutcome (..), WrittenState (..), displayAfter, displayBefore, recordKind, recordMoveIndex, recordStep, writtenStates)
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Turning (..))
@@ -78,6 +82,10 @@ data Runs = Runs
     -- | A plain square pre-creased along a diagonal, then folded in half:
     -- each step adds creases ('creasedTwice').
     creasedRun :: Run,
+    -- | The helmet base, as @helmet.foldseq@ writes it: a diagonal fold,
+    -- then each corner of the doubled triangle brought to its tip, each
+    -- through two layers whose creases lie apart on the sheet.
+    helmetRun :: Run,
     -- | Built by hand: the blintz's sheet laid flat, as a run starts it, as
     -- state 0, a step that writes it again, two steps that write no state,
     -- and a step that writes the crane folded, with no layer order, so
@@ -90,8 +98,11 @@ runs :: IO Runs
 runs = do
   quarterSheet <- loadFoldFile "examples/quarter-fold-steps.fold" >>= right
   blintzSheet <- loadFoldFile "examples/blintz-base.fold" >>= right
+  helmetSheet <- loadFoldFile "examples/helmet-base.fold" >>= right
+  helmetText <- readSequenceText "helmet.foldseq" >>= right
+  helmet <- right (parseSequence "helmet.foldseq" helmetText)
   crane <- loadFoldFile "test/fixtures/crane.fold" >>= right
-  let sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet)]
+  let sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet), ("examples/helmet-base.fold", helmetSheet)]
       ran sequence' = right (checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate)
   laid <- right (sheetState blintzSheet) >>= right . foldFrameWith . workingPattern >>= right . surfaceFromFolded
   folded <- right (foldFrameWith (keyFrame crane)) >>= right . surfaceFromFolded
@@ -110,6 +121,7 @@ runs = do
     <*> ran corners
     <*> ran stoppedAfterFold
     <*> ran creasedTwice
+    <*> ran helmet
     <*> pure (Run Nothing laid identity craneSteps [] [] Nothing Nothing)
   where
     quarterWith second = sequenceOf (seqHeader quarterFold) $ do
@@ -370,6 +382,119 @@ spec = describe "a run's page" . beforeAll runs $ do
       headsFrom (View (Just bottomUp) 0) `shouldBe` Right (Just ([SolidHead, HollowHalfHead], 0))
       headsFrom (View (Just frontOn) 0) `shouldBe` Right (Just ([HollowHalfHead], 3))
 
+  describe "fold-here lines along each hinge (owner decision 74)" $ do
+    -- The done-when's lines, read off each note and not off the drawn page,
+    -- which drops a line of no length and any line of an unfold: so a line
+    -- for each stretch of a hinge carried over to the figure by its two ends
+    -- on the sheet, which folding doubles over, would draw nothing on figure
+    -- 2 and still pass a test of the page. Figure 1 has the first fold's
+    -- hinge, the sheet's line x = 1/2 in its two pieces, as a mountain, the
+    -- fold being written behind; figure 2 the second fold's, y = 1/2 from
+    -- the middle to the right edge, as a valley: two edges, one on each
+    -- layer, in one place, drawn once. Red if a stretch's ends were carried
+    -- over, coincident edges were each drawn, or the kind were not the
+    -- written sense.
+    it "draws the quarter fold's hinges, an edge each, coincident edges once" $ \r -> do
+      notes <- right (stepNotes (quarterRun r))
+      map (sort . map unordered . givenLines . snd) notes
+        `shouldBe` map
+          (sort . map unordered)
+          [ [(MountainArrow, V3 0.5 0.5 0, V3 0.5 0 0), (MountainArrow, V3 0.5 0.5 0, V3 0.5 1 0)],
+            [(ValleyArrow, V3 0.5 0.5 0, V3 1 0.5 0)],
+            []
+          ]
+      map (noteFoldLines . snd) (drop 2 notes) `shouldBe` [NoFoldLines]
+
+    -- An unfold draws no line, as the owner confirmed on 2026-11-12, though
+    -- its record carries the hinge it opens along: the blintz's figure 5,
+    -- its unfold, has NoFoldLines, and each corner fold before it one
+    -- mountain line along its diagonal. Red if every record of a turn drew
+    -- its hinge, whatever its kind; the page alone would not show it, since
+    -- an unfold's line is not drawn.
+    it "draws no line for an unfold, and the blintz's corner folds one each" $ \r -> do
+      notes <- right (stepNotes (blintzRun r))
+      map (map kindOf . givenLines . snd) notes `shouldBe` replicate 4 [MountainArrow] <> [[], []]
+      map (noteFoldLines . snd) (drop 4 notes) `shouldBe` [NoFoldLines, NoFoldLines]
+      -- Each corner's line runs between the midpoints of the two sides that
+      -- meet at it, where the figure has its paper: south-east first.
+      case notes of
+        (_, first') : _ -> map unordered (givenLines first') `shouldHaveExactly` [unordered (MountainArrow, V3 0.5 0 0, V3 1 0.5 0)]
+        [] -> expectationFailure "no figures"
+
+    -- A pre-crease draws its line, in the sense it was written, though it
+    -- draws no arrows until S34: the creased square's first step creases
+    -- the diagonal as a valley, and its figure, the plain sheet, has no
+    -- crease there at all. Red if lines were drawn only for turns.
+    it "draws a pre-crease's line, where the figure has no crease yet" $ \r -> do
+      notes <- right (stepNotes (creasedRun r))
+      case notes of
+        (sheet, creasing) : _ -> do
+          map unordered (givenLines creasing) `shouldHaveExactly` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0)]
+          noteArrows creasing `shouldBe` NoArrows
+          length (edgesVertices sheet) `shouldBe` 4
+        [] -> expectationFailure "no figures"
+
+    -- Lines are where the figure shows the paper: on the rotated quarter
+    -- every state is shown a quarter turn clockwise, so the first fold's
+    -- hinge, the sheet's x = 1/2, lies along y = 1/2 on the page, and on the
+    -- anchored quarter the second fold is shown by a half turn. Each line's
+    -- ends are vertices of the figure's own state. Red if the lines were
+    -- read from the paper as folded and not as shown.
+    it "puts each line where its figure shows the paper" $ \r ->
+      forM_ [("rotated" :: String, rotatedRun r), ("anchored", anchoredRun r), ("turned", turnedRun r)] $ \(name, run) -> do
+        notes <- right (stepNotes run)
+        forM_ notes $ \(fr, note) -> do
+          points <- right (frameVertices fr)
+          let onFigure p = any (\q -> apart (p, p) (q, q) <= 1e-12) points
+          (name, [(a, b) | (_, a, b) <- givenLines note, not (onFigure a && onFigure b)]) `shouldBe` (name, [])
+        rotated <- right (stepNotes (rotatedRun r))
+        case drop 1 rotated of
+          (_, folding) : _ -> map (\(_, V3 _ y0 _, V3 _ y1 _) -> (y0, y1)) (givenLines folding) `shouldSatisfy` all (\(y0, y1) -> abs (y0 - 0.5) <= 1e-12 && abs (y1 - 0.5) <= 1e-12)
+          [] -> expectationFailure "no figures"
+
+    -- The same line on two layers is drawn once even where folding put its
+    -- two edges a few bits apart: each of the helmet's corner folds turns
+    -- two layers whose creases lie apart on the sheet, two stretches, and
+    -- on the figure their edges agree only to about 1e-16. Red if lines
+    -- were merged only when exactly equal.
+    it "draws the helmet's doubled hinges once, though folding put their edges bits apart" $ \r -> do
+      notes <- right (stepNotes (helmetRun r))
+      map (sort . map unordered . givenLines . snd) notes
+        `shouldBe` map
+          (sort . map unordered)
+          [ [(ValleyArrow, V3 0 0 0, V3 0.5 0.5 0), (ValleyArrow, V3 0.5 0.5 0, V3 1 1 0)],
+            [(ValleyArrow, V3 0.5 0 0, V3 0.5 0.5 0)],
+            [(ValleyArrow, V3 0.5 0.5 0, V3 1 0.5 0)],
+            []
+          ]
+
+    -- A step of several folds draws each fold's line on its one figure:
+    -- the blintz's four corners folded in one step draw four mountain lines
+    -- on the sheet, each along its corner's diagonal, read from the paper
+    -- each fold starts from. Red if only a step's first move drew a line.
+    it "draws a line for each fold of a step that holds several" $ \r -> do
+      notes <- right (stepNotes (cornersRun r))
+      case notes of
+        (_, sheet) : _ ->
+          map unordered (givenLines sheet)
+            `shouldHaveExactly` [ unordered (MountainArrow, a, b)
+                                  | (a, b) <- [(V3 0.5 0 0, V3 1 0.5 0), (V3 1 0.5 0, V3 0.5 1 0), (V3 0.5 1 0, V3 0 0.5 0), (V3 0 0.5 0, V3 0.5 0 0)]
+                                ]
+        [] -> expectationFailure "no figures"
+
+    -- The page draws them as it draws a given line: from above, figure 1's
+    -- mountain lines with the mountain dash and figure 2's valley with the
+    -- valley dash; from below, swapped. Red if runPage dropped the notes'
+    -- lines.
+    it "draws each line's dash as the page sees its kind" $ \r -> do
+      let dashesFrom view = do
+            fitted <- runPage defaultTheme defaultBudget grid view HeightToFit defaultPage {pageWidth = 600} (quarterRun r)
+            pure (fmap (\page -> [dash | Polyline (Stroke _ _ dash) _ <- shapesOf (fittedDiagram page), dash `elem` [mountainDash, valleyDash]]) fitted)
+          mountainDash = themeMountainDash defaultTheme
+          valleyDash = themeValleyDash defaultTheme
+      dashesFrom (View (Just topDown) 0) `shouldBe` Right (Just [mountainDash, mountainDash, valleyDash])
+      dashesFrom (View (Just bottomUp) 0) `shouldBe` Right (Just [valleyDash, valleyDash, mountainDash])
+
   -- A figure the page cannot draw is named by the step that ended at its
   -- state. In the crane run that is state 2, the third figure, which step 4
   -- ended at, because steps 2 and 3 wrote no state: the three numbers
@@ -478,6 +603,27 @@ spec = describe "a run's page" . beforeAll runs $ do
     paired as bs = maximum (0 : map (`nearest` bs) as <> map (`nearest` as) bs)
     nearest arrow others = minimum (map (apart arrow) others)
     isGiven note = not (null (givenArrows note))
+
+-- | The fold-here lines a note gives, or none for a note that gives none.
+givenLines :: StepNote -> [(ArrowKind, V3, V3)]
+givenLines note = case noteFoldLines note of
+  GivenFoldLines foldLines -> foldLines
+  _ -> []
+
+-- | A line with its two ends in a fixed order, so lines can be compared
+-- whichever way round each was drawn, and its kind by name, so a list of
+-- them can be sorted. Rounded to a billionth, since a
+-- line's ends are where folding put them, and the same point folded two
+-- ways can differ in the last bits.
+unordered :: (ArrowKind, V3, V3) -> (String, (Double, Double, Double), (Double, Double, Double))
+unordered (kind, a, b) = (show kind, min (key a) (key b), max (key a) (key b))
+  where
+    key (V3 x y z) = (snap x, snap y, snap z)
+    snap v = fromIntegral (round (v * 1e9) :: Integer) / 1e9
+
+-- | The list holds exactly the expected values, in any order.
+shouldHaveExactly :: (Show a, Ord a) => [a] -> [a] -> Expectation
+shouldHaveExactly got expected = sort got `shouldBe` sort expected
 
 -- | The arrows a note gives, or none for a note that gives none.
 givenArrows :: StepNote -> [(ArrowKind, V3, V3)]

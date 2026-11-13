@@ -8,8 +8,9 @@
 -- the two: 'stepNotes' gives each state the run writes a note, and 'runPage'
 -- draws them and fits them to a page with their captions
 -- ("Senbazuru.Diagram.Page"). The first is the channel that carries what a
--- run knows and its file does not (the arrows of each move, of the kind it
--- was written as, so far; lines and marks to come), so it is a function of
+-- run knows and its file does not (the arrows and fold-here lines of each
+-- move, of the kind it was written as, so far; marks to come), so it is a
+-- function of
 -- its own that a test can hold to the file a run writes; the second is the one
 -- composition that @run -o x.svg@ calls and a golden test is to call (#643's
 -- S37), so the two cannot draw the page two ways.
@@ -66,6 +67,15 @@
 -- two surfaces finds nothing; its arrows out and back are read another way
 -- (#643's S34). So has the last figure, which no step starts from.
 --
+-- == Fold-here lines come from hinges
+--
+-- A book draws a dashed line on the figure before a fold, where the paper
+-- is about to fold: the valley dash for a fold in front, the mountain dash
+-- for one behind, as the page sees it. Each fold and each pre-crease of the
+-- step that starts from a figure draws one along its /hinge/, the line it
+-- turns paper about, which its record keeps whether or not the move creased
+-- it (owner decision 74). An unfold draws none. 'stepFoldLines' says how.
+--
 -- == A caption is its state's title
 --
 -- The caption under figure /j/ is state /j/ − 1's @frame_title@, which
@@ -109,6 +119,7 @@ module Senbazuru.Render.Sequence
 where
 
 import Data.Bifunctor (first)
+import Data.IntMap.Strict qualified as IM
 import Data.List (groupBy)
 import Data.List.NonEmpty (NonEmpty (..))
 import Data.List.NonEmpty qualified as NE
@@ -117,12 +128,13 @@ import Senbazuru.Diagram.Layout (Grid)
 import Senbazuru.Diagram.Page (FittedPage, Height, Page, PageFitError, fitPage)
 import Senbazuru.Diagram.Style (ArrowKind (..), Theme)
 import Senbazuru.Explain (Explain (..))
-import Senbazuru.Fold.Types (Frame (..))
-import Senbazuru.Geometry.V3 (V3)
+import Senbazuru.Fold.Types (EdgeId (..), Frame (..), VertexId (..))
+import Senbazuru.Geometry.V3 (V3 (..), modelHair)
+import Senbazuru.Geometry.VectorSpace (norm, (^-^))
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (Motion (..), motionsAcross)
 import Senbazuru.Render.Camera (View)
-import Senbazuru.Render.Steps (Arrows (..), StepError (..), StepNote, noteArrows, noteCaption, silentNote, stepFigures)
+import Senbazuru.Render.Steps (Arrows (..), FoldLines (..), StepError (..), StepNote, noteArrows, noteCaption, noteFoldLines, silentNote, stepFigures)
 import Senbazuru.Sequence.Error (SequenceError (..))
 import Senbazuru.Sequence.Record
   ( MoveKind (..),
@@ -136,6 +148,7 @@ import Senbazuru.Sequence.Record
     displayedFrame,
     recordAfter,
     recordBefore,
+    recordHinge,
     recordKind,
     recordMoveIndex,
     recordSense,
@@ -217,7 +230,7 @@ runPage theme budget grid view height page run = do
       [] -> Nothing
 
 -- | Every state, in order, with its note: its title as the caption, and
--- the arrows of the step that starts from it.
+-- the arrows and fold-here lines of the step that starts from it.
 --
 -- That step is the one that ended at the next state, so the states are
 -- paired with their successors and the last state has no such step. The
@@ -227,7 +240,7 @@ runPage theme budget grid view height page run = do
 -- state before it. And a run stopped at @not modelled@ keeps the records of
 -- the moves its last step made before the stop, though that step wrote no
 -- state: the last figure carries that step's caption and must not carry its
--- arrows, which would show a fold whose result the page never draws
+-- arrows or lines, which would show a fold whose result the page never draws
 -- (PRDs\/decisions.md, D21). No state names the stopped step as the one that
 -- ended at it, so its records are found by no figure.
 notesFor :: Run -> [WrittenState] -> Either SequenceError [(Frame, StepNote)]
@@ -235,14 +248,16 @@ notesFor run states = traverse noted (zip states (map stateStep (drop 1 states) 
   where
     noted (st, leaving) = do
       arrows <- maybe (pure []) (stepArrows . recordsOf) leaving
+      let foldLines = maybe [] (stepFoldLines (stateFrame st) . recordsOf) leaving
       pure
         ( stateFrame st,
           silentNote
             { noteCaption = frameTitle (stateFrame st),
               -- No arrows is 'NoArrows', never an empty list of given ones,
-              -- so a figure with nothing to say is the one @render --steps@
-              -- draws of its state.
-              noteArrows = if null arrows then NoArrows else GivenArrows arrows
+              -- and no lines 'NoFoldLines', so a figure with nothing to say
+              -- is the one @render --steps@ draws of its state.
+              noteArrows = if null arrows then NoArrows else GivenArrows arrows,
+              noteFoldLines = if null foldLines then NoFoldLines else GivenFoldLines foldLines
             }
         )
     recordsOf n = [record | record <- runRecords run, recordStep record == n]
@@ -295,6 +310,99 @@ stepArrows records = concat <$> traverse moveArrows moves
             after = displayedFrame (recordAfter end) (displayAfter end)
         motions <- first (ArrowRefused (recordStep start) (recordStepName start)) (motionsAcross before after)
         pure [(kind, motionFrom motion, motionTo motion) | motion <- motions]
+
+-- | The fold-here lines of one step's records, in the order its moves were
+-- written: for each fold and each pre-crease, a line along each edge of its
+-- hinge, the line it turns paper about, where that edge lies on the figure
+-- before the move, of the kind the move was written as (owner decision 74).
+--
+-- == Why the hinge, and not the creases a move adds
+--
+-- A book draws the fold-here line on the figure before a fold, and the
+-- frames alone can find it only in the creases the next frame adds, which
+-- is what @InferFoldLines@ draws on a file. A run's folds mostly lie along
+-- creases its sheet already has, and the quarter fold, the blintz and the
+-- helmet add none, so they would draw no line at all. Each record keeps its
+-- hinge ('recordHinge') whether or not the move creased it, so every fold
+-- shows where it goes.
+--
+-- An unfold draws no line, though its record carries the hinge it opens
+-- along: a dash says "fold here", the opposite of what an unfold asks, and
+-- the record's reading of decision 74, which names folds and pre-creases,
+-- is the one the owner confirmed on 2026-11-12. So a line is drawn exactly
+-- for a record written with a sense ('recordSense'), which only a fold and a
+-- pre-crease have. A pre-crease draws its line though it draws no arrows yet
+-- (#643's S34): its paper ends where it began, but where it folds is known.
+--
+-- == One line for each edge, read off the paper before the move
+--
+-- Each edge of the hinge is looked up in the record's own paper before the
+-- move, shown as the record shows it ('displayBefore'), which is how the
+-- figure's state is shown, so the line's ends are in the figure's own
+-- coordinates. Not in the figure's state itself: a move that creases fresh
+-- paper creases before it turns, so its hinge names edges of that newly cut
+-- paper, numbered afresh, which the state drawn on the figure does not have.
+-- And not by carrying a stretch's two ends on the sheet over to the figure:
+-- a stretch can be folded over itself, and the quarter fold's second hinge,
+-- the sheet's line y = 1/2, lies doubled after its first fold, so both of
+-- its ends land at (1, 1/2) and the line would be a point.
+--
+-- A hinge cut where other creases cross it is drawn as its pieces, one line
+-- for each edge, so the dash starts again at each cut, as the owner chose on
+-- 2026-11-12; the same is recorded for inferred lines (decisions C161).
+--
+-- == The same line drawn once
+--
+-- A fold through several layers has an edge on each layer, and they lie in
+-- one place on the figure: the quarter fold's second hinge is two edges
+-- along (1/2, 1/2)–(1, 1/2), one on each half. Lines of one kind whose ends
+-- lie within the model's hair ('modelHair') of each other, either way
+-- round, are drawn once, across every move of the step; lines of different
+-- kinds in one place are both kept, so no instruction is dropped (the
+-- owner's choice of 2026-11-12). The hair is the figure's, since two moves'
+-- edges are compared on its page.
+stepFoldLines :: Frame -> [MoveRecord] -> [(ArrowKind, V3, V3)]
+stepFoldLines figure records = foldr keep [] (concatMap recordLines records)
+  where
+    hair = modelHair (pointsOf figure)
+
+    -- The first written of each is kept: folding from the right, each line
+    -- goes in front of the lines after it, less any of its kind lying on it.
+    keep line later = line : filter (not . same line) later
+
+    same (k, a, b) (l, c, d) = k == l && ((near a c && near b d) || (near a d && near b c))
+    near p q = norm (p ^-^ q) <= hair
+
+    recordLines record = case lineKind record of
+      Nothing -> []
+      Just kind ->
+        let before = displayedFrame (recordBefore record) (displayBefore record)
+            at = IM.fromList (zip [0 ..] (pointsOf before))
+            ends = IM.fromList (zip [0 ..] (edgesVertices before))
+         in [ (kind, a, b)
+              | (_, edges) <- recordHinge record,
+                EdgeId e <- edges,
+                -- Every edge of a hinge is an edge of the record's paper
+                -- before the move, in its numbering ("Senbazuru.Sequence.Record",
+                -- One numbering), so both lookups find it; they keep this
+                -- total rather than stand for a case that can happen.
+                Just (VertexId u, VertexId v) <- [IM.lookup e ends],
+                Just a <- [IM.lookup u at],
+                Just b <- [IM.lookup v at]
+            ]
+
+-- | The kind of line a record's move draws: the sense it was written in, for
+-- a fold or a pre-crease, and 'Nothing' for every other record, an unfold
+-- among them.
+lineKind :: MoveRecord -> Maybe ArrowKind
+lineKind record = case recordSense record of
+  Just ValleyFold -> Just ValleyArrow
+  Just MountainFold -> Just MountainArrow
+  Nothing -> Nothing
+
+-- | A frame's vertices as points, with a missing z taken as 0.
+pointsOf :: Frame -> [V3]
+pointsOf frame = [V3 x y (case rest of z : _ -> z; [] -> 0) | x : y : rest <- verticesCoords frame]
 
 -- | The kind of arrow a record's move draws, or 'Nothing' for a move that
 -- draws none. Every kind of record is named, so a kind added later has to

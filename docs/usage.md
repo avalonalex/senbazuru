@@ -1878,6 +1878,18 @@ stack run -- run blintz.foldseq > blintz.fold
   bows below the line the paper is, into the caption under its figure,
   which nothing moves out of its way yet.
 
+  Each figure also carries the [fold-here lines](glossary.md#origami) of
+  the step that starts from it, a dashed line along the line each fold and
+  each pre-crease turns its paper about, whether or not the paper is
+  creased there yet: the valley dash for a fold `in front`, the mountain
+  dash for one `behind`, swapped from below as the heads are. An `unfold`
+  draws none, since a dash says "fold here". A hinge cut where other creases
+  cross it is drawn in its pieces, so its dash starts again at each cut, and
+  the same line on two layers is drawn once. A line that lies along an edge
+  of paper folded earlier, such as a flap's raw edge, is drawn over that
+  edge in ink and does not read
+  ([#694](https://github.com/avalonalex/senbazuru/issues/694)).
+
   Under each figure is its [caption](glossary.md#origami), the instruction
   of the step that starts from that state, because that is the picture the
   reader folds it from. So the sheet, figure 1, carries step 1's caption, and
@@ -1928,13 +1940,9 @@ stack run -- run blintz.foldseq > blintz.fold
   figure's number:
   `step 2 (quarter): the page cannot draw the state it ends at: …`.
 
-  The page draws the paper, the figure numbers, the captions and the fold
-  arrows, and nothing else yet. Not drawn so far:
-  - [fold-here lines](glossary.md#origami), the dashed line on the figure
-    before a fold showing where it falls, which the library can draw from a
-    step note but which does not read where it lies along a crease: over a
-    folded figure's crease, drawn solid, its dash vanishes, and over a crease
-    of the other kind the two dashes blend; the arrows of a
+  The page draws the paper, the figure numbers, the captions, the fold
+  arrows and the fold-here lines, and nothing else yet. Not drawn so far:
+  - the arrows of a
     [pre-crease](glossary.md#origami); the loop and the mark a book draws for
     turning the model over or round, a change of
     [presentation](glossary.md#fold-sequences); and the labels of points a

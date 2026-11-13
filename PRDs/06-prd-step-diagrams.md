@@ -383,6 +383,12 @@ then.
   over the paper and under the arrows, on any figure the note is on, the last
   included; an unfold draws none. A line lying along a crease is drawn over it
   and does not read, so S33 has to settle that before a run's page draws one.
+  S33 ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C163](decisions.md#changes-since-draft-v2)) found it does not arise on a run's page: a written
+  state letters a crease lying flat `F`, drawn faint and thin, which the dash
+  reads over, and the case S26 saw was a hand-lettered file lettering such a
+  crease `V`. What remains is a line along an edge drawn in ink, such as a
+  flap's raw edge, filed as [#694](https://github.com/avalonalex/senbazuru/issues/694)
+  at the owner's word.
   Built by S28 ([C161](decisions.md#changes-since-draft-v2)) for `InferFoldLines`: the next frame's
   `creasesToCome`, each drawn with the note's kind as seen, on a turned figure
   too, and none on the last figure or before a frame with the same graph; a
@@ -654,7 +660,7 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 
 | Step holds | Note on the figure of the state the step starts from |
 | --- | --- |
-| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each fold's hinge (`recordHinge`), whether or not the move creased it, at `recordBefore` positions (the record's surface before the move) under `displayBefore`, styled by the move's sense as seen (owner decision 74, §6). An unfold draws none, by the decision record's reading of decision 74, which names folds and pre-creases; S33 ([#643](https://github.com/avalonalex/senbazuru/issues/643)) asks the owner to confirm it |
+| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each fold's hinge (`recordHinge`), whether or not the move creased it, at `recordBefore` positions (the record's surface before the move) under `displayBefore`, styled by the move's sense as seen (owner decision 74, §6). An unfold draws none, by the decision record's reading of decision 74, which names folds and pre-creases, and the owner confirmed it on 2026-11-12. As built by S33 ([C163](decisions.md#changes-since-draft-v2)): a line for each edge of the hinge, read from the record's paper before the move under `displayBefore`, never from the written state's edge ids, which a move creasing fresh paper renumbers; lines of one kind in one place, such as the quarter's second hinge on its two layers, drawn once across the step; and a pre-crease's line drawn though its arrows are S34's |
 | `anchor P` (an `Anchoring` record, evidence `NoMotion`) | No arrow and no fold-here line: it moves no paper, has no hinge and creases nothing, and the model stays where it stood on the page ([`Record.hs:551-556`](../src/Senbazuru/Sequence/Record.hs#L551-L556), [`Run.hs:568-571`](../src/Senbazuru/Sequence/Run.hs#L568-L571)) |
 | `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75), and since S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) a `mark` leaves a record of kind `Marking`, its name and pinned material point, with evidence `NoMotion` ([decisions C155](decisions.md#changes-since-draft-v2)). `meet`, `in face containing S`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:176`](../src/Senbazuru/Sequence/Resolve.hs#L176), [`:178`](../src/Senbazuru/Sequence/Resolve.hs#L178)) |
 | `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, from its before surface to its folded surface (§7), and an unfold arrow back, the same pair reversed, both under `displayBefore` (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
@@ -892,9 +898,8 @@ the blintz run is one, all six of its states having 12 edges (`jq` on
 `examples/blintz-sequence.fold`). Every fold and pre-crease draws its hinge
 (`recordHinge`) at the before positions, styled by the move's sense as seen. An
 unfold draws none: that is the decision record's reading of decision 74, which
-names folds and pre-creases, and S33
-([#643](https://github.com/avalonalex/senbazuru/issues/643)) asks the owner to
-confirm it. `render --steps` draws no fold-here line, since `inferNote` carries
+names folds and pre-creases, and the owner confirmed it when S33
+([#643](https://github.com/avalonalex/senbazuru/issues/643), [C163](decisions.md#changes-since-draft-v2)) asked, on 2026-11-12. `render --steps` draws no fold-here line, since `inferNote` carries
 `NoFoldLines` (§1, A1). `creasesToCome` is the source only for a `stepFigures`
 caller that states the kind, as `InferFoldLines` (built by S28,
 [#642](https://github.com/avalonalex/senbazuru/issues/642), [C161](decisions.md#changes-since-draft-v2)).

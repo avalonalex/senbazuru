@@ -117,9 +117,9 @@
 -- ("Senbazuru.Render.Steps"). A fold along a crease
 -- the paper already has adds none, and the frames show which crease it was
 -- only by that crease's angle changing ('motionCreases'). So a page drawn
--- from a run of a fold sequence is to take its lines from each fold's and
+-- from a run of a fold sequence takes its lines from each fold's and
 -- pre-crease's /hinge/ instead, the line the move turns paper about, which
--- its record keeps (owner decision 74; S33 of #643).
+-- its record keeps (owner decision 74; "Senbazuru.Render.Sequence").
 --
 -- A crease is new when it lies along no earlier edge on the sheet, by the
 -- test 'motionsAcross' asks of a crease whose angle changed, so the two never
