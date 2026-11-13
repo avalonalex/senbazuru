@@ -1878,6 +1878,24 @@ stack run -- run blintz.foldseq > blintz.fold
   bows below the line the paper is, into the caption under its figure,
   which nothing moves out of its way yet.
 
+  Each figure also carries the [fold-here lines](glossary.md#origami) of
+  the step that starts from it, a dashed line along the line each fold and
+  each pre-crease turns its paper about, whether or not the paper is
+  creased there yet: the valley dash for a fold `in front`, the mountain
+  dash for one `behind`, swapped from below as the heads are. An `unfold`
+  draws none, since a dash says "fold here". A hinge cut where other creases
+  cross it is drawn in its pieces, so its dash starts again at each cut.
+  Lines of one kind that overlap on one line, as a fold through two layers
+  gives one on each, are drawn as one line, the span they cover, since two
+  dashes over each other fill each other's gaps and read solid. A valley
+  and a mountain line in one place, as a step that pre-creases a line in
+  front and then folds it behind gives, are both drawn, and their dashes
+  blend. A line that lies along an edge of paper folded earlier, such as a
+  flap's raw edge, is drawn over that edge in ink and does not read
+  ([#694](https://github.com/avalonalex/senbazuru/issues/694)). Seen edge
+  on, a line lies along the line the paper is, and what the edge-on mark
+  says of its kind cannot be seen.
+
   Under each figure is its [caption](glossary.md#origami), the instruction
   of the step that starts from that state, because that is the picture the
   reader folds it from. So the sheet, figure 1, carries step 1's caption, and
@@ -1904,8 +1922,9 @@ stack run -- run blintz.foldseq > blintz.fold
   from (chosen from the geometry); `--width PT` (400); and `--height PT`.
   With no `--height`, a page with captions is as tall as its rows need, the
   figures as large as the width allows, and a page with none is 400 tall, as
-  `render --steps`' page is, unless it is seen edge on: the arrows then
-  bring the edge-on mark, and a page with a mark above its figures is
+  `render --steps`' page is, unless it is seen edge on: the arrows and
+  fold-here lines then bring the edge-on mark, and a page with a mark above
+  its figures is
   fitted to its rows as one with captions is. With
   `--height`, the figures shrink until the bands under their rows fit the
   height. Only the height is fitted: shrinking a figure narrows its
@@ -1928,13 +1947,9 @@ stack run -- run blintz.foldseq > blintz.fold
   figure's number:
   `step 2 (quarter): the page cannot draw the state it ends at: …`.
 
-  The page draws the paper, the figure numbers, the captions and the fold
-  arrows, and nothing else yet. Not drawn so far:
-  - [fold-here lines](glossary.md#origami), the dashed line on the figure
-    before a fold showing where it falls, which the library can draw from a
-    step note but which does not read where it lies along a crease: over a
-    folded figure's crease, drawn solid, its dash vanishes, and over a crease
-    of the other kind the two dashes blend; the arrows of a
+  The page draws the paper, the figure numbers, the captions, the fold
+  arrows and the fold-here lines, and nothing else yet. Not drawn so far:
+  - the arrows of a
     [pre-crease](glossary.md#origami); the loop and the mark a book draws for
     turning the model over or round, a change of
     [presentation](glossary.md#fold-sequences); and the labels of points a

@@ -175,7 +175,7 @@ data Hinge = Hinge
 
 -- | A run's fanned states, and its folds: every pre-crease, and every turn that
 -- is not an unfold, which C126 reads owner decision 74 as drawing no fold-here
--- line for (S33, #643, asks the owner to confirm it).
+-- line for, as the owner confirmed on 2026-11-12 (S33, #643).
 -- Each step of these runs makes one move, so the figure before a fold is the
 -- state written before its step, and the fold is measured where its own record
 -- holds the paper before it.
