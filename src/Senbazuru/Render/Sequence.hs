@@ -130,7 +130,7 @@ import Senbazuru.Diagram.Style (ArrowKind (..), Theme)
 import Senbazuru.Explain (Explain (..))
 import Senbazuru.Fold.Types (EdgeId (..), Frame (..), VertexId (..))
 import Senbazuru.Geometry.V3 (V3 (..), modelHair)
-import Senbazuru.Geometry.VectorSpace (norm, (^-^))
+import Senbazuru.Geometry.VectorSpace (dot, norm, (*^), (^+^), (^-^))
 import Senbazuru.Origami.Stacking (Budget)
 import Senbazuru.Origami.Step (Motion (..), motionsAcross)
 import Senbazuru.Render.Camera (View)
@@ -355,23 +355,54 @@ stepArrows records = concat <$> traverse moveArrows moves
 --
 -- A fold through several layers has an edge on each layer, and they lie in
 -- one place on the figure: the quarter fold's second hinge is two edges
--- along (1/2, 1/2)–(1, 1/2), one on each half. Lines of one kind whose ends
--- lie within the model's hair ('modelHair') of each other, either way
--- round, are drawn once, across every move of the step; lines of different
--- kinds in one place are both kept, so no instruction is dropped (the
--- owner's choice of 2026-11-12). The hair is the figure's, since two moves'
--- edges are compared on its page.
+-- along (1/2, 1/2)–(1, 1/2), one on each half. Two dashed lines drawn over
+-- each other start their dashes at different points and fill each other's
+-- gaps, so the line would read solid. Lines of one kind that lie on one line
+-- and overlap by more than the model's hair ('modelHair') are drawn as one,
+-- the span they cover, across every move of the step (the owner's choices of
+-- 2026-11-12 and, after the code review of #695, 2026-11-13). That joins
+-- the quarter's two edges in one place, and also a layer's whole edge with
+-- the pieces another layer's creases cut the same line into. Lines that only
+-- touch end to end stay apart, so a hinge every layer has cut is still drawn
+-- in its pieces. Lines of different kinds in one place are both kept, so no
+-- instruction is dropped, though their two dashes then blend. The hair is
+-- the figure's, since two moves' edges are compared on its page.
 stepFoldLines :: Frame -> [MoveRecord] -> [(ArrowKind, V3, V3)]
-stepFoldLines figure records = foldr keep [] (concatMap recordLines records)
+stepFoldLines figure records = foldl merge [] (concatMap recordLines records)
   where
     hair = modelHair (pointsOf figure)
 
-    -- The first written of each is kept: folding from the right, each line
-    -- goes in front of the lines after it, less any of its kind lying on it.
-    keep line later = line : filter (not . same line) later
+    -- Each line in turn is joined with the first line already kept that it
+    -- overlaps, and the span the two cover is merged in again, since it may
+    -- now reach a line that neither reached alone; a line overlapping none
+    -- is kept after the rest. So the lines keep the order they were written
+    -- in, a joined line standing where the later of its parts would.
+    merge kept line = case break (overlaps line) kept of
+      (_, []) -> kept <> [line]
+      (before, joined : after) -> merge (before <> after) (spanOf joined line)
 
-    same (k, a, b) (l, c, d) = k == l && ((near a c && near b d) || (near a d && near b c))
-    near p q = norm (p ^-^ q) <= hair
+    -- Of one kind, on one line, and sharing more than a hair of it: both of
+    -- the second's ends lie within a hair of the first's line, and the two
+    -- stretches of that line they cover overlap by more than a hair. A line
+    -- of no length lies on no line, and overlaps nothing.
+    overlaps (k, a, b) (l, c, d) =
+      k == l
+        && norm (b ^-^ a) > hair
+        && offLine a b c <= hair
+        && offLine a b d <= hair
+        && min (along a b b) (max (along a b c) (along a b d)) - max 0 (min (along a b c) (along a b d)) > hair
+
+    -- How far along the line from a through b a point lies, from a, and how
+    -- far from that line it is, both in lengths of the model.
+    along a b p = ((p ^-^ a) `dot` (b ^-^ a)) / norm (b ^-^ a)
+    offLine a b p = norm ((p ^-^ a) ^-^ (along a b p / norm (b ^-^ a)) *^ (b ^-^ a))
+
+    -- The stretch of the first line's line that two overlapping lines cover,
+    -- from end to end, in the first one's direction.
+    spanOf (k, a, b) (_, c, d) =
+      let ts = [0, along a b b, along a b c, along a b d]
+          u = (1 / norm (b ^-^ a)) *^ (b ^-^ a)
+       in (k, a ^+^ minimum ts *^ u, a ^+^ maximum ts *^ u)
 
     recordLines record = case lineKind record of
       Nothing -> []

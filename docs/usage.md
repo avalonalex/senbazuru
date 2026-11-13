@@ -1884,11 +1884,17 @@ stack run -- run blintz.foldseq > blintz.fold
   creased there yet: the valley dash for a fold `in front`, the mountain
   dash for one `behind`, swapped from below as the heads are. An `unfold`
   draws none, since a dash says "fold here". A hinge cut where other creases
-  cross it is drawn in its pieces, so its dash starts again at each cut, and
-  the same line on two layers is drawn once. A line that lies along an edge
-  of paper folded earlier, such as a flap's raw edge, is drawn over that
-  edge in ink and does not read
-  ([#694](https://github.com/avalonalex/senbazuru/issues/694)).
+  cross it is drawn in its pieces, so its dash starts again at each cut.
+  Lines of one kind that overlap on one line, as a fold through two layers
+  gives one on each, are drawn as one line, the span they cover, since two
+  dashes over each other fill each other's gaps and read solid. A valley
+  and a mountain line in one place, as a step that pre-creases a line in
+  front and then folds it behind gives, are both drawn, and their dashes
+  blend. A line that lies along an edge of paper folded earlier, such as a
+  flap's raw edge, is drawn over that edge in ink and does not read
+  ([#694](https://github.com/avalonalex/senbazuru/issues/694)). Seen edge
+  on, a line lies along the line the paper is, and what the edge-on mark
+  says of its kind cannot be seen.
 
   Under each figure is its [caption](glossary.md#origami), the instruction
   of the step that starts from that state, because that is the picture the
@@ -1916,8 +1922,9 @@ stack run -- run blintz.foldseq > blintz.fold
   from (chosen from the geometry); `--width PT` (400); and `--height PT`.
   With no `--height`, a page with captions is as tall as its rows need, the
   figures as large as the width allows, and a page with none is 400 tall, as
-  `render --steps`' page is, unless it is seen edge on: the arrows then
-  bring the edge-on mark, and a page with a mark above its figures is
+  `render --steps`' page is, unless it is seen edge on: the arrows and
+  fold-here lines then bring the edge-on mark, and a page with a mark above
+  its figures is
   fitted to its rows as one with captions is. With
   `--height`, the figures shrink until the bands under their rows fit the
   height. Only the height is fitted: shrinking a figure narrows its

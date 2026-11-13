@@ -702,9 +702,12 @@ arrowsAlong theme basis arrows d =
 -- A line lying along a line drawn in ink is drawn on top of it, and does not
 -- read: the ink shows through every gap in the dash, and the two read as one
 -- solid line. A book draws the instruction in place of the line under it,
--- which appending cannot do. On a run's page that happens only where a fold's
+-- which appending cannot do. On a run's page that happens where a fold's
 -- hinge lies along an edge of paper folded earlier, such as a flap's raw edge
--- (#694). A crease the hinge lies along does not hide it there: a run's state
+-- (#694), and on a figure seen edge on, where every line lies along the line
+-- the paper is. A valley and a mountain line in one place, which a step can
+-- give by pre-creasing a line one way and folding it the other, blend their
+-- dashes. A crease the hinge lies along does not hide it there: a run's state
 -- letters a crease lying flat @F@, drawn faint and thin, which the dash reads
 -- over. A hand-lettered file that letters a crease lying flat @V@ or @M@
 -- breaks that, and on it a line over a folded figure's crease, drawn solid,

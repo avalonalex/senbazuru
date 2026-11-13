@@ -86,6 +86,20 @@ data Runs = Runs
     -- then each corner of the doubled triangle brought to its tip, each
     -- through two layers whose creases lie apart on the sheet.
     helmetRun :: Run,
+    -- | A plain square pre-creased along a slant and along x = 1/2, then
+    -- folded top down and folded left over along x = 1/2: the last fold
+    -- goes through two layers, of which the slant cut one's hinge in two
+    -- and left the other's whole (the code review of #695).
+    overlapRun :: Run,
+    -- | A plain square whose one step pre-creases the diagonal in front and
+    -- then folds along it in front: two moves, two hinges in one place.
+    sameLineRun :: Run,
+    -- | The same, the fold written behind: two kinds of line in one place.
+    bothKindsRun :: Run,
+    -- | The quarter fold on a copy of its sheet with edge 11 written the
+    -- other way round, so its second fold's two hinge edges, one on each
+    -- layer, lie in one place running opposite ways.
+    reversedRun :: Run,
     -- | Built by hand: the blintz's sheet laid flat, as a run starts it, as
     -- state 0, a step that writes it again, two steps that write no state,
     -- and a step that writes the crane folded, with no layer order, so
@@ -102,7 +116,8 @@ runs = do
   helmetText <- readSequenceText "helmet.foldseq" >>= right
   helmet <- right (parseSequence "helmet.foldseq" helmetText)
   crane <- loadFoldFile "test/fixtures/crane.fold" >>= right
-  let sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet), ("examples/helmet-base.fold", helmetSheet)]
+  let reversedSheet = quarterSheet {keyFrame = (keyFrame quarterSheet) {edgesVertices = [if i == (11 :: Int) then (b, a) else (a, b) | (i, (a, b)) <- zip [0 ..] (edgesVertices (keyFrame quarterSheet))]}}
+      sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet), ("examples/helmet-base.fold", helmetSheet), ("reversed.fold", reversedSheet)]
       ran sequence' = right (checkSequence sequence' >>= runSequence defaultRunSettings sheets . elaborate)
   laid <- right (sheetState blintzSheet) >>= right . foldFrameWith . workingPattern >>= right . surfaceFromFolded
   folded <- right (foldFrameWith (keyFrame crane)) >>= right . surfaceFromFolded
@@ -122,6 +137,10 @@ runs = do
     <*> ran stoppedAfterFold
     <*> ran creasedTwice
     <*> ran helmet
+    <*> ran overlap
+    <*> ran sameLine
+    <*> ran bothKinds
+    <*> ran reversed
     <*> pure (Run Nothing laid identity craneSteps [] [] Nothing Nothing)
   where
     quarterWith second = sequenceOf (seqHeader quarterFold) $ do
@@ -156,6 +175,23 @@ runs = do
     corners = sequenceOf (seqHeader blintz) $ do
       folded <- step "corners" "Fold all four corners behind, to the centre." (forM_ [SouthEast, NorthEast, NorthWest, SouthWest] (\c -> fold mountain (cornerOf c `onto` centre)))
       step_ "Open all four." (unfold [folded])
+    square = header "A square" sheetSquare (Just (at (3 / 4) (1 / 4)))
+    diagonal = Segment (CornerOf SouthWest) (CornerOf NorthEast)
+    overlap = sequenceOf square $ do
+      step_ "Crease a slant, and the middle." $ do
+        move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthWest) (at 1 (1 / 2))) FlapOfFirstArgument (Just (CornerOf SouthEast)))
+        preCrease inFront (LineOnto (edge West) (edge East) Nothing)
+      step_ "Fold the top down." (fold inFront (LineOnto (edge North) (edge South) Nothing))
+      step_ "Fold the left over." (fold inFront (LineOnto (edge West) (edge East) Nothing))
+    sameLine = sequenceOf square . step_ "Crease the diagonal, then fold along it." $ do
+      move (FoldAndUnfold ValleyFold diagonal FlapOfFirstArgument (Just (CornerOf NorthWest)))
+      move (Fold ValleyFold ToFlat diagonal FlapOfFirstArgument (Just (CornerOf NorthWest)))
+    bothKinds = sequenceOf square . step_ "Crease the diagonal in front, then fold it behind." $ do
+      move (FoldAndUnfold ValleyFold diagonal FlapOfFirstArgument (Just (CornerOf NorthWest)))
+      move (Fold MountainFold ToFlat diagonal FlapOfFirstArgument (Just (CornerOf NorthWest)))
+    reversed = sequenceOf (header "A square folded into quarters" (sheetFile "reversed.fold") (Just (at (3 / 4) (1 / 4)))) $ do
+      step_ "Fold the left half behind." west
+      step_ "Fold the top half down in front." north
     stoppedAfterFold = sequenceOf (seqHeader quarterFold) $ do
       step_ "Fold the left half behind, onto the right." west
       step_ "Fold the top half down, then squash the corner." (north >> notModelled "a squash fold")
@@ -418,7 +454,7 @@ spec = describe "a run's page" . beforeAll runs $ do
       -- Each corner's line runs between the midpoints of the two sides that
       -- meet at it, where the figure has its paper: south-east first.
       case notes of
-        (_, first') : _ -> map unordered (givenLines first') `shouldHaveExactly` [unordered (MountainArrow, V3 0.5 0 0, V3 1 0.5 0)]
+        (_, first') : _ -> map unordered (givenLines first') `shouldMatchList` [unordered (MountainArrow, V3 0.5 0 0, V3 1 0.5 0)]
         [] -> expectationFailure "no figures"
 
     -- A pre-crease draws its line, in the sense it was written, though it
@@ -429,7 +465,7 @@ spec = describe "a run's page" . beforeAll runs $ do
       notes <- right (stepNotes (creasedRun r))
       case notes of
         (sheet, creasing) : _ -> do
-          map unordered (givenLines creasing) `shouldHaveExactly` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0)]
+          map unordered (givenLines creasing) `shouldMatchList` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0)]
           noteArrows creasing `shouldBe` NoArrows
           length (edgesVertices sheet) `shouldBe` 4
         [] -> expectationFailure "no figures"
@@ -468,6 +504,54 @@ spec = describe "a run's page" . beforeAll runs $ do
             []
           ]
 
+    -- A layer's whole edge and the pieces another layer's creases cut the
+    -- same line into are drawn as one line, the span they cover: the last
+    -- fold of the overlap run goes through two layers, the slant having cut
+    -- one's hinge at (1/2, 1/4) and not the other's. Three lines over each
+    -- other would start their dashes at different points and read solid.
+    -- Red if lines were merged only when both their ends coincide.
+    it "draws a whole hinge and another layer's pieces of it as one line" $ \r -> do
+      notes <- right (stepNotes (overlapRun r))
+      case drop 2 notes of
+        (_, leftOver) : _ -> map unordered (givenLines leftOver) `shouldMatchList` [unordered (ValleyArrow, V3 0.5 0 0, V3 0.5 0.5 0)]
+        [] -> expectationFailure "expected the third figure"
+
+    -- The merge is across the step, not within a record: a pre-crease and
+    -- then a fold along the same diagonal, both in front, are two records
+    -- whose lines lie in one place, and are drawn once. Written behind, the
+    -- fold's line is a mountain, and both lines are kept, so neither
+    -- instruction is dropped. Red if lines were merged only within a
+    -- record, or whatever their kind.
+    it "draws two moves' lines in one place once, unless their kinds differ" $ \r -> do
+      same <- right (stepNotes (sameLineRun r))
+      both <- right (stepNotes (bothKindsRun r))
+      case (same, both) of
+        ((_, once) : _, (_, twice) : _) -> do
+          map unordered (givenLines once) `shouldMatchList` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0)]
+          map unordered (givenLines twice) `shouldMatchList` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0), unordered (MountainArrow, V3 0 0 0, V3 1 1 0)]
+        _ -> expectationFailure "expected figures"
+
+    -- Two edges in one place running opposite ways are the same line: the
+    -- reversed quarter's second fold draws one valley line, as the quarter
+    -- does. Red if lines were joined only when they ran the same way.
+    it "draws one line for two edges in one place running opposite ways" $ \r -> do
+      notes <- right (stepNotes (reversedRun r))
+      case drop 1 notes of
+        (_, folding) : _ -> map unordered (givenLines folding) `shouldMatchList` [unordered (ValleyArrow, V3 0.5 0.5 0, V3 1 0.5 0)]
+        [] -> expectationFailure "expected the second figure"
+
+    -- A fold that creases fresh paper names its hinge by edges of that
+    -- newly cut paper, which the figure's state does not have: the creased
+    -- square's fold behind, along x = 1/2, which the diagonal crosses at
+    -- the middle, draws its two mountain halves. Red if the hinge's edges
+    -- were looked up in the figure's state, where they name other edges or
+    -- none.
+    it "draws a creasing fold's line from the paper it creased" $ \r -> do
+      notes <- right (stepNotes (creasedRun r))
+      case drop 1 notes of
+        (_, folding) : _ -> map unordered (givenLines folding) `shouldMatchList` map unordered [(MountainArrow, V3 0.5 1 0, V3 0.5 0.5 0), (MountainArrow, V3 0.5 0.5 0, V3 0.5 0 0)]
+        [] -> expectationFailure "expected the second figure"
+
     -- A step of several folds draws each fold's line on its one figure:
     -- the blintz's four corners folded in one step draw four mountain lines
     -- on the sheet, each along its corner's diagonal, read from the paper
@@ -477,9 +561,9 @@ spec = describe "a run's page" . beforeAll runs $ do
       case notes of
         (_, sheet) : _ ->
           map unordered (givenLines sheet)
-            `shouldHaveExactly` [ unordered (MountainArrow, a, b)
-                                  | (a, b) <- [(V3 0.5 0 0, V3 1 0.5 0), (V3 1 0.5 0, V3 0.5 1 0), (V3 0.5 1 0, V3 0 0.5 0), (V3 0 0.5 0, V3 0.5 0 0)]
-                                ]
+            `shouldMatchList` [ unordered (MountainArrow, a, b)
+                                | (a, b) <- [(V3 0.5 0 0, V3 1 0.5 0), (V3 1 0.5 0, V3 0.5 1 0), (V3 0.5 1 0, V3 0 0.5 0), (V3 0 0.5 0, V3 0.5 0 0)]
+                              ]
         [] -> expectationFailure "no figures"
 
     -- The page draws them as it draws a given line: from above, figure 1's
@@ -620,10 +704,6 @@ unordered (kind, a, b) = (show kind, min (key a) (key b), max (key a) (key b))
   where
     key (V3 x y z) = (snap x, snap y, snap z)
     snap v = fromIntegral (round (v * 1e9) :: Integer) / 1e9
-
--- | The list holds exactly the expected values, in any order.
-shouldHaveExactly :: (Show a, Ord a) => [a] -> [a] -> Expectation
-shouldHaveExactly got expected = sort got `shouldBe` sort expected
 
 -- | The arrows a note gives, or none for a note that gives none.
 givenArrows :: StepNote -> [(ArrowKind, V3, V3)]
