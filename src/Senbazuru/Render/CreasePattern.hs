@@ -663,8 +663,8 @@ withArrows theme basis motions =
 
 -- | 'withArrows' for arrows that each come with their kind and their two
 -- ends, in the frame's coordinates: each drawn by the same rule, projected the
--- same way and skipped when it has no length on the page, with the head its
--- kind gives it ('withKind').
+-- same way and skipped when it has no length on the page, with the heads its
+-- kind gives it ('withKind'), a fold-and-unfold's at both ends.
 --
 -- The kinds are the ones the page sees, as 'withFoldLines'' are: a caller
 -- drawing the paper from the opposite side swaps valley and mountain first.

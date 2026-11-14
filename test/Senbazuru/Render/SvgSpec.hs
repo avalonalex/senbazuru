@@ -637,6 +637,45 @@ spec = do
       forM_ [0, -1, 0 / 0, 1 / 0] $ \size ->
         (show size, T.count "<path" (renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Symbol (solid (Colour "#1a1a1a") 1.8) size (V2 0.5 0.5) (TurnOverLoop (V2 0 1))]))) `shouldBe` (show size, 0)
 
+    -- A tail is the head of the same curve run backwards: an arrow and its
+    -- reverse, the same control point with the ends and heads swapped, draw
+    -- the same two heads and the same curve the other way, whatever the two
+    -- heads are; and like a head, a tail is the same on the page however big
+    -- the model is. Red if the tail were aimed down the chord rather than
+    -- the curve, put its barb inside the curve, or did not shorten the curve
+    -- at its start.
+    it "draws a tail as the head of the same curve run backwards" $
+      forM_ [(h, t) | h <- [minBound .. maxBound], t <- [minBound .. maxBound]] $ \(h, t) -> do
+        let forward size = (arrowPathWith h size) {arrowTail = Just t}
+            backward size = (forward size) {arrowFrom = arrowTo (forward size), arrowTo = arrowFrom (forward size), arrowHead = t, arrowTail = Just h}
+            page path size = renderSvg testPage (diagramWithExtent (Box (V2 0 0) (V2 size size)) [Arrow (path size)])
+        case (pathPointsOf (page forward 1), pathPointsOf (page backward 1)) of
+          ([curve, headOf, tailOf], [curve', headOf', tailOf']) -> do
+            ((h, t), headOf, tailOf) `shouldBe` ((h, t), tailOf', headOf')
+            ((h, t), curve) `shouldBe` ((h, t), reverse curve')
+          other -> expectationFailure ("expected a curve and two heads each way, got " <> show other)
+        ((h, t), page forward 1) `shouldBe` ((h, t), page forward 400)
+
+    -- An arrow with a head at each end clamps each to a third of its length
+    -- on the page, so a third is left for the curve between them, as one
+    -- head is clamped to half. This arrow spans 7.36 page units, under one
+    -- head's 11. Red if two heads were each clamped to half, which leaves the
+    -- curve no length, or the curve did not run between their back edges.
+    it "keeps a third of a short arrow for the curve between two heads" $ do
+      let stubby = (withHead HollowDoubleHead (arrowFor defaultTheme (V2 0.5 0.5) (V2 0.52 0.5))) {arrowTail = Just HollowDoubleHead}
+          out = renderSvg defaultPage (diagramWithExtent (Box (V2 0 0) (V2 1 1)) [Arrow stubby])
+      case pathPointsOf out of
+        [[start, _, end], [tip, l, r], [tailTip, l', r']] -> do
+          let chord = norm (tip ^-^ tailTip)
+              back = 0.5 *^ (l ^+^ r)
+              back' = 0.5 *^ (l' ^+^ r')
+          chord `shouldSatisfy` (\c -> abs (c - 7.36) < 1e-2)
+          norm (tip ^-^ back) `shouldSatisfy` (\d -> abs (d - chord / 3) < 1e-2)
+          norm (tailTip ^-^ back') `shouldSatisfy` (\d -> abs (d - chord / 3) < 1e-2)
+          norm (end ^-^ back) `shouldSatisfy` (< 1e-2)
+          norm (start ^-^ back') `shouldSatisfy` (< 1e-2)
+        other -> expectationFailure ("expected a curve and two heads, got " <> show other)
+
     it "shrinks the head rather than drawing the arrow backwards" $ do
       -- The head is a fixed size in page units, and a small flap on a large
       -- sheet can move less far than that. This arrow spans 7.36 page units and

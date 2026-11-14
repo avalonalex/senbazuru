@@ -37,20 +37,40 @@ spec = do
   describe "arrow heads" $ do
     -- 06's A2: an arrow nobody gave a kind keeps the head every page has
     -- drawn so far. Red if arrowFor set any other head.
-    it "gives an arrow a solid head unless it is given a kind" $
-      arrowHead plain `shouldBe` SolidHead
+    it "gives an arrow a solid head and no tail unless it is given a kind" $
+      (arrowHead plain, arrowTail plain) `shouldBe` (SolidHead, Nothing)
 
-    -- Lang's conventions. Red if withKind gave any two kinds each other's
-    -- heads.
-    it "gives each kind the head a book draws it with" $
-      [(k, arrowHead (withKind k plain)) | k <- [minBound .. maxBound]]
-        `shouldBe` [(ValleyArrow, SolidHead), (MountainArrow, HollowHalfHead), (UnfoldArrow, HollowDoubleHead)]
+    -- Lang's conventions, and a fold and unfold as one arc with the fold's
+    -- head at the far end and the unfold's at the near one (the owner's
+    -- choice of 2026-11-13). Red if withKind gave any two kinds each other's
+    -- heads, or a fold-and-unfold lost its tail, or another kind gained one.
+    it "gives each kind the heads a book draws it with" $
+      [(k, arrowHead (withKind k plain), arrowTail (withKind k plain)) | k <- [minBound .. maxBound]]
+        `shouldBe` [ (ValleyArrow, SolidHead, Nothing),
+                     (MountainArrow, HollowHalfHead, Nothing),
+                     (UnfoldArrow, HollowDoubleHead, Nothing),
+                     (ValleyAndUnfoldArrow, SolidHead, Just HollowDoubleHead),
+                     (MountainAndUnfoldArrow, HollowHalfHead, Just HollowDoubleHead)
+                   ]
 
-    -- Red if a kind also moved the curve, or changed its ink or the head's
+    -- Red if a kind also moved the curve, or changed its ink or the heads'
     -- length.
-    it "changes nothing but the head" $
+    it "changes nothing but the heads" $
       forM_ [minBound .. maxBound] $ \k ->
-        (k, (withKind k plain) {arrowHead = arrowHead plain}) `shouldBe` (k, plain)
+        (k, (withKind k plain) {arrowHead = arrowHead plain, arrowTail = arrowTail plain}) `shouldBe` (k, plain)
+
+    -- The kind given last decides both heads, whatever the arrow had: a
+    -- fold arrow made from a fold-and-unfold loses its tail. Red if withKind
+    -- kept a tail its kind does not have.
+    it "gives an arrow the heads of the kind given last" $
+      forM_ [(k, j) | k <- [minBound .. maxBound], j <- [minBound .. maxBound]] $ \(k, j) ->
+        ((k, j), withKind k (withKind j plain)) `shouldBe` ((k, j), withKind k plain)
+
+    -- A pre-crease's line is its fold's: the paper is folded there first.
+    -- Red if a fold-and-unfold drew no line, or the other kind's dash.
+    it "gives a fold and unfold its fold's line" $
+      map (foldLineStroke defaultTheme) [ValleyAndUnfoldArrow, MountainAndUnfoldArrow]
+        `shouldBe` map (foldLineStroke defaultTheme) [ValleyArrow, MountainArrow]
 
   describe "themeLayers" $
     it "lays the paper flat in the default theme" $

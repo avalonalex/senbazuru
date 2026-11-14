@@ -426,9 +426,9 @@ recordAfter = theAfter
 -- 'recordAfter', and a change of presentation or an @anchor@ folds nothing.
 --
 -- A pre-crease's 'recordAfter' is its 'recordBefore', so this is the one
--- place its fold's end can be read, which a page needs for the pre-crease's
--- fold arrow and its unfold arrow, both drawn under 'displayBefore'
--- (PRDs\/06-prd-step-diagrams.md, R-06-16). It is the surface the fold's
+-- place its fold's end can be read, which a run's page needs for the
+-- pre-crease's arc there and back, drawn under 'displayBefore'
+-- (PRDs\/06-prd-step-diagrams.md, R-06-16, R-06-17; "Senbazuru.Render.Sequence"). It is the surface the fold's
 -- own record was made with, kept, so a reader takes it without folding the
 -- pattern again and without a 'FlapError' to handle, as rebuilding it from
 -- the record's 'SweptHinge' evidence with 'flapAt' would bring.

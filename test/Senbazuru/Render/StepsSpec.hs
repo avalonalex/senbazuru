@@ -349,6 +349,18 @@ statedKinds = describe "stated kinds" $ do
     forM_ [top, View (Just bottomUp) 0] $ \view ->
       heads view silentNote {noteArrows = InferArrowsAs UnfoldArrow} `shouldBe` [HollowDoubleHead]
 
+  -- A pre-crease's arc seen from behind the paper: the fold's head swaps,
+  -- valley for mountain either way, and the unfold's at its tail does not.
+  -- Red if either fold-and-unfold kind kept its head from below, or lost
+  -- its tail.
+  it "swaps a fold-and-unfold's head from below and keeps its tail" $ do
+    (a, b, _) <- quarterThree
+    let ends view kind = [(arrowHead p, arrowTail p) | Arrow p <- added view [(a, silentNote {noteArrows = InferArrowsAs kind}), (b, silentNote)] [(a, silentNote), (b, silentNote)]]
+    ends top ValleyAndUnfoldArrow `shouldBe` [(SolidHead, Just HollowDoubleHead)]
+    ends (View (Just bottomUp) 0) ValleyAndUnfoldArrow `shouldBe` [(HollowHalfHead, Just HollowDoubleHead)]
+    ends top MountainAndUnfoldArrow `shouldBe` [(HollowHalfHead, Just HollowDoubleHead)]
+    ends (View (Just bottomUp) 0) MountainAndUnfoldArrow `shouldBe` [(SolidHead, Just HollowDoubleHead)]
+
   -- A given arrow between the ends an inferred one has is the same arrow,
   -- which #643's S32 relies on when it gives a run's arrows from its records
   -- (A10). Given arrows are drawn on the last figure too, which infers none.
@@ -379,6 +391,10 @@ statedKinds = describe "stated kinds" $ do
     eyes front (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [1, 1, 1]
     eyes front [silentNote, silentNote, silentNote {noteFoldLines = GivenFoldLines [(ValleyArrow, V3 0.5 0 0, V3 0.5 1 0)]}] `shouldBe` Right [1, 1, 1]
     eyes front (on1 silentNote {noteArrows = GivenArrows [(ValleyArrow, V3 0.25 0.5 0, V3 0.75 0.5 0)]}) `shouldBe` Right [1, 1, 1]
+    -- A pre-crease's arc carries a fold's head, a valley's or a mountain's,
+    -- even with no line beside it, which a run's page always gives it.
+    forM_ [ValleyAndUnfoldArrow, MountainAndUnfoldArrow] $ \kind ->
+      (kind, eyes front (on1 silentNote {noteArrows = GivenArrows [(kind, V3 0.25 0.5 0, V3 0.75 0.5 0)]})) `shouldBe` (kind, Right [1, 1, 1])
     eyes top (on1 silentNote {noteArrows = InferArrowsAs MountainArrow}) `shouldBe` Right [0, 0, 0]
     forM_
       [ on1 inferNote,

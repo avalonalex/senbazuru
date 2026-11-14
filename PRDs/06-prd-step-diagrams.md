@@ -266,7 +266,13 @@ then.
   [#639](https://github.com/avalonalex/senbazuru/issues/639)
   ([C140](decisions.md#changes-since-draft-v2)), with `withKind` (§1) the one
   other place an arrow's head is set; the body waits with `PushArrow` for
-  [#648](https://github.com/avalonalex/senbazuru/issues/648).
+  [#648](https://github.com/avalonalex/senbazuru/issues/648). S34
+  ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C164](decisions.md#changes-since-draft-v2)) added a
+  tail, `arrowTail :: Maybe ArrowHead`, a head at the arrow's start pointing
+  back, drawn as the head of the same curve run backwards, for a pre-crease's
+  one arc; with a tail each head is clamped to a third of the arrow's length
+  on the page. A push's `CleftTail` is a body drawn at that same end, so #648
+  has to say what an arrow with both draws.
 - **R-06-6.** `Shape` gains `Symbol`: a glyph whose geometry is in page units at one
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
   moves only the anchor. Built by S13 of [#639](https://github.com/avalonalex/senbazuru/issues/639)
@@ -428,21 +434,28 @@ then.
   group, as `motionsBetween` already splits them
   ([`Step.hs:175-192`](../src/Senbazuru/Origami/Step.hs#L175-L192);
   [D7](decisions.md#d7-a-typed-step-note-reaches-the-page)). A pre-crease's
-  before and after surfaces are one flat state, so its arrows come from its
-  folded surface: the arrow out from its before surface to the surface its fold
-  reached, both under `displayBefore`, and the unfold arrow the same pair
-  reversed. The runner has that surface, as the after of the turn's record,
+  before and after surfaces are one flat state, so its arrow comes from its
+  folded surface: from its before surface to the surface its fold reached, both
+  under `displayBefore`. As built by S34 ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C164](decisions.md#changes-since-draft-v2)) that is one arc there
+  and back, `ValleyAndUnfoldArrow` or `MountainAndUnfoldArrow`, not the
+  planned arrow out and unfold arrow back (R-06-17). The runner has that surface, as the after of the turn's record,
   and `asPrecrease`, which sets a pre-crease record's after to its before,
   keeps it. By the decision record's choice, not the owner's, a page reads it
   through one accessor, `recordFoldedPose`, numbered as `recordBefore` and
   unpresented ([decisions C153](decisions.md#changes-since-draft-v2)).
   `recordPoseAt`, `PoseOnRoute` and `Origami.Route` do not exist ([decisions
   C90](decisions.md#changes-since-draft-v2)).
-- **R-06-17.** A pre-crease draws its fold arrow, with the sense the author wrote,
-  its unfold arrow and one fold-here line, although its figure's frames are
+- **R-06-17.** A pre-crease draws one arc there and back, with its fold's head,
+  in the sense the author wrote, at the far end and the unfold's hollow double
+  head at its tail, and its fold-here line, although its figure's frames are
   identical in position ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)).
   Nothing is read from its crease, which has no direction
-  ([D12](decisions.md#d12-the-text-syntax)).
+  ([D12](decisions.md#d12-the-text-syntax)). The one arc is the owner's choice
+  of 2026-11-13, when S34 ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C164](decisions.md#changes-since-draft-v2)) showed it beside the planned
+  pair of an arrow out and an unfold arrow back; it is the mark instruction
+  books draw for "fold and unfold", and `ArrowPath` gained a tail head
+  (`arrowTail`) to draw it. Its line is one per edge of its hinge, as S33
+  draws a fold's, so a hinge other creases cut is drawn in its pieces.
 
 **Captions**
 
@@ -586,8 +599,8 @@ then.
 
 ```haskell
 -- Senbazuru.Diagram.Style: kind to ink, the one file to open when marks look wrong
-data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648)
-withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head and body only; built, setting the head
+data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | ValleyAndUnfoldArrow | MountainAndUnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648); the two fold-and-unfold kinds by S34 (C164)
+withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head, tail and body only; built, setting the head and, since S34, the tail
 foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valley or mountain dash; built by S26, Nothing for an unfold (C156)
 
 -- Senbazuru.Render.Steps
@@ -662,10 +675,10 @@ write is `WriteRefused k`, holding `WriteMissingAngles` or `WriteNonFinite`
 
 | Step holds | Note on the figure of the state the step starts from |
 | --- | --- |
-| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each fold's hinge (`recordHinge`), whether or not the move creased it, at `recordBefore` positions (the record's surface before the move) under `displayBefore`, styled by the move's sense as seen (owner decision 74, §6). An unfold draws none, by the decision record's reading of decision 74, which names folds and pre-creases, and the owner confirmed it on 2026-11-12. As built by S33 ([C163](decisions.md#changes-since-draft-v2)): a line for each edge of the hinge, read from the record's paper before the move under `displayBefore`, never from the written state's edge ids, which a move creasing fresh paper renumbers; lines of one kind that overlap on one line, such as the quarter's second hinge on its two layers, or a layer's whole hinge and another layer's pieces of it, drawn as the one span they cover, across the step (the owner's choices of 2026-11-12 and 2026-11-13), while lines that only touch end to end stay apart; and a pre-crease's line drawn though its arrows are S34's |
+| Moves that turn paper (fold, unfold, macro) | `GivenArrows` per R-06-16; `GivenFoldLines` from each fold's hinge (`recordHinge`), whether or not the move creased it, at `recordBefore` positions (the record's surface before the move) under `displayBefore`, styled by the move's sense as seen (owner decision 74, §6). An unfold draws none, by the decision record's reading of decision 74, which names folds and pre-creases, and the owner confirmed it on 2026-11-12. As built by S33 ([C163](decisions.md#changes-since-draft-v2)): a line for each edge of the hinge, read from the record's paper before the move under `displayBefore`, never from the written state's edge ids, which a move creasing fresh paper renumbers; lines of one kind that overlap on one line, such as the quarter's second hinge on its two layers, or a layer's whole hinge and another layer's pieces of it, drawn as the one span they cover, across the step (the owner's choices of 2026-11-12 and 2026-11-13), while lines that only touch end to end stay apart; and a pre-crease's line drawn beside its arc (S34, [C164](decisions.md#changes-since-draft-v2)) |
 | `anchor P` (an `Anchoring` record, evidence `NoMotion`) | No arrow and no fold-here line: it moves no paper, has no hinge and creases nothing, and the model stays where it stood on the page ([`Record.hs:551-556`](../src/Senbazuru/Sequence/Record.hs#L551-L556), [`Run.hs:568-571`](../src/Senbazuru/Sequence/Run.hs#L568-L571)) |
 | `mark` | Caption, `NoArrows`: a mark moves no paper. It is labelled through `noteMarks` (§1) on the figures R-06-22 names. M3 runs `mark` for the point forms the resolver already evaluates on the sheet (owner decision 75), and since S20 ([#640](https://github.com/avalonalex/senbazuru/issues/640)) a `mark` leaves a record of kind `Marking`, its name and pinned material point, with evidence `NoMotion` ([decisions C155](decisions.md#changes-since-draft-v2)). `meet`, `in face containing S`, and a mark used as a reference, stay not run yet until M4 ([`Resolve.hs:176`](../src/Senbazuru/Sequence/Resolve.hs#L176), [`:178`](../src/Senbazuru/Sequence/Resolve.hs#L178)) |
-| `pre-crease` | One record: a valley or mountain arrow out, the sense the author wrote, from its before surface to its folded surface (§7), and an unfold arrow back, the same pair reversed, both under `displayBefore` (R-06-16, owner decision 14); and its hinge's fold-here line, as a fold's (owner decision 74) |
+| `pre-crease` | One record: one arc from its before surface to its folded surface (§7), both under `displayBefore`, with a valley or mountain head at the far end, the sense the author wrote, and the unfold's head at its tail (R-06-16, R-06-17, owner decision 14; the one arc the owner's choice of 2026-11-13, built by S34, [C164](decisions.md#changes-since-draft-v2)); and its hinge's fold-here line, as a fold's (owner decision 74) |
 | `turn over` / `rotate` | `notePresentation`. The record keeps the turn as written (`Presenting`, [C82](decisions.md#changes-since-draft-v2)), so the direction comes from which turn it was (`left-right` along y, `top-bottom` along x, `rotate` along z); see [Dependencies](#dependencies). The page reads the line from the record, `presentationAxis`, a point and that direction ([decisions C152](decisions.md#changes-since-draft-v2), S18b of [#640](https://github.com/avalonalex/senbazuru/issues/640)). No record stores the point: it is the centre of the displayed state before the turn, `recordBefore` under `displayBefore`, with cz the middle of its z range ([D5](decisions.md#d5-presentation-and-the-readers-side); [02 §5.2](02-language-semantics.md#52-presentation-moves-no-paper)), found by `middleOf`, which `Sequence.Record` defines with the turns the runner makes about it, `turnOverAbout` and `eighthTurnsAbout`. `Sequence.Run` still exports `turnOverAbout` for `StepsSpec`'s turn tests, A7 and A8 ([decisions C129](decisions.md#changes-since-draft-v2)) |
 | A fold then a turn | The fold's arrows and the turn's mark. A step may end with one turn-over or rotate, and nothing may follow it in the same step (owner decision 78; refused as `MoveAfterPresentation`, [decisions C154](decisions.md#changes-since-draft-v2)), so a figure carries at most one presentation mark |
 | `repeat A..B` (M4, [decisions §8](decisions.md#8-milestones)) | `noteRepeat` with those figures, plus the expanded moves' arrows ([D21](decisions.md#d21-repeat-checkpoint-not-modelled-expect-refused)) |
@@ -908,8 +921,9 @@ caller that states the kind, as `InferFoldLines` (built by S28,
 
 ### 7. Figures holding several moves
 
-"Fold and unfold in front `[corner south-west, corner north-east]` moving `corner
-south-east`" on `sheet square`, where `in front` means a valley as seen
+"`pre-crease in front [corner south-west, corner north-east]` moving `corner
+south-east`" on `sheet square` (the move once written `fold and unfold`, named
+the pre-crease by owner decision 14), where `in front` means a valley as seen
 ([02 §5.1](02-language-semantics.md#51-the-readers-side)): the moving triangle
 (0, 0), (1, 0), (1, 1) has corner mean (2/3, 1/3); folded flat across y = x it
 lands on (1/3, 2/3) (`python3` arithmetic). `RecordSpec` runs this pre-crease
@@ -918,12 +932,17 @@ and finds (2/3, 1/3) in its record's folded pose (`recordFoldedPose`) within
 ([decisions C153](decisions.md#changes-since-draft-v2)).
 
 The figure's before and after frames are identical, so inference draws nothing.
-The move's one record draws a valley arrow (2/3, 1/3) → (1/3, 2/3) and an unfold
-arrow back. `arrowFor` bows "always to the same side" of its own direction
-([`Style.hs:356-358`](../src/Senbazuru/Diagram/Style.hs#L356-L358), `sideways`
-at [`:384`](../src/Senbazuru/Diagram/Style.hs#L384)), so the reversed arrow bows
-the other way and the pair reads as out and back. One valley-dashed fold-here
-line lies on the diagonal. [D22](decisions.md#d22-figures-holding-several-moves)
+The move's one record draws one arc (2/3, 1/3) → (1/3, 2/3), a valley's solid
+head at (1/3, 2/3) and the unfold's hollow double head at its tail, (2/3, 1/3):
+the paper goes there and comes back, the mark books draw for "fold and unfold".
+The plan drew an unfold arrow back beside a valley arrow out instead, the
+reversed arrow bowing the other way so the pair read as a lens; the owner chose
+the one arc on 2026-11-13, when S34 ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C164](decisions.md#changes-since-draft-v2)) drew both, since
+two pre-creases on one figure, as the crane's two diagonals, crossed the lenses
+into four curves. One valley-dashed fold-here line lies on the diagonal.
+`SequenceSpec` holds the arc's ends within 1e-12, and the
+`diagonal-precrease-steps.svg` golden pins the page, from
+`test/fixtures/diagonal-precrease.foldseq`. [D22](decisions.md#d22-figures-holding-several-moves)
 admits a move to a figure only if its moving paper is where the figure draws it,
 and a pre-crease is one move there like any other ([02
 §6.5](02-language-semantics.md#65-figures-holding-several-moves)). That makes
@@ -931,8 +950,8 @@ the fold arrow true on the drawn state. The runner checks it, and refuses a
 move whose paper an earlier move of the step left elsewhere as
 `MoveLeavesFigure`, the refusal D22 names ([decisions
 C154](decisions.md#changes-since-draft-v2)). The
-unfold arrow is drawn from the folded pose back to where the paper started
-(R-06-16). The runner computes that pose, the turned record's after, and the
+arc's tail, the unfold's head, is where the paper started, and its head the
+folded pose (R-06-16). The runner computes that pose, the turned record's after, and the
 `Precrease` record keeps it behind one accessor, `recordFoldedPose`
 ([C153](decisions.md#changes-since-draft-v2)), a choice of the decision
 record's own, since `recordPoseAt` and `PoseOnRoute` do not exist
@@ -1264,7 +1283,7 @@ decisions 67 to 69).
 | SVG 2's `inline-size` | `rsvg-convert` 2.62.3 ignores it and draws one line (S1's gist) |
 | SVG `textLength` | It would squash the crane's longest caption, 446.2 units of ink, into 127, a little over a quarter of its width |
 | Truncation with an ellipsis | It drops the end of an instruction |
-| One arrow with heads at both ends for a pre-crease | `ArrowPath` has one head, and a pre-crease's two arrows have two kinds: its sense out, unfold back ([D7](decisions.md#d7-a-typed-step-note-reaches-the-page)) |
+| A pre-crease as two arrows, its sense out and an unfold arrow back | The plan until S34. The two arrows between the same two points make a lens, and two pre-creases on one figure, as the crane's two diagonals, cross into four curves; books draw one arc with a head at each end. The owner chose the one arc on 2026-11-13, and `ArrowPath` gained a tail head for it, the plan's only reason against it having been that `ArrowPath` had one head ([C164](decisions.md#changes-since-draft-v2)) |
 | One display field per record, applied to both surfaces | It cannot give a `Presented` record's before display, nor keep presentation apart from anchor placement, which animation needs as separate nodes ([D14](decisions.md#d14-material-consumption)) |
 | A total `stepNotes` | It calls `writtenStates`, which refuses a state with missing angles or a non-finite material coordinate, as `WriteRefused` ([`Record.hs:713`](../src/Senbazuru/Sequence/Record.hs#L713), [`:788`](../src/Senbazuru/Sequence/Record.hs#L788); [D23](decisions.md#d23-the-sequence-modules-and-where-run-lives)) |
 | Sample poses written to the file but left off the page | The page would no longer draw exactly the states the file holds ([D24](decisions.md#d24-states-figures-and-their-numbers)) |
@@ -1290,7 +1309,7 @@ decisions 67 to 69).
 | A7 | With and without a turn-over or `rotate 4/8 turn`, figure extents and page box agree within 1e-12 × span, and the scale within 1e-12 of itself, on `top` and `bottom` at rolls 0, 90°, 180°, 270°, for the quarter fold, the same sheet folded in half only, and bird `file_frames[13]` (`--frame 14`) | the axis passes through x = 0, the corner mean or the run's anchor; a half turn turns a quarter turn |
 | A8 | On `iso`, bird `file_frames[13]`'s extent changes across the turn (0.4142 × 0.6118 → 0.9981 × 0.3335, within 1e-4) | the turn is computed about a page axis, or the page re-fits figures after a turn, so the `iso` extent stays equal |
 | A9 | A figure with a presentation mark has one `Symbol` and no `Arrow`; `CreasePatternSpec` counts symbols beside `arrowsIn`. Restated by S29 ([C158](decisions.md#changes-since-draft-v2)): on a pair that folds and turns, since a pure turn infers no arrow anyway, `StepsSpec` counts one `TurnOverLoop` and no `Arrow` under `InferArrows` and `InferArrowsAs` from above, where the pair without the note infers one; given arrows are still drawn | inference is not suppressed on the marked pair |
-| A10 | Restated by S32 ([C162](decisions.md#changes-since-draft-v2)), since on the blintz every record is shown as folded and the row's red-if could not fail. On each single-move figure of six runs, the `GivenArrows` read from its records have the ends `motionsAcross` finds between the figure's written state and the next, which are `InferArrowsAs`'s, in order, within 1e-12 × span: the blintz, the quarter fold, the quarter fold anchored at (3/4, 3/4), which re-anchors, the quarter fold after a quarter turn on the page, the quarter fold with a turn-over top to bottom between its folds, and a square pre-creased and folded, whose fold makes a crease | the ends are read from the surfaces as folded and not as shown (`displayBefore`, `displayAfter`); a step's records go to the wrong figure. On every `Turn` record the two displays are equal, so applying one in place of the other cannot turn it red |
+| A10 | Restated by S32 ([C162](decisions.md#changes-since-draft-v2)), since on the blintz every record is shown as folded and the row's red-if could not fail. On each single-move figure of six runs, the `GivenArrows` read from its records have the ends `motionsAcross` finds between the figure's written state and the next, which are `InferArrowsAs`'s, in order, within 1e-12 × span: the blintz, the quarter fold, the quarter fold anchored at (3/4, 3/4), which re-anchors, the quarter fold after a quarter turn on the page, the quarter fold with a turn-over top to bottom between its folds, and a square pre-creased and folded, whose fold makes a crease. A pre-crease's arc is left out (restated by S34, [C164](decisions.md#changes-since-draft-v2)): its figure's state and the next are one flat state, which infer nothing, and its arc is held to its folded pose by S34's own items instead, on 06 §7's run in front and behind and on the crane's first three steps, whose midline pre-creases follow a turn-over | the ends are read from the surfaces as folded and not as shown (`displayBefore`, `displayAfter`); a step's records go to the wrong figure. On every `Turn` record the two displays are equal, so applying one in place of the other cannot turn it red, and the same holds of every pre-crease's record |
 | A11 | For the quarter-fold run, `fmap (map fst) (stepNotes run)` equals the `file_frames` of `writeSequence`'s file, both `Right`. In review: `Render.Sequence` imports `Sequence.Record` and `Sequence.Error` and no other sequence module, and no `View` is an argument of `runSequence`, `writeSequence` or `stepNotes`. Sharing `writtenStates` makes the frames equal by construction; the test guards what the construction does not, `stepNotes` dropping or reordering states | `stepNotes` filters `writtenStates` (for example drops sample states) or rebuilds frames without the [state rule](glossary-additions.md#the-fold-format); `Render.Sequence` imports `Sequence.Write` or `Sequence.Run`; a `View` reaches the runner, the writer or `stepNotes` |
 | A12 | `LayoutSpec`, for 1–60 figures: a page whose figures have no caption, or captions of no words, equals `gridOf`'s; on a captioned page each row's band, measured on the page at scales 100 and 300, is a + (L_r − 1) p + d page units, the last row's included and a row with none counted as one line; each caption line is a `Label` at its cell's bottom-left corner moved down a + k p; and no line's estimated width exceeds the shared box's width on the page unless it is one word (restated by S24, [C134](decisions.md#changes-since-draft-v2)) | a band is added to a page with no caption; a band is sized in model units; a row's band ignores its longest caption, or a row with none gets none; the last row has no band; a line is wrapped wider than the box |
 | A13 | `motionsAcross == motionsBetween` on every consecutive pair of the quarter fixture and FlapSpec's four material-frame sequences | the equal-graph branch is bypassed, restated from "`motionsAcross` visits rings in another order", which the equal-graph branch makes impossible ([C144](decisions.md#changes-since-draft-v2)) |
@@ -1336,7 +1355,7 @@ The table groups the 33 tracked on 2026-09-15 at `568dcb6` and three of the ten 
 | `quarter-fold-steps-noted-bottom.svg` (S27, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The same notes under `View (Just bottomUp) 0` | heads or dashes are not inverted; a caption is rewritten |
 | `quarter-fold-turn-over-steps.svg` (S29, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | The fixture's three states, then a fourth: state 2 (folded in quarters) turned by the `left-right` rule. `PageTurnedOver` goes on figure 3, which draws state 2. As built (S29, [C158](decisions.md#changes-since-draft-v2)): a run of the quarter fold and a turn-over, its states' titles as captions, `inferNote` on every figure, the axis the turn's record gives (`presentationAxis`), fitted by `fitPage` to a 400-wide page | the runner's axis is at x = 0 (every coordinate moves), which A7 catches too; the loop stands on the edge, lies along the axis or follows model size. A page-side axis at x = 0 cannot turn it red: that line misses figure 3, and the fallback gives the same anchor, so `StepsSpec` tests the anchor rule on off-centre axes |
 | `quarter-fold-growing-steps.svg` (S28, [#642](https://github.com/avalonalex/senbazuru/issues/642)) | As built (S28, [C161](decisions.md#changes-since-draft-v2)): `examples/quarter-fold-growing.fold`, the run of `examples/quarter-fold-growing.foldseq` on `sheet square`, copied byte for byte to `test/fixtures/`: folded in half, opened, folded in half the other way, so [state-rule](glossary-additions.md#the-fold-format) frames of 4, 6, 6 and 9 vertices with `senbazuru:material_coords`, each frame's list beginning with the previous one's (the prefix rule, [§2](#2-from-a-run-to-notes)), which `StepsSpec` checks. Each figure's `InferArrowsAs` and `InferFoldLines` of the kind its step's move was written as: valley for the two folds, written in front, and unfold for figure 2 | a figure draws a fold-here line along a crease it does not add, such as figure 3's existing vertical one; `motionsAcross` refuses; a line is solid or mountain-dashed; figure 2, before a frame with the same graph, or figure 4, the last, draws a line; figure 2's unfold arrow has a solid head |
-| `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step | no arrow is drawn (inference used); the unfold head is solid; the fold-here line is missing |
+| `diagonal-precrease-steps.svg` (S34, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | A run of `sheet square` with §7's step, `test/fixtures/diagonal-precrease.foldseq`, drawn by `runPage` at `run`'s defaults, so its bytes are `run -o x.svg`'s | no arrow is drawn (inference used); the arc has no tail head, or a solid one; the fold-here line is missing |
 | `blintz-sequence-steps.svg` (S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | [09](09-testing-and-acceptance.md) E7: `runPage` on the blintz run with `defaultTheme`, unfanned: the page `run blintz.foldseq -o x.svg --no-fan` draws, a choice of the decision record's own, so that fanning can change without moving E7 | as E7 says; a step's caption goes under any figure but the one of the state the step starts from |
 | `quarter-fold-run-steps.svg` (**SKETCH** name; S37, [#643](https://github.com/avalonalex/senbazuru/issues/643)) | The quarter-fold run (`test/fixtures/quarter-fold.foldseq`), drawn as `blintz-sequence-steps.svg` is | "Folded into quarters.", its `closing` caption, is not under figure 3; `blintz.foldseq` has no `closing` line, so no other golden pins it |
 | `crane-folded-fanned.svg` (S38, [#644](https://github.com/avalonalex/senbazuru/issues/644)) | `renderFoldedWith` with a fanning theme and `topDown` on `test/fixtures/crane.fold`, as `crane-folded.svg` is made ([`SvgSpec.hs:85-93`](../test/Senbazuru/Render/SvgSpec.hs#L85-L93), [`:432`](../test/Senbazuru/Render/SvgSpec.hs#L432)) | as A22; a buried sheet drawn at full weight |

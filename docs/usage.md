@@ -1868,15 +1868,28 @@ stack run -- run blintz.foldseq > blintz.fold
   move's; and an `unfold` that turns back several folds is drawn as one move,
   from the paper as its figure shows it to the paper opened, so two folds of
   the same paper opened together make one arrow, and four separate corners
-  opened together make four. The last figure has none, and
+  opened together make four. A
+  [pre-crease](glossary.md#origami), folded and laid flat again, ends where
+  it began, so its arrow runs to where its fold took the paper: one arc
+  there and back, its fold's head at the far end and the hollow unfold head
+  at its tail, as books draw "fold and unfold". A step that pre-creases a
+  line and then folds along it draws both arrows: moving the same paper they
+  lie on one curve, and moving the other side they run opposite ways and
+  cross as a lens. On one curve a mountain's half head does not read against
+  a valley's solid head, whichever is drawn first, so a mountain written
+  there is lost. The last
+  figure has none, and
   neither has the last figure of a run stopped at `not modelled`, whose
   caption names a step the page does not draw the end of. `--view bottom`
   shows the paper from behind, where a valley is a mountain, so it swaps the
-  two heads; `--view front` and `--view side` see flat paper edge on, cannot
+  two fold heads, and an unfold's head is the same from either side;
+  `--view front` and `--view side` see flat paper edge on, cannot
   show which side they see, and so draw each head as written and put the
   [edge-on mark](glossary.md#geometry) on every figure. An arrow there
-  bows below the line the paper is, into the caption under its figure,
-  which nothing moves out of its way yet.
+  bows to the left of the way it travels on the page, so one travelling
+  right bows above the line the paper is and one travelling left bows below
+  it, into the caption under its figure, which nothing moves out of its way
+  yet. A pre-crease's arc is one arrow, and does the same.
 
   Each figure also carries the [fold-here lines](glossary.md#origami) of
   the step that starts from it, a dashed line along the line each fold and
@@ -1949,8 +1962,7 @@ stack run -- run blintz.foldseq > blintz.fold
 
   The page draws the paper, the figure numbers, the captions, the fold
   arrows and the fold-here lines, and nothing else yet. Not drawn so far:
-  - the arrows of a
-    [pre-crease](glossary.md#origami); the loop and the mark a book draws for
+  - the loop and the mark a book draws for
     turning the model over or round, a change of
     [presentation](glossary.md#fold-sequences); and the labels of points a
     source names with `mark` (#643);

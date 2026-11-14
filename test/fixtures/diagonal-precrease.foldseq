@@ -1,0 +1,11 @@
+foldseq 1
+title "A square creased along a diagonal"
+sheet square
+
+# PRDs/06-prd-step-diagrams.md section 7's pre-crease, the source of the
+# diagonal-precrease-steps.svg golden: the sheet with one arc, there and back,
+# and a valley line along the diagonal; then the sheet with its new crease.
+step diagonal "Fold the diagonal and unfold it." {
+  pre-crease in front [corner south-west, corner north-east] moving corner south-east
+}
+closing "Creased along the diagonal."
