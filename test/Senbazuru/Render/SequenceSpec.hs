@@ -4,9 +4,10 @@
 -- under each figure, against its state's title (R-06-21, §9); which steps
 -- have a figure; how a figure the page cannot draw is refused; and the
 -- arrows each figure carries, read from the records of the step that starts
--- from it, against the arrows the written states infer (R-06-16, A10); and
--- the fold-here lines it carries, along each fold's and pre-crease's hinge
--- (owner decision 74).
+-- from it, against the arrows the written states infer (R-06-16, A10), and a
+-- pre-crease's one arc there and back, read from its folded pose (R-06-17);
+-- and the fold-here lines it carries, along each fold's and pre-crease's
+-- hinge (owner decision 74).
 module Senbazuru.Render.SequenceSpec (spec) where
 
 import Control.Monad (forM, forM_)
@@ -31,6 +32,7 @@ import Senbazuru.Origami.Surface (surfaceFromFolded)
 import Senbazuru.Render.Camera (View (..), bottomUp, defaultView, frontOn, topDown)
 import Senbazuru.Render.Sequence
 import Senbazuru.Render.Steps (Arrows (..), FoldLines (..), StepNote, noteArrows, noteCaption, noteFoldLines, silentNote, stepFigures, stepPage)
+import Senbazuru.Render.Svg (renderSvg)
 import Senbazuru.Sequence.Build
 import Senbazuru.Sequence.Check (checkSequence)
 import Senbazuru.Sequence.Elaborate (elaborate)
@@ -40,6 +42,7 @@ import Senbazuru.Sequence.Record (MoveKind (..), Run (..), StepOutcome (..), Wri
 import Senbazuru.Sequence.Run (defaultRunSettings, runSequence, sheetState, workingPattern)
 import Senbazuru.Sequence.Syntax (Amount (..), Compass (..), Corner (..), Layers (..), Line (..), Move (..), Name (..), PageAxis (..), Point (..), RefusalKind (..), Sense (..), Sequence (..), Turning (..))
 import Senbazuru.Sequence.Write (noFileHeader, writeSequence)
+import Test.Golden (goldenText)
 import Test.Hspec
 import Test.SequenceExamples (blintz, creasedTwice, quarterFold)
 
@@ -100,6 +103,17 @@ data Runs = Runs
     -- other way round, so its second fold's two hinge edges, one on each
     -- layer, lie in one place running opposite ways.
     reversedRun :: Run,
+    -- | PRDs\/06 §7's pre-crease on a plain square, as
+    -- @test\/fixtures\/diagonal-precrease.foldseq@ writes it: the diagonal
+    -- folded in front, moving the south-east corner, and laid flat again.
+    diagonalRun :: Run,
+    -- | The same pre-crease written behind.
+    behindRun :: Run,
+    -- | The traditional crane's first three steps, which its own source
+    -- cannot run on its own, since a run refuses the whole file at step 4:
+    -- both diagonals pre-creased in one step, the paper turned over left to
+    -- right, and both midlines pre-creased in one step.
+    diagonalsRun :: Run,
     -- | Built by hand: the blintz's sheet laid flat, as a run starts it, as
     -- state 0, a step that writes it again, two steps that write no state,
     -- and a step that writes the crane folded, with no layer order, so
@@ -115,6 +129,8 @@ runs = do
   helmetSheet <- loadFoldFile "examples/helmet-base.fold" >>= right
   helmetText <- readSequenceText "helmet.foldseq" >>= right
   helmet <- right (parseSequence "helmet.foldseq" helmetText)
+  diagonalText <- readSequenceText "test/fixtures/diagonal-precrease.foldseq" >>= right
+  diagonalSource <- right (parseSequence "test/fixtures/diagonal-precrease.foldseq" diagonalText)
   crane <- loadFoldFile "test/fixtures/crane.fold" >>= right
   let reversedSheet = quarterSheet {keyFrame = (keyFrame quarterSheet) {edgesVertices = [if i == (11 :: Int) then (b, a) else (a, b) | (i, (a, b)) <- zip [0 ..] (edgesVertices (keyFrame quarterSheet))]}}
       sheets = M.fromList [("examples/quarter-fold-steps.fold", quarterSheet), ("examples/blintz-base.fold", blintzSheet), ("examples/helmet-base.fold", helmetSheet), ("reversed.fold", reversedSheet)]
@@ -141,6 +157,9 @@ runs = do
     <*> ran sameLine
     <*> ran bothKinds
     <*> ran reversed
+    <*> ran diagonalSource
+    <*> ran behindDiagonal
+    <*> ran diagonals
     <*> pure (Run Nothing laid identity craneSteps [] [] Nothing Nothing)
   where
     quarterWith second = sequenceOf (seqHeader quarterFold) $ do
@@ -192,6 +211,18 @@ runs = do
     reversed = sequenceOf (header "A square folded into quarters" (sheetFile "reversed.fold") (Just (at (3 / 4) (1 / 4)))) $ do
       step_ "Fold the left half behind." west
       step_ "Fold the top half down in front." north
+    plain = header "A square" sheetSquare Nothing
+    behindDiagonal =
+      sequenceOf plain . step_ "Fold the diagonal behind and unfold it." $
+        move (FoldAndUnfold MountainFold diagonal FlapOfFirstArgument (Just (CornerOf SouthEast)))
+    diagonals = sequenceOf plain $ do
+      step_ "Crease both diagonals." $ do
+        move (FoldAndUnfold ValleyFold diagonal FlapOfFirstArgument (Just (CornerOf SouthEast)))
+        move (FoldAndUnfold ValleyFold (Segment (CornerOf SouthEast) (CornerOf NorthWest)) FlapOfFirstArgument (Just (CornerOf SouthWest)))
+      step_ "Turn the paper over." (turnOver LeftRight)
+      step_ "Crease both midlines." $ do
+        preCrease inFront (LineOnto (edge South) (edge North) Nothing)
+        preCrease inFront (LineOnto (edge West) (edge East) Nothing)
     stoppedAfterFold = sequenceOf (seqHeader quarterFold) $ do
       step_ "Fold the left half behind, onto the right." west
       step_ "Fold the top half down, then squash the corner." (north >> notModelled "a squash fold")
@@ -285,12 +316,16 @@ spec = describe "a run's page" . beforeAll runs $ do
     -- before has vertices its figure's state lacks. Red if the ends came
     -- from the surfaces as folded and not as shown, or a step's records went
     -- to the wrong figure.
+    --
+    -- A pre-crease's arc is left out (restated by S34): its figure's state
+    -- and the next are one flat state, which infer nothing, and the arc runs
+    -- to its folded pose, which the next item holds it to.
     it "puts each single-move figure's arrows where the written states infer them (A10)" $ \r ->
       forM_ [("blintz" :: String, blintzRun r), ("quarter", quarterRun r), ("anchored", anchoredRun r), ("rotated", rotatedRun r), ("turned", turnedRun r), ("creased", creasedRun r)] $ \(name, run) -> do
         notes <- right (stepNotes run)
         inferred <- right (inferredEnds (map fst notes))
         scale <- modelSpan . concat <$> right (traverse (frameVertices . fst) notes)
-        let given = map (map (\(_, a, b) -> (a, b)) . givenArrows . snd) notes
+        let given = map (map (\(_, a, b) -> (a, b)) . filter (not . isArc) . givenArrows . snd) notes
         (name, map length given) `shouldBe` (name, map length inferred <> [0])
         (name, maximum (0 : zipWith apart (concat given) (concat inferred))) `shouldSatisfy` ((<= 1e-12 * scale) . snd)
 
@@ -313,17 +348,17 @@ spec = describe "a run's page" . beforeAll runs $ do
       map (map kindOf . givenArrows . snd) quarterNotes `shouldBe` [[MountainArrow], [ValleyArrow], []]
 
     -- A figure with nothing to say keeps NoArrows, never an empty list of
-    -- given arrows: the last figure, the figure a turn-over starts from, the
-    -- one a rotate starts from, and the one a pre-crease starts from, whose
-    -- arrows are S34's. Red if a presentation or a pre-crease drew an arrow,
-    -- or an empty list were given.
+    -- given arrows: the last figure, the figure a turn-over starts from and
+    -- the one a rotate starts from. The creased square's first figure, which
+    -- its pre-crease starts from, carries the pre-crease's arc (S34). Red if
+    -- a presentation drew an arrow, or an empty list were given.
     it "gives NoArrows to a figure whose step turns no paper, and to the last" $ \r -> do
       turnedNotes <- right (stepNotes (turnedRun r))
       rotatedNotes <- right (stepNotes (rotatedRun r))
       creasedNotes <- right (stepNotes (creasedRun r))
       map (isGiven . snd) turnedNotes `shouldBe` [True, False, True, False]
       map (isGiven . snd) rotatedNotes `shouldBe` [False, True, True, False]
-      map (isGiven . snd) creasedNotes `shouldBe` [False, True, False]
+      map (isGiven . snd) creasedNotes `shouldBe` [True, True, False]
       [noteArrows note | (_, note) <- turnedNotes <> rotatedNotes <> creasedNotes, not (isGiven note)] `shouldSatisfy` all (== NoArrows)
 
     -- An unfold of two folds is one move that leaves two records, and its
@@ -418,6 +453,87 @@ spec = describe "a run's page" . beforeAll runs $ do
       headsFrom (View (Just bottomUp) 0) `shouldBe` Right (Just ([SolidHead, HollowHalfHead], 0))
       headsFrom (View (Just frontOn) 0) `shouldBe` Right (Just ([HollowHalfHead], 3))
 
+  describe "a pre-crease's arc, there and back (R-06-17)" $ do
+    -- 06 §7 and #643's done-when, as the owner chose on 2026-11-13: one arc
+    -- from the middle of the triangle the fold moves, (0, 0), (1, 0), (1, 1),
+    -- whose corners' mean is (2/3, 1/3), to where it lands folded flat
+    -- across y = x, (1/3, 2/3), with the fold's head at the far end and the
+    -- unfold's at the near one. Compared in order, tail with tail and head
+    -- with head. Red if the arc ran from the folded pose back, had no length
+    -- (read from the record's paper after the move, which a pre-crease lays
+    -- flat again where it began), or took any kind but the fold-and-unfold
+    -- of its written sense.
+    it "draws one arc from the paper a pre-crease moves to where its fold takes it" $ \r -> do
+      forM_ [("in front" :: String, diagonalRun r, ValleyAndUnfoldArrow), ("behind", behindRun r, MountainAndUnfoldArrow)] $ \(name, run, kind) -> do
+        notes <- right (stepNotes run)
+        case map (givenArrows . snd) notes of
+          [[(drawn, a, b)], []] -> do
+            (name, drawn) `shouldBe` (name, kind)
+            (name, apart (a, b) (V3 (2 / 3) (1 / 3) 0, V3 (1 / 3) (2 / 3) 0)) `shouldSatisfy` ((<= 1e-12) . snd)
+          other -> expectationFailure (name <> ": expected one arc on the first of two figures, got " <> show other)
+
+    -- Two pre-creases in one step draw two arcs on one figure, in the order
+    -- written: the second diagonal's moving half is two triangles, whose
+    -- centres (1/2, 1/6) and (1/6, 1/2) have the mean (1/3, 1/3), folded
+    -- across x + y = 1 to (2/3, 2/3). After the turn-over left to right
+    -- every state is shown mirrored, x going to 1 − x: the south half's three
+    -- faces have the mean y 5/18 and fold to 13/18, and the west half's
+    -- four, at x 1/4 on the sheet, are shown at 3/4 and fold to 1/4. Red if
+    -- only a step's first pre-crease drew, or the folded pose were not shown
+    -- as the figure shows the paper ('displayBefore'), which draws the last
+    -- arc from 1/4 to 3/4.
+    it "draws an arc for each pre-crease of a step, where its figure shows the paper" $ \r -> do
+      notes <- right (stepNotes (diagonalsRun r))
+      let arc a b c d = (ValleyAndUnfoldArrow, V3 a b 0, V3 c d 0)
+          expected =
+            [ [arc (2 / 3) (1 / 3) (1 / 3) (2 / 3), arc (1 / 3) (1 / 3) (2 / 3) (2 / 3)],
+              [],
+              [arc 0.5 (5 / 18) 0.5 (13 / 18), arc 0.75 0.5 0.25 0.5],
+              []
+            ]
+          given = map (givenArrows . snd) notes
+      map (map kindOf) given `shouldBe` map (map kindOf) expected
+      maximum (0 : zipWith (\(_, a, b) (_, c, d) -> apart (a, b) (c, d)) (concat given) (concat expected)) `shouldSatisfy` (<= 1e-12)
+
+    -- The owner's choice of 2026-11-13: a pre-crease and a fold along the
+    -- same line in one step each draw their arrow, on one curve, in the
+    -- order written, so no instruction is dropped; with a valley pre-crease
+    -- and a mountain fold the mountain's head does not read over the
+    -- valley's, which docs/usage.md records. Red if coincident arrows were
+    -- merged, or a step's arrows reordered.
+    it "draws a pre-crease's arc and a fold's arrow along one line both, in order" $ \r ->
+      forM_ [("same kind" :: String, sameLineRun r, ValleyArrow), ("both kinds", bothKindsRun r, MountainArrow)] $ \(name, run, foldKind) -> do
+        notes <- right (stepNotes run)
+        case map (givenArrows . snd) notes of
+          ([(first', a, b), (second', c, d)] : _) -> do
+            (name, first', second') `shouldBe` (name, ValleyAndUnfoldArrow, foldKind)
+            (name, apart (a, b) (c, d)) `shouldSatisfy` ((<= 1e-12) . snd)
+          other -> expectationFailure (name <> ": expected two arrows on the first figure, got " <> show other)
+
+    -- What the page draws: one arrow with a head at each end, the fold's
+    -- head as the page sees it and the unfold's double head at its tail.
+    -- From below the valley's solid head is the mountain's half head, and
+    -- the unfold's is the same from either side. Red if the page drew the
+    -- arc without its tail, or two arrows, or swapped the tail with the side.
+    it "draws a pre-crease as one arrow with a head at each end" $ \r -> do
+      let ends view = do
+            fitted <- runPage defaultTheme defaultBudget grid view HeightToFit defaultPage (diagonalRun r)
+            pure (fmap (\page -> [(arrowHead path, arrowTail path) | Arrow path <- shapesOf (fittedDiagram page)]) fitted)
+      ends (View (Just topDown) 0) `shouldBe` Right (Just [(SolidHead, Just HollowDoubleHead)])
+      ends (View (Just bottomUp) 0) `shouldBe` Right (Just [(HollowHalfHead, Just HollowDoubleHead)])
+
+    -- 06's New goldens row: the page run -o x.svg writes of 06 §7's run, at
+    -- run's defaults, so the bytes are the CLI's. Read rasterised: on figure
+    -- 1 one arc with a solid head at the top left and a hollow double head
+    -- at its tail, one valley-dashed line along the diagonal and no crease;
+    -- on figure 2 the sheet with the faint crease the pre-crease left. Red
+    -- if no arrow were drawn, the unfold's head were solid, or the line were
+    -- missing.
+    it "draws diagonal-precrease-steps.svg" $ \r -> do
+      let run = diagonalRun r
+      fitted <- right (runPage defaultTheme defaultBudget grid defaultView HeightToFit defaultPage {pageTitle = runTitle run} run) >>= maybe (fail "no page") pure
+      goldenText "test/golden/diagonal-precrease-steps.svg" (renderSvg (fittedPage fitted) (fittedDiagram fitted))
+
   describe "fold-here lines along each hinge (owner decision 74)" $ do
     -- The done-when's lines, read off each note and not off the drawn page,
     -- which drops a line of no length and any line of an unfold: so a line
@@ -457,16 +573,15 @@ spec = describe "a run's page" . beforeAll runs $ do
         (_, first') : _ -> map unordered (givenLines first') `shouldMatchList` [unordered (MountainArrow, V3 0.5 0 0, V3 1 0.5 0)]
         [] -> expectationFailure "no figures"
 
-    -- A pre-crease draws its line, in the sense it was written, though it
-    -- draws no arrows until S34: the creased square's first step creases
-    -- the diagonal as a valley, and its figure, the plain sheet, has no
-    -- crease there at all. Red if lines were drawn only for turns.
+    -- A pre-crease draws its line, in the sense it was written: the creased
+    -- square's first step creases the diagonal as a valley, and its figure,
+    -- the plain sheet, has no crease there at all. Red if lines were drawn
+    -- only for turns.
     it "draws a pre-crease's line, where the figure has no crease yet" $ \r -> do
       notes <- right (stepNotes (creasedRun r))
       case notes of
         (sheet, creasing) : _ -> do
           map unordered (givenLines creasing) `shouldMatchList` [unordered (ValleyArrow, V3 0 0 0, V3 1 1 0)]
-          noteArrows creasing `shouldBe` NoArrows
           length (edgesVertices sheet) `shouldBe` 4
         [] -> expectationFailure "no figures"
 
@@ -687,6 +802,8 @@ spec = describe "a run's page" . beforeAll runs $ do
     paired as bs = maximum (0 : map (`nearest` bs) as <> map (`nearest` as) bs)
     nearest arrow others = minimum (map (apart arrow) others)
     isGiven note = not (null (givenArrows note))
+    -- A pre-crease's arc, there and back.
+    isArc (kind, _, _) = kind `elem` [ValleyAndUnfoldArrow, MountainAndUnfoldArrow]
 
 -- | The fold-here lines a note gives, or none for a note that gives none.
 givenLines :: StepNote -> [(ArrowKind, V3, V3)]

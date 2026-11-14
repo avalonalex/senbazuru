@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="256.038" viewBox="0 0 400 256.038">
+  <title>A square creased along a diagonal</title>
+  <rect x="0" y="0" width="400" height="256.038" fill="#ffffff"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 16 16 L 16 191.238 L 191.238 191.238 L 191.238 16 Z" fill="#faf8f3"/>
+    <path d="M 16 191.238 L 191.238 191.238" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 191.238 191.238 L 191.238 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 191.238 16 L 16 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 16 L 16 191.238" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 16 191.238 L 191.238 16" stroke="#1a1a1a" stroke-width="1" stroke-dasharray="6 3.5"/>
+    <path d="M 122.39 129.347 Q 89.016 118.222 77.891 84.848" stroke="#1a1a1a" stroke-width="1.8"/>
+    <path d="M 74.413 74.413 L 82.065 83.457 L 73.717 86.24 Z" fill="#1a1a1a"/>
+    <path d="M 132.825 132.825 L 120.998 133.521 L 123.781 125.173 Z" stroke="#1a1a1a" stroke-width="1.8"/>
+    <text x="16" y="37.029" font-size="14" font-family="sans-serif" fill="#1a1a1a">1</text>
+    <text x="16" y="209.238" font-size="14" font-family="sans-serif" fill="#1a1a1a">Fold the diagonal and</text>
+    <text x="16" y="226.038" font-size="14" font-family="sans-serif" fill="#1a1a1a">unfold it.</text>
+    <path d="M 208.762 16 L 208.762 191.238 L 384 16 Z M 208.762 191.238 L 384 191.238 L 384 16 Z" fill="#faf8f3"/>
+    <path d="M 208.762 191.238 L 384 16" stroke="#bdbdbd" stroke-width="0.6"/>
+    <path d="M 208.762 191.238 L 384 191.238" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 191.238 L 384 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 384 16 L 208.762 16" stroke="#1a1a1a" stroke-width="1.6"/>
+    <path d="M 208.762 16 L 208.762 191.238" stroke="#1a1a1a" stroke-width="1.6"/>
+    <text x="208.762" y="37.029" font-size="14" font-family="sans-serif" fill="#1a1a1a">2</text>
+    <text x="208.762" y="209.238" font-size="14" font-family="sans-serif" fill="#1a1a1a">Creased along the</text>
+    <text x="208.762" y="226.038" font-size="14" font-family="sans-serif" fill="#1a1a1a">diagonal.</text>
+  </g>
+</svg>

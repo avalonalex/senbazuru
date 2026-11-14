@@ -436,6 +436,8 @@ statesSidedKind note hasNext = arrows || foldLines || rotates
       ValleyArrow -> True
       MountainArrow -> True
       UnfoldArrow -> False
+      ValleyAndUnfoldArrow -> True
+      MountainAndUnfoldArrow -> True
     arrows = case noteArrows note of
       InferArrowsAs kind -> hasNext && isNothing (notePresentation note) && sided kind
       GivenArrows given -> any (\(kind, _, _) -> sided kind) given
@@ -760,6 +762,8 @@ asSeen FromOppositeSide = \case
   ValleyArrow -> MountainArrow
   MountainArrow -> ValleyArrow
   UnfoldArrow -> UnfoldArrow
+  ValleyAndUnfoldArrow -> MountainAndUnfoldArrow
+  MountainAndUnfoldArrow -> ValleyAndUnfoldArrow
 asSeen _ = id
 
 -- | Every frame of a file as one page of numbered figures: 'stepFigures' with

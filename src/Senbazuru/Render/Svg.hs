@@ -176,63 +176,79 @@ shapeToSvg toPage (Label (Colour c) size p txt) =
 -- curve is, and the head is in page units. Both are in scope here and nowhere
 -- else, which is why the head is built at this point rather than upstream.
 shapeToSvg toPage (Arrow a) =
-  curve <> head'
+  curve <> head' <> tail'
   where
     from = applyTransform toPage (arrowFrom a)
     via = applyTransform toPage (arrowVia a)
     tip = applyTransform toPage (arrowTo a)
 
-    -- Along the curve's own tangent at the tip, not along the straight line
-    -- from where it started: a head aimed down the chord sits visibly askew to
-    -- the arc it terminates.
-    along = fromMaybe (V2 1 0) (normalize (tip ^-^ via))
-    across = perpendicular along
-
     -- Clamped against the arrow's own length on the page, which is the only
     -- place that length is known. A head is a fixed size in page units, and a
     -- short motion on a large sheet can be shorter than one: unclamped, the
     -- curve is pulled back past its own start and drawn backwards underneath a
-    -- head that swallows it.
-    headLength = min (arrowHeadLength a) (0.5 * norm (tip ^-^ from))
-    base = tip ^-^ (headLength *^ along)
+    -- head that swallows it. An arrow with a head at each end keeps a third
+    -- of its length for the curve between them, as one head keeps half.
+    headLength = min (arrowHeadLength a) (reach * norm (tip ^-^ from))
+    reach = case arrowTail a of
+      Nothing -> 0.5
+      Just _ -> 1 / 3
     half = 0.4 * headLength
 
-    -- The barb of a one-sided head goes out on the side the arrow bows to,
-    -- the outside of the curve. 'across' is square to the curve at the tip,
-    -- and the control point lies on the tangent there, so the chord says
-    -- which way along 'across' that side is. A straight arrow, its control
-    -- point on the chord, has no outside, and the sign of a dot product that
-    -- is zero but for rounding would put its barb on either side depending on
-    -- where it sits; so it takes the side 'arrowFor' bows to, left of travel.
-    -- Rounding leaves at most about 3e-13 of the chord's length here, and a
-    -- bow of a thousandth of the chord already gives 4e-3.
-    bowSide = if dot across (tip ^-^ from) > 1e-9 * norm (tip ^-^ from) then 1 else -1
-    barb = base ^+^ ((bowSide * half) *^ across)
+    (base, head') = headAt from tip (arrowHead a)
+
+    -- The tail is the head of the same curve run backwards, from the tip to
+    -- where it started: the same control point, so the same tangent, and the
+    -- outside of the curve is the same side of the page.
+    (start, tail') = maybe (from, mempty) (headAt tip from) (arrowTail a)
 
     curve =
       "    <path"
-        <> attr "d" (quadratic from via base)
+        <> attr "d" (quadratic start via base)
         <> attr "stroke" (colourText (strokeColour (arrowStroke a)))
         <> attrNum "stroke-width" (strokeWidth (arrowStroke a))
         <> dashAttr (strokeDash (arrowStroke a))
         <> "/>\n"
 
-    head' = case arrowHead a of
-      SolidHead ->
-        "    <path"
-          <> attr
-            "d"
-            ( pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z"
-            )
-          <> attr "fill" (colourText (strokeColour (arrowStroke a)))
-          <> "/>\n"
-      -- Half of the double head's outline, from the end of the curve, which
-      -- stops at the base, through the tip and out to the barb: a barb drawn
-      -- from the tip alone would leave the last head-length of the shaft
-      -- undrawn.
-      HollowHalfHead -> hollow (pathData [base, tip, barb] <> " Z")
-      -- Closed, so its back edge runs across the end of the curve.
-      HollowDoubleHead -> hollow (pathData [tip, base ^+^ (half *^ across), base ^-^ (half *^ across)] <> " Z")
+    -- A head at @end@ of the curve that comes from @behind@ through the
+    -- control point, and where the curve stops short of it.
+    headAt behind end kind = (baseOf, drawn)
+      where
+        -- Along the curve's own tangent at the end, not along the straight
+        -- line from where it started: a head aimed down the chord sits
+        -- visibly askew to the arc it terminates.
+        along = fromMaybe (V2 1 0) (normalize (end ^-^ via))
+        across = perpendicular along
+        baseOf = end ^-^ (headLength *^ along)
+
+        -- The barb of a one-sided head goes out on the side the arrow bows
+        -- to, the outside of the curve. 'across' is square to the curve at
+        -- the end, and the control point lies on the tangent there, so the
+        -- chord says which way along 'across' that side is. A straight arrow,
+        -- its control point on the chord, has no outside, and the sign of a
+        -- dot product that is zero but for rounding would put its barb on
+        -- either side depending on where it sits; so it takes the side
+        -- 'arrowFor' bows to, left of travel. Rounding leaves at most about
+        -- 3e-13 of the chord's length here, and a bow of a thousandth of the
+        -- chord already gives 4e-3.
+        bowSide = if dot across (end ^-^ behind) > 1e-9 * norm (end ^-^ behind) then 1 else -1
+        barb = baseOf ^+^ ((bowSide * half) *^ across)
+
+        drawn = case kind of
+          SolidHead ->
+            "    <path"
+              <> attr
+                "d"
+                ( pathData [end, baseOf ^+^ (half *^ across), baseOf ^-^ (half *^ across)] <> " Z"
+                )
+              <> attr "fill" (colourText (strokeColour (arrowStroke a)))
+              <> "/>\n"
+          -- Half of the double head's outline, from the end of the curve,
+          -- which stops at the base, through the tip and out to the barb: a
+          -- barb drawn from the tip alone would leave the last head-length of
+          -- the shaft undrawn.
+          HollowHalfHead -> hollow (pathData [baseOf, end, barb] <> " Z")
+          -- Closed, so its back edge runs across the end of the curve.
+          HollowDoubleHead -> hollow (pathData [end, baseOf ^+^ (half *^ across), baseOf ^-^ (half *^ across)] <> " Z")
 
     -- No fill attribute, so the group's fill="none" holds and the head stays
     -- open.

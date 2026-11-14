@@ -151,7 +151,13 @@ data ArrowPath = ArrowPath
     arrowTo :: !V2,
     -- | Which head the arrow ends in.
     arrowHead :: !ArrowHead,
-    -- | Page units: how long the head is from tip to base.
+    -- | The head at the arrow's start, pointing back the way it came, if it
+    -- has one. A book draws \"fold and unfold\" as one arc with the fold's
+    -- head at the far end and the unfold's head at the near one: the paper
+    -- goes there and comes back. The backend draws it as the head of the same
+    -- curve run the other way.
+    arrowTail :: !(Maybe ArrowHead),
+    -- | Page units: how long each head is from tip to base.
     arrowHeadLength :: !Double
   }
   deriving stock (Eq, Show)

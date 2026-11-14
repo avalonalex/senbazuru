@@ -12,8 +12,9 @@
 -- move, of the kind it was written as, so far; marks to come), so it is a
 -- function of
 -- its own that a test can hold to the file a run writes; the second is the one
--- composition that @run -o x.svg@ calls and a golden test is to call (#643's
--- S37), so the two cannot draw the page two ways.
+-- composition that @run -o x.svg@ calls and the golden tests call
+-- (@diagonal-precrease-steps.svg@, and #643's S37), so the two cannot draw the
+-- page two ways.
 --
 -- It is a module of its own because of what it may import. It is the first
 -- @Render@ module to know about fold sequences at all, and from them it may
@@ -61,11 +62,16 @@
 -- unfold's own. 'stepArrows' says how, and why the arrows are a move's and
 -- not a record's.
 --
+-- A /pre-crease/ (a fold laid flat again, docs\/glossary.md) ends where it
+-- began, so comparing its paper before and after finds nothing, and its
+-- arrow is read from the surface its fold reached ('recordFoldedPose'): one
+-- arc there and back, the fold's head at the far end and the unfold's at its
+-- tail, as books draw \"fold and unfold\" (the owner's choice of
+-- 2026-11-13).
+--
 -- A step that turns no paper leaves its figure 'NoArrows': @anchor P@, a
--- @mark@, a turn-over or a rotate, whose mark on the page is not an arrow,
--- and a pre-crease, whose paper ends where it began, so that comparing its
--- two surfaces finds nothing; its arrows out and back are read another way
--- (#643's S34). So has the last figure, which no step starts from.
+-- @mark@, a turn-over or a rotate, whose mark on the page is not an arrow.
+-- So has the last figure, which no step starts from.
 --
 -- == Fold-here lines come from hinges
 --
@@ -148,6 +154,7 @@ import Senbazuru.Sequence.Record
     displayedFrame,
     recordAfter,
     recordBefore,
+    recordFoldedPose,
     recordHinge,
     recordKind,
     recordMoveIndex,
@@ -264,7 +271,8 @@ notesFor run states = traverse noted (zip states (map stateStep (drop 1 states) 
 
 -- | The arrows of one step's records, in the order its moves were written:
 -- for each move that turned paper, an arrow for each piece of paper that
--- moved as one, of the kind the move was written as.
+-- moved as one, of the kind the move was written as; and for each
+-- pre-crease, an arc to where its fold took that paper and back.
 --
 -- == One arrow for a move, not for a record
 --
@@ -296,20 +304,41 @@ notesFor run states = traverse noted (zip states (map stateStep (drop 1 states) 
 -- moves left it, and the runner refuses such a move unless the paper it
 -- turns still lies where the figure draws it (PRDs\/decisions.md, D22), so
 -- the arrow's tail is on the figure's paper all the same.
+--
+-- A pre-crease's paper after the move is its paper before, and its arc's
+-- head is at the surface its fold reached, its folded pose. That pose is
+-- numbered as the paper before and is not yet shown as the figure shows it,
+-- so it is shown under 'displayBefore', as the paper before is; a
+-- pre-crease's two displays are equal, since laying paper flat again turns
+-- the model no way, so 'displayAfter' would draw the same. Between the paper
+-- before and the pose, 'motionsAcross' answers as @motionsBetween@ would,
+-- since the two are numbered alike. No pre-crease a run can make yet moves
+-- two pieces of paper: its moving paper is the one flap joined to its seed.
 stepArrows :: [MoveRecord] -> Either SequenceError [(ArrowKind, V3, V3)]
 stepArrows records = concat <$> traverse moveArrows moves
   where
     moves = mapMaybe NE.nonEmpty (groupBy (\a b -> recordMoveIndex a == recordMoveIndex b) records)
 
     moveArrows :: NonEmpty MoveRecord -> Either SequenceError [(ArrowKind, V3, V3)]
-    moveArrows move@(start :| _) = case turnKind start of
-      Nothing -> pure []
-      Just kind -> do
-        let end = NE.last move
-            before = displayedFrame (recordBefore start) (displayBefore start)
-            after = displayedFrame (recordAfter end) (displayAfter end)
+    moveArrows move@(start :| _) = case (turnKind start, reached) of
+      (Just kind, Just after) -> do
+        let before = displayedFrame (recordBefore start) (displayBefore start)
         motions <- first (ArrowRefused (recordStep start) (recordStepName start)) (motionsAcross before after)
         pure [(kind, motionFrom motion, motionTo motion) | motion <- motions]
+      _ -> pure []
+      where
+        end = NE.last move
+        -- Where the move took the paper, shown as the figure shows it.
+        reached = case recordKind start of
+          -- A pre-crease's paper after the move is its paper before, laid
+          -- flat again, so its arc runs to the folded pose instead. That pose
+          -- is unpresented and numbered as the paper before, so it is shown
+          -- under the same display ('displayBefore'; the two displays of a
+          -- pre-crease's record are equal). A pre-crease is one record, and
+          -- every pre-crease's record has its pose; the 'Nothing' keeps this
+          -- total rather than stands for a case that can happen.
+          Precrease -> (\pose -> displayedFrame pose (displayBefore start)) <$> recordFoldedPose start
+          _ -> Just (displayedFrame (recordAfter end) (displayAfter end))
 
 -- | The fold-here lines of one step's records, in the order its moves were
 -- written: for each fold and each pre-crease, a line along each edge of its
@@ -331,8 +360,8 @@ stepArrows records = concat <$> traverse moveArrows moves
 -- the record's reading of decision 74, which names folds and pre-creases,
 -- is the one the owner confirmed on 2026-11-12. So a line is drawn exactly
 -- for a record written with a sense ('recordSense'), which only a fold and a
--- pre-crease have. A pre-crease draws its line though it draws no arrows yet
--- (#643's S34): its paper ends where it began, but where it folds is known.
+-- pre-crease have. A pre-crease's paper ends where it began, but where it
+-- folds is known, and it draws its line beside its arc.
 --
 -- == One line for each edge, read off the paper before the move
 --
@@ -452,10 +481,14 @@ turnKind record = case recordKind record of
       -- A repeated or a macro's fold may, and whoever runs one says here
       -- what it draws.
       | otherwise -> Nothing
-  -- Folded and laid flat again, so its two surfaces are one and comparing
-  -- them finds no motion: its arrows, out and back, are read from its folded
-  -- pose (#643's S34).
-  Precrease -> Nothing
+  -- Folded and laid flat again: one arc, there and back, with the fold's
+  -- head at the far end and the unfold's at the near one, as books draw a
+  -- fold and unfold (the owner's choice of 2026-11-13). A pre-crease is
+  -- always written with a sense, so the 'Nothing' keeps this total.
+  Precrease -> case recordSense record of
+    Just ValleyFold -> Just ValleyAndUnfoldArrow
+    Just MountainFold -> Just MountainAndUnfoldArrow
+    Nothing -> Nothing
   -- No paper moves: the reader turns the model, holds other paper still, or
   -- a point is named. A turn's mark is not an arrow (#643's S35).
   Presentation _ -> Nothing

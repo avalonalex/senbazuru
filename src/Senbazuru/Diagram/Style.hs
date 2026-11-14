@@ -433,6 +433,7 @@ arrowFor theme from to =
       arrowVia = midpoint ^+^ (offset *^ sideways),
       arrowTo = to,
       arrowHead = SolidHead,
+      arrowTail = Nothing,
       arrowHeadLength = themeArrowHead theme
     }
   where
@@ -449,26 +450,47 @@ arrowFor theme from to =
     sideways = maybe (V2 0 0) perpendicular (normalize span')
 
 -- | What a fold arrow says the paper does: folded towards the reader (a valley
--- fold), folded away (a mountain fold), or opened out again.
+-- fold), folded away (a mountain fold), opened out again, or folded either
+-- way and opened out again at once, a /pre-crease/ (docs\/glossary.md).
 --
 -- A kind is stated as the move was written, from the reader's side, and drawn
 -- as seen. A valley fold seen from behind the paper is a mountain fold, so a
--- page drawn from the opposite side swaps valley and mountain before it hands
--- a kind to 'withKind', which draws the kind it is given; an unfold is an
--- unfold from either side.
-data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow
+-- page drawn from the opposite side swaps valley and mountain, with or without
+-- the unfold, before it hands a kind to 'withKind', which draws the kind it is
+-- given; an unfold is an unfold from either side.
+data ArrowKind
+  = ValleyArrow
+  | MountainArrow
+  | UnfoldArrow
+  | -- | A valley fold and its unfold in one arc: there and back.
+    ValleyAndUnfoldArrow
+  | -- | A mountain fold and its unfold in one arc.
+    MountainAndUnfoldArrow
   deriving stock (Eq, Show, Enum, Bounded)
 
--- | The arrow with the head a book gives its kind: solid for a valley fold,
--- hollow with one barb for a mountain fold, hollow with two for an unfold.
--- Only the head changes; the curve, its ink and the head's length are the
--- arrow's own.
+-- | The arrow with the heads a book gives its kind: solid for a valley fold,
+-- hollow with one barb for a mountain fold, hollow with two for an unfold;
+-- and for a fold and its unfold, the fold's head at the far end and the
+-- unfold's at the near one, as books draw \"fold and unfold\". Only the heads
+-- change; the curve, its ink and the heads' length are the arrow's own.
+--
+-- One arc and not two arrows, out and back, though a pre-crease's folded pose
+-- would give both: two arrows between the same two points make a lens, which
+-- two pre-creases on one figure, as a square's two diagonals, cross into a
+-- knot of four curves (the owner's choice of 2026-11-13).
 withKind :: ArrowKind -> ArrowPath -> ArrowPath
-withKind kind a = a {arrowHead = headFor kind}
+withKind kind a = a {arrowHead = headFor kind, arrowTail = tailFor kind}
   where
     headFor ValleyArrow = SolidHead
     headFor MountainArrow = HollowHalfHead
     headFor UnfoldArrow = HollowDoubleHead
+    headFor ValleyAndUnfoldArrow = SolidHead
+    headFor MountainAndUnfoldArrow = HollowHalfHead
+    tailFor ValleyAndUnfoldArrow = Just HollowDoubleHead
+    tailFor MountainAndUnfoldArrow = Just HollowDoubleHead
+    tailFor ValleyArrow = Nothing
+    tailFor MountainArrow = Nothing
+    tailFor UnfoldArrow = Nothing
 
 -- | The stroke for a /fold-here line/: the dashed line a book draws on the
 -- figure before a fold, where the paper is about to fold (docs\/glossary.md).
@@ -487,10 +509,15 @@ withKind kind a = a {arrowHead = headFor kind}
 -- already. This is also the decision record's reading of owner decision 74,
 -- which gives a run's page a line for every fold and pre-crease and none for
 -- an unfold.
+--
+-- A fold and its unfold, a pre-crease, gets its fold's line: the paper is
+-- folded there first.
 foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke
 foldLineStroke theme = \case
   ValleyArrow -> Just (line (themeValleyDash theme))
   MountainArrow -> Just (line (themeMountainDash theme))
   UnfoldArrow -> Nothing
+  ValleyAndUnfoldArrow -> Just (line (themeValleyDash theme))
+  MountainAndUnfoldArrow -> Just (line (themeMountainDash theme))
   where
     line = Stroke (themeInk theme) (themeCreaseWidth theme)
