@@ -1118,6 +1118,13 @@ it folds, drawn along the line the record turned its paper about. Two frames
 can find such a line only in a crease the next frame adds, and the helmet's
 folds and the blintz's lie along creases their sheets already have, so they
 add none; a record keeps the line whether or not the move creased it.
+A [pre-crease](glossary.md#origami) is the case two frames cannot see at all:
+folded and laid flat again, its paper ends where it began, and its two states
+are the same. Its record kept the surface its fold reached, so the page draws
+one arc from the paper the fold moves to where it lands, with the fold's head
+at the far end and the hollow unfold head at its tail, the mark books draw for
+"fold and unfold" (`test/fixtures/diagonal-precrease.foldseq` is the
+smallest).
 The rest of what a book prints beside each figure comes one mark at a time
 ([usage.md](usage.md#run) lists what is still missing). The crane does not get
 far:

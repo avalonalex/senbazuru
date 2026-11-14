@@ -59,6 +59,13 @@ spec = do
       forM_ [minBound .. maxBound] $ \k ->
         (k, (withKind k plain) {arrowHead = arrowHead plain, arrowTail = arrowTail plain}) `shouldBe` (k, plain)
 
+    -- The kind given last decides both heads, whatever the arrow had: a
+    -- fold arrow made from a fold-and-unfold loses its tail. Red if withKind
+    -- kept a tail its kind does not have.
+    it "gives an arrow the heads of the kind given last" $
+      forM_ [(k, j) | k <- [minBound .. maxBound], j <- [minBound .. maxBound]] $ \(k, j) ->
+        ((k, j), withKind k (withKind j plain)) `shouldBe` ((k, j), withKind k plain)
+
     -- A pre-crease's line is its fold's: the paper is folded there first.
     -- Red if a fold-and-unfold drew no line, or the other kind's dash.
     it "gives a fold and unfold its fold's line" $

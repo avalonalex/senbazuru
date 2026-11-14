@@ -1883,9 +1883,10 @@ stack run -- run blintz.foldseq > blintz.fold
   `--view front` and `--view side` see flat paper edge on, cannot
   show which side they see, and so draw each head as written and put the
   [edge-on mark](glossary.md#geometry) on every figure. An arrow there
-  bows below the line the paper is, into the caption under its figure,
-  which nothing moves out of its way yet, and a pre-crease's arc does so
-  whenever it is not seen end on.
+  bows to the left of the way it travels on the page, so one travelling
+  right bows above the line the paper is and one travelling left bows below
+  it, into the caption under its figure, which nothing moves out of its way
+  yet. A pre-crease's arc is one arrow, and does the same.
 
   Each figure also carries the [fold-here lines](glossary.md#origami) of
   the step that starts from it, a dashed line along the line each fold and
