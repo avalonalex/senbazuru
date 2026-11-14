@@ -266,7 +266,13 @@ then.
   [#639](https://github.com/avalonalex/senbazuru/issues/639)
   ([C140](decisions.md#changes-since-draft-v2)), with `withKind` (§1) the one
   other place an arrow's head is set; the body waits with `PushArrow` for
-  [#648](https://github.com/avalonalex/senbazuru/issues/648).
+  [#648](https://github.com/avalonalex/senbazuru/issues/648). S34
+  ([#643](https://github.com/avalonalex/senbazuru/issues/643), [C164](decisions.md#changes-since-draft-v2)) added a
+  tail, `arrowTail :: Maybe ArrowHead`, a head at the arrow's start pointing
+  back, drawn as the head of the same curve run backwards, for a pre-crease's
+  one arc; with a tail each head is clamped to a third of the arrow's length
+  on the page. A push's `CleftTail` is a body drawn at that same end, so #648
+  has to say what an arrow with both draws.
 - **R-06-6.** `Shape` gains `Symbol`: a glyph whose geometry is in page units at one
   model-space anchor. `shapePoints` returns only the anchor; `mapShapePoints`
   moves only the anchor. Built by S13 of [#639](https://github.com/avalonalex/senbazuru/issues/639)
@@ -593,8 +599,8 @@ then.
 
 ```haskell
 -- Senbazuru.Diagram.Style: kind to ink, the one file to open when marks look wrong
-data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648)
-withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head and body only; built, setting the head
+data ArrowKind = ValleyArrow | MountainArrow | UnfoldArrow | ValleyAndUnfoldArrow | MountainAndUnfoldArrow | PushArrow  -- as seen from the reader's side; built without PushArrow (C140, #648); the two fold-and-unfold kinds by S34 (C164)
+withKind       :: ArrowKind -> ArrowPath -> ArrowPath                   -- sets head, tail and body only; built, setting the head and, since S34, the tail
 foldLineStroke :: Theme -> ArrowKind -> Maybe Stroke                    -- valley or mountain dash; built by S26, Nothing for an unfold (C156)
 
 -- Senbazuru.Render.Steps

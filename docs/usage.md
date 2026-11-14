@@ -1873,8 +1873,11 @@ stack run -- run blintz.foldseq > blintz.fold
   it began, so its arrow runs to where its fold took the paper: one arc
   there and back, its fold's head at the far end and the hollow unfold head
   at its tail, as books draw "fold and unfold". A step that pre-creases a
-  line and then folds along it draws both arrows on one curve; when the two
-  kinds differ the second head does not read over the first. The last
+  line and then folds along it draws both arrows: moving the same paper they
+  lie on one curve, and moving the other side they run opposite ways and
+  cross as a lens. On one curve a mountain's half head does not read against
+  a valley's solid head, whichever is drawn first, so a mountain written
+  there is lost. The last
   figure has none, and
   neither has the last figure of a run stopped at `not modelled`, whose
   caption names a step the page does not draw the end of. `--view bottom`

@@ -513,14 +513,21 @@ spec = describe "a run's page" . beforeAll runs $ do
     -- What the page draws: one arrow with a head at each end, the fold's
     -- head as the page sees it and the unfold's double head at its tail.
     -- From below the valley's solid head is the mountain's half head, and
-    -- the unfold's is the same from either side. Red if the page drew the
-    -- arc without its tail, or two arrows, or swapped the tail with the side.
+    -- the mountain's the valley's, and the unfold's is the same from either
+    -- side. Seen edge on from the front, where the page cannot show which
+    -- side it sees, each is drawn as written (the code review of #696). Red
+    -- if the page drew the arc without its tail, or two arrows, swapped the
+    -- tail with the side, or swapped either kind's head edge on.
     it "draws a pre-crease as one arrow with a head at each end" $ \r -> do
-      let ends view = do
-            fitted <- runPage defaultTheme defaultBudget grid view HeightToFit defaultPage (diagonalRun r)
+      let ends run view = do
+            fitted <- runPage defaultTheme defaultBudget grid view HeightToFit defaultPage run
             pure (fmap (\page -> [(arrowHead path, arrowTail path) | Arrow path <- shapesOf (fittedDiagram page)]) fitted)
-      ends (View (Just topDown) 0) `shouldBe` Right (Just [(SolidHead, Just HollowDoubleHead)])
-      ends (View (Just bottomUp) 0) `shouldBe` Right (Just [(HollowHalfHead, Just HollowDoubleHead)])
+      ends (diagonalRun r) (View (Just topDown) 0) `shouldBe` Right (Just [(SolidHead, Just HollowDoubleHead)])
+      ends (diagonalRun r) (View (Just bottomUp) 0) `shouldBe` Right (Just [(HollowHalfHead, Just HollowDoubleHead)])
+      ends (diagonalRun r) (View (Just frontOn) 0) `shouldBe` Right (Just [(SolidHead, Just HollowDoubleHead)])
+      ends (behindRun r) (View (Just topDown) 0) `shouldBe` Right (Just [(HollowHalfHead, Just HollowDoubleHead)])
+      ends (behindRun r) (View (Just bottomUp) 0) `shouldBe` Right (Just [(SolidHead, Just HollowDoubleHead)])
+      ends (behindRun r) (View (Just frontOn) 0) `shouldBe` Right (Just [(HollowHalfHead, Just HollowDoubleHead)])
 
     -- 06's New goldens row: the page run -o x.svg writes of 06 §7's run, at
     -- run's defaults, so the bytes are the CLI's. Read rasterised: on figure
